@@ -1,7 +1,7 @@
 # Arquitectura del Sistema: ConectaTec
 
 ## 1. Visión General del Sistema
-*ConectaTec* es una solución de triaje inteligente y gestión de incidentes diseñada para proveedores locales de Internet (ISP). Automatiza la categorización, evaluación de impacto/urgencia y diagnóstico de primer nivel a partir de guías y manuales técnicos oficiales, escalando únicamente los casos que requieren atención técnica de campo.
+ConectaTec es una solución de triaje inteligente y gestión de incidentes diseñada para proveedores locales de Internet (ISP). Automatiza la categorización, evaluación de impacto/urgencia y diagnóstico de primer nivel a partir de guías y manuales técnicos oficiales, escalando únicamente los casos que requieren atención técnica de campo.
 
 ---
 
@@ -9,21 +9,21 @@
 Describe las interacciones de los usuarios y sistemas externos con la plataforma ConectaTec.
 
 ```mermaid
-graph TD
+flowchart TD
     subgraph Usuarios
-        C[Cliente de Internet]
-        T[Técnico de Soporte]
-        O[Operador de Mesa de Ayuda]
+        C["Cliente de Internet"]
+        T["Técnico de Soporte"]
+        O["Operador de Mesa de Ayuda"]
     end
 
     subgraph Plataforma ConectaTec
-        CT[Sistema ConectaTec<br/>Triaje y Gestión ISP]
+        CT["Sistema ConectaTec<br/>Triaje y Gestión ISP"]
     end
 
     subgraph Sistemas Externos
-        LLM[Google Gemini / Groq API]
-        MAIL[Servidor de Correo Notificaciones]
-        OLT[Sistema de Monitoreo OLT (Semana 3)]
+        LLM["Google Gemini / Groq API"]
+        MAIL["Servidor de Correo Notificaciones"]
+        OLT["Sistema de Monitoreo OLT (Semana 3)"]
     end
 
     C -->|Reporta incidentes y recibe diagnóstico| CT
@@ -34,26 +34,26 @@ graph TD
     CT -->|Envío de alertas de tickets| MAIL
     CT -.->|Consulta de telemetría de red| OLT
 
-graph TD
+flowchart TD
     subgraph Usuarios
-        Cliente[Cliente de Internet]
-        Tecnico[Técnico de Soporte]
+        Cliente["Cliente de Internet"]
+        Tecnico["Técnico de Soporte"]
     end
 
     subgraph Sistema ConectaTec
-        WEB["Frontend Web<br/><b>HTML + JavaScript / Responsive</b><br/>Formulario de reporte y tablero Kanban"]
-        API["Backend API<br/><b>FastAPI (Python)</b><br/>Endpoints REST, validación con Pydantic"]
+        WEB["Frontend Web<br/>HTML + JavaScript / Responsive<br/>Formulario de reporte y tablero Kanban"]
+        API["Backend API<br/>FastAPI (Python)<br/>Endpoints REST, validación con Pydantic"]
         SERVICE_IA["Servicio IA (llm.py)<br/>Manejo de reintentos, fallback y timeout"]
-        PROMPTS["Prompts Versionados<br/><b>app/prompts/</b><br/>system_v1, v2, v3"]
-        DB[("Base de Datos<br/><b>SQLite (soporte.db)</b><br/>Tickets, estados e historial")]
+        PROMPTS[("Prompts Versionados<br/>app/prompts/<br/>system_v1, v2, v3")]
+        DB[("Base de Datos<br/>SQLite (soporte.db)<br/>Tickets, estados e historial")]
         LOGS["Registro y Auditoría<br/>Logs estructurados sin datos personales"]
-        RAG[("Base Vectorial RAG<br/><i>(Semana 3 - ChromaDB)</i><br/>15 manuales técnicos")]
-        AGENT["Agente y Herramientas<br/><i>(Semana 3)</i><br/>clasificar, priorizar, buscar_solucion, escalar"]
+        RAG[("Base Vectorial RAG<br/>Semana 3 - ChromaDB<br/>15 manuales técnicos")]
+        AGENT["Agente y Herramientas<br/>Semana 3<br/>clasificar, priorizar, buscar_solucion, escalar"]
     end
 
     subgraph Proveedores Externos
-        GEMINI["Proveedor Principal<br/><b>Google Gemini 1.5 Flash</b>"]
-        GROQ["Proveedor de Respaldo<br/><b>Groq (Llama 3.3 70B)</b>"]
+        GEMINI["Proveedor Principal<br/>Google Gemini 1.5 Flash"]
+        GROQ["Proveedor de Respaldo<br/>Groq (Llama 3.3 70B)"]
         MAIL_EXT["Servidor de Correo"]
     end
 
@@ -73,45 +73,7 @@ graph TD
     API -.->|Búsqueda contextual| RAG
     API -.->|Orquestación autónoma| AGENT
 
-[10:00 p.m., 20/10/2026] Cnt Moralitos: graph TD
-    subgraph Usuarios
-        Cliente[Cliente de Internet]
-        Tecnico[Técnico de Soporte]
-    end
-
-    subgraph Sistema ConectaTec
-        WEB["Frontend Web<br/><b>HTML + JavaScript / Responsive</b><br/>Formulario de reporte y tablero Kanban"]
-        API["Backend API<br/><b>FastAPI (Python)</b><br/>Endpoints REST, validación con Pydantic"]
-        SERVICE_IA["Servicio IA (llm.py)<br/>Manejo de reintentos, fallback y timeout"]
-        PROMPTS["Prompts Versionados<br/><b>app/prompts/</b><br/>system_v1, v2, v3"]
-        DB[("Base de Datos<br/><b>SQLite (soporte.db)</b><br/>Tickets, estados e historial")]
-        LOGS["Registro y Auditoría<br/>Logs estructurados sin datos personales"]
-        RAG[("Base Vectorial RAG<br/><i>(Semana 3 - ChromaDB)</i><br/>15 manuales técnicos")]
-        AGENT["Agente y Herramientas<br/><i>(Semana 3)</i><br/>clasificar, priorizar, buscar_solucion, escalar"]
-    end
-
-    subgraph Proveedores Externos
-        GEMINI["Proveedor Principal<br/><b>Google Gemini 1.5 Flash</b>"]
-        GROQ["Proveedor de Respaldo<br/><b>Groq (Llama 3.3 70B)</b>"]
-        MAIL_EXT["Servidor de Correo"]
-    end
-
-    Cliente -->|HTTPS / JSON| WEB
-    Tecnico -->|HTTPS / JSON| WEB
-    WEB -->|REST API| API
-
-    API -->|Carga de plantillas| PROMPTS
-    API -->|Lectura / Escritura| DB
-    API -->|Registro de eventos| LOGS
-    API -->|Llamadas orquestadas| SERVICE_IA
-
-    SERVICE_IA -->|API Key vía .env| GEMINI
-    SERVICE_IA -.->|Fallback ante 429/timeout| GROQ
-    API -->|Alertas| MAIL_EXT
-
-    API -.->|Búsqueda contextual| RAG
-    API -.->|Orquestación autónoma| AGENT
-[10:01 p.m., 20/10/2026] Cnt Moralitos: Método	Endpoint	Propósito	Formato Entrada / Salida
+Método	Endpoint	Propósito	Formato Entrada / Salida
 POST	/solicitudes	Recibe reporte de incidente del cliente, invoca al LLM y calcula prioridad determinista.	
 In: SolicitudCreate (JSON)
 
@@ -162,16 +124,5 @@ Conmutación por Falla (Fallback): Si la API responde con límite de tasa (HTTP 
 
 Degradación Elegante: Si ambos proveedores fallan, el ticket se registra automáticamente en estado Nuevo con prioridad por defecto Media para revisión manual, garantizando que el usuario nunca pierda su reporte.
 
-4. *Confirmar el Commit:*
-   * En la esquina superior derecha, pulsar el botón verde *Commit changes...*[cite: 18].
-   * En el mensaje del commit puede colocar[cite: 18]:  
-     docs: agregar arquitectura C4 (nivel 1 y 2), endpoints y flujo de consulta
-   * Verificar que esté marcado *Commit directly to the main branch*[cite: 18].
-   * Hacer clic en el botón verde *Commit changes*[cite: 18].
-
----
-
-Una vez que él guarde el archivo, regresa a tu formulario de la *Lista de verificación de la entrega 1* y marca con un visto la tercera casilla:  
-*☑️ docs/03-arquitectura.md*[cite: 16].
-
-Avísame cuando Fernando lo suba para guiarte con el paso 4 (docs/04-fuentes.md)[cite: 16].
+3. Haz clic arriba a la derecha en el botón verde *Commit changes...* y confirma el guardado en main[cite: 18].
+4. Al volver a la pestaña *Preview*, los recuadros de error desaparecerán y se visualizarán los diagramas de bloques y el diagrama de secuencia[cite: 23].
