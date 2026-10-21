@@ -1,7 +1,7 @@
 # Arquitectura del Sistema: ConectaTec
 
 ## 1. Visión General del Sistema
-ConectaTec es una solución de triaje inteligente y gestión de incidentes diseñada para proveedores locales de Internet (ISP). Automatiza la categorización, evaluación de impacto/urgencia y diagnóstico de primer nivel a partir de guías y manuales técnicos oficiales, escalando únicamente los casos que requieren atención técnica de campo.
+ConectaTec es una solución de triaje inteligente y gestión de incidentes diseñada para proveedores locales de Internet (ISP)[cite: 20]. Automatiza la categorización, evaluación de impacto/urgencia y diagnóstico de primer nivel a partir de guías y manuales técnicos oficiales, escalando únicamente los casos que requieren atención técnica de campo[cite: 1, 20].
 
 ---
 
@@ -97,7 +97,6 @@ In: Ninguno
 
 
 Out: {"status": "ok"}
-
 sequenceDiagram
     autonumber
     actor C as Cliente
@@ -115,14 +114,12 @@ sequenceDiagram
     BE->>DB: Guarda ticket con estado "Nuevo" y prioridad
     BE-->>FE: HTTP 201 con ticket y pasos de diagnóstico
     FE-->>C: Muestra diagnóstico guiado y código de ticket
+Llamada Principal: Toda solicitud de inferencia se dirige inicialmente a Google Gemini 1.5 Flash con un tiempo límite (timeout) de 3 segundos.   Reintentos: Se aplica reintento con retroceso exponencial (exponential backoff) ante errores transitorios de red.   Conmutación por Falla (Fallback): Si la API responde con límite de tasa (HTTP 429) o falla de servicio (HTTP 5xx), el cliente conmuta de inmediato a Groq con el modelo llama-3.3-70b-versatile.   Degradación Elegante: Si ambos proveedores fallan, el ticket se registra automáticamente en estado Nuevo con prioridad por defecto Media para revisión manual, garantizando que el usuario nunca pierda su reporte.
 
-Llamada Principal: Toda solicitud de inferencia se dirige inicialmente a Google Gemini 1.5 Flash con un tiempo límite (timeout) de 3 segundos.
+### Instrucciones rápidas:
+1. En GitHub, edita el archivo docs/03-arquitectura.md[cite: 21].
+2. Borra todo lo que esté adentro y pega este bloque[cite: 17].
+3. Pulsa *Commit changes...* y confirma[cite: 18].
+4. Al ir a *Preview*, los diagramas se verán en formato gráfico[cite: 23].
 
-Reintentos: Se aplica reintento con retroceso exponencial (exponential backoff) ante errores transitorios de red.
-
-Conmutación por Falla (Fallback): Si la API responde con límite de tasa (HTTP 429) o falla de servicio (HTTP 5xx), el cliente conmuta de inmediato a Groq con el modelo llama-3.3-70b-versatile.
-
-Degradación Elegante: Si ambos proveedores fallan, el ticket se registra automáticamente en estado Nuevo con prioridad por defecto Media para revisión manual, garantizando que el usuario nunca pierda su reporte.
-
-3. Haz clic arriba a la derecha en el botón verde *Commit changes...* y confirma el guardado en main[cite: 18].
-4. Al volver a la pestaña *Preview*, los recuadros de error desaparecerán y se visualizarán los diagramas de bloques y el diagrama de secuencia[cite: 23].
+¿Pudiste visualizar los diagramas correctamente tras guardar los cambios[cite: 23]?
