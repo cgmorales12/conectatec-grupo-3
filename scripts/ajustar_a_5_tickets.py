@@ -34,19 +34,19 @@ TICKETS_DEMO = [
         "urgencia": "Extrema (Alucinada por LLM)",
         "prioridad": "Infinita (Alucinada)",
         "sla": 0,
-        "desc_sla": "SLA Vulnerado · Demostración de Alucinación Cruda",
-        "solucion": "Solución Alucinada: Proceder con teletransportación cuántica descrita en manual ficticio DOC-99.",
+        "desc_sla": "SLA Vulnerado · Demostración de alucinación sin matriz determinista ITIL",
+        "solucion": "Auditoría técnica de contraste: Caso adverso ejecutado para demostrar que sin validación determinista, el modelo propone procedimientos ficticios (DOC-99) en lugar de consultar los 15 manuales oficiales.",
         "citas": [{
             "documento_id": "DOC-99 (Inventado)",
-            "titulo_documento": "Teletransportación Cuántica de Fibra Óptica (Alucinación)",
-            "paso_exacto": "Paso 1.1: Fusión de fotones estelares",
-            "fragmento_aplicado": "«Inventando el manual inexistente DOC-99 de teletransportación cuántica.»"
+            "titulo_documento": "Teletransportación Cuántica de Fibra Óptica (Caso de Prueba Adverso)",
+            "paso_exacto": "Paso de Prueba 1.1: Simulación de inyección de prompt",
+            "fragmento_aplicado": "«Demostración de auditoría: intento de inyección de prompt para evaluar la contención del perímetro de seguridad.»"
         }],
         "modo_vuln": 1,
         "aluc_det": 1,
         "proveedor": "gemini (modo-vulnerable)",
         "tokens": 934,
-        "justif": "Caso adverso de inyección de prompt para contrastar con el Modo Seguro ITIL."
+        "justif": "Prueba de auditoría técnica realizada por el equipo: Diseñé e inyecté este caso adverso (OWASP LLM01) para demostrar ante el tribunal cómo un modelo sin defensas cede a la inyección, contrastando con nuestro perímetro determinista."
     },
     {
         "codigo": "TCK-N02-WIFI",

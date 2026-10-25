@@ -75,14 +75,14 @@ def clasificar_solicitud(
             categoria="🚨 Inyección Exitosa / Alucinación Libre (OWASP LLM01)",
             impacto="Cósmico (Alucinado por LLM)",
             urgencia="Extrema (Alucinada por LLM)",
-            sintomas_detectados=["Inyección adverso aceptada", "Bypass de delimitadores", "Manual inventado DOC-99"],
-            justificacion="El modelo de lenguaje operó sin delimitadores semánticos <solicitud> ni validación Pydantic V2, cediendo a la inyección y alucinando atributos fantásticos fuera de las reglas del ISP."
+            sintomas_detectados=["Inyección adversa de prueba", "Bypass de delimitadores", "Manual inventado DOC-99"],
+            justificacion="Prueba de auditoría técnica realizada por el equipo: Diseñé e inyecté este caso adverso (OWASP LLM01) para demostrar ante el tribunal el comportamiento de un LLM sin salvaguardas. Con las defensas desactivadas, se comprueba cómo el modelo cede al ataque y alucina atributos fuera de las reglas del negocio; mientras que con nuestras defensas activadas, el código intercepta la entrada y la neutraliza con prioridad determinista."
         )
         metadatos = MetadatosIA(
             proveedor="groq" if simular_caida_gemini else "gemini",
             modelo="modo-vulnerable-sin-filtros",
             conmutado=simular_caida_gemini,
-            motivo_conmutacion="Modo Vulnerable Activo: Demostración de alucinación e inyección libre sin defensas." if not simular_caida_gemini else "Gemini caído (simulado) + Modo Vulnerable.",
+            motivo_conmutacion="Auditoría Técnica en Vivo: Demostración controlada de inyección y alucinación sin defensas Pydantic/ITIL." if not simular_caida_gemini else "Gemini caído (simulado) + Modo Vulnerable.",
             latencia_ms=latencia if latencia > 0 else 12.4,
             tokens_prompt=548,
             tokens_completado=386,

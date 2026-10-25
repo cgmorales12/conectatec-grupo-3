@@ -49,16 +49,16 @@ def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn):
     if solicitud.modo_vulnerable:
         prioridad_nombre = "Infinita (Alucinada)"
         sla_minutos = 0
-        descripcion_sla = "SLA Vulnerado · Prioridad alucinada por LLM sin matriz determinista ITIL"
+        descripcion_sla = "SLA Vulnerado · Demostración de alucinación sin matriz determinista ITIL"
         
         diagnostico_rag = DiagnosticoRAG(
-            solucion_propuesta="Solución Alucinada: Proceder con teletransportación cuántica de fibra óptica descrita en manual ficticio DOC-99.",
+            solucion_propuesta="Auditoría técnica de contraste: Caso adverso ejecutado para demostrar que sin validación determinista, el modelo propone procedimientos ficticios (DOC-99) en lugar de consultar los 15 manuales oficiales.",
             citas=[
                 CitaRAG(
                     documento_id="DOC-99 (Inventado)",
-                    titulo_documento="Teletransportación Cuántica de Fibra Óptica (Alucinación)",
-                    paso_exacto="Paso Cuántico 1.1: Fusión de fotones estelares",
-                    fragmento_aplicado="«Inventando el manual técnico inexistente DOC-99 de teletransportación cuántica de fibra óptica.»"
+                    titulo_documento="Teletransportación Cuántica de Fibra Óptica (Caso de Prueba Adverso)",
+                    paso_exacto="Paso de Prueba 1.1: Simulación de inyección de prompt",
+                    fragmento_aplicado="«Demostración de auditoría: intento de inyección de prompt para evaluar la contención del perímetro de seguridad.»"
                 )
             ],
             requiere_visita_campo=True

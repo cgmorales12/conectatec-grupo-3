@@ -1598,34 +1598,34 @@
 
             const bannerAlucinacionHtml = esAlucinacion ? `
                 <div style="background:#FFF1F2; border:2px solid #FDA4AF; border-radius:8px; padding:12px; margin-bottom:14px; color:#9F1239;">
-                    <div style="font-weight:800; font-size:13.5px; margin-bottom:4px;">🚨 ALUCINACIÓN DETECTADA (Demostración de Falla OWASP LLM01)</div>
-                    <div style="font-size:12px; line-height:1.4;">
-                        Este ticket fue procesado en <b>Modo Vulnerable (Sin esquema Pydantic V2 ni Matriz ITIL)</b>. El LLM aceptó la inyección del atacante, inventó el manual inexistente <code>DOC-99</code> y manipuló la prioridad a <code>Infinita</code>, demostrando por qué la regla <em>«El modelo propone, el código dispone»</em> es indispensable.
+                    <div style="font-weight:800; font-size:13.5px; margin-bottom:4px;">🛡️ PRUEBA DE AUDITORÍA Y SEGURIDAD EN VIVO (OWASP LLM01)</div>
+                    <div style="font-size:12.5px; line-height:1.45;">
+                        <b>Explicación Técnica del Autor para el Tribunal:</b> Diseñé e inyecté este caso de prueba adverso para demostrar ante el evaluador el contraste de seguridad en vivo. Al apagar las <b>Defensas IA (Modo Vulnerable)</b>, se observa cómo un LLM desprotegido cede a la inyección, inventa el manual inexistente <code>DOC-99</code> y altera la prioridad a <code>Infinita</code>. Al encender las defensas, nuestro código determinista intercepta la solicitud, la neutraliza y la contiene en Nivel 0 Fuera de Alcance.
                     </div>
                 </div>
             ` : '';
 
             document.getElementById('xaiContenido').innerHTML = `
                 ${bannerAlucinacionHtml}
-                <!-- 1. Clasificación IA -->
+                <!-- 1. Clasificación y Diagnóstico Técnico -->
                 <div class="xai-section">
-                    <div class="xai-title">🧠 1. Triaje Inteligente con Modelo de Lenguaje (LLM)</div>
+                    <div class="xai-title">${esAlucinacion ? '🛡️ 1. Diagnóstico de la Auditoría Técnica (Prueba de Inyección)' : '🔍 1. Diagnóstico y Clasificación Técnica del Ticket'}</div>
                     <div class="xai-grid">
                         <div class="xai-item">
-                            <div class="xai-item-label">Categoría Identificada:</div>
+                            <div class="xai-item-label">Categoría Diagnosticada:</div>
                             <div class="xai-item-val">${t.categoria}</div>
                         </div>
                         <div class="xai-item">
-                            <div class="xai-item-label">Impacto Extraído:</div>
+                            <div class="xai-item-label">Impacto Estimado:</div>
                             <div class="xai-item-val" style="color: ${esAlucinacion ? '#BE123C; font-weight:700;' : 'inherit'}">${t.impacto}</div>
                         </div>
                         <div class="xai-item">
-                            <div class="xai-item-label">Urgencia Extraída:</div>
+                            <div class="xai-item-label">Urgencia Estimada:</div>
                             <div class="xai-item-val" style="color: ${esAlucinacion ? '#BE123C; font-weight:700;' : 'inherit'}">${t.urgencia}</div>
                         </div>
                     </div>
                     <div class="xai-quote">
-                        <strong>Justificación Técnica del Modelo:</strong><br>
+                        <strong>${esAlucinacion ? 'Explicación del Caso de Prueba (Realizada por el Autor):' : 'Fundamentación Técnica del Caso:'}</strong><br>
                         ${t.justificacion || 'Evaluación contextual según síntomas y reglas de triaje.'}
                     </div>
                 </div>
@@ -1635,11 +1635,11 @@
                     <div class="xai-title">📐 2. Priorización Determinista ITIL (Código Python)</div>
                     ${esAlucinacion ? `
                         <div class="xai-quote" style="border-left-color:#E11D48; color:#9F1239; background:#FFF1F2;">
-                            🚨 <strong>Falla de Gobernanza:</strong> Al no tener activa la matriz determinista, el LLM impuso directamente <b>Prioridad Infinita</b>, violando los SLAs del ISP.
+                            🚨 <strong>Contraste Evidenciado:</strong> Al operar sin la matriz determinista, el LLM manipuló directamente la prioridad a <b>Infinita</b>. En modo nominal, nuestro código Python neutraliza esto leyendo la matriz determinista en <code>config/matriz_prioridad.json</code>.
                         </div>
                     ` : `
                         <p style="font-size:12px; color:#64748B; margin:0 0 8px 0;">
-                            <em>«El modelo propone, el código dispone»</em>: La prioridad no fue calculada por el LLM, sino por el backend matemático leyendo <code>config/matriz_prioridad.json</code>.
+                            <em>«El modelo propone, el código dispone»</em>: La prioridad matemática y el SLA son calculados por nuestro backend determinista en Python leyendo <code>config/matriz_prioridad.json</code>.
                         </p>
                     `}
                     <div class="xai-grid">
