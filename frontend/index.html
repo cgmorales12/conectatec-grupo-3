@@ -57,6 +57,122 @@
 
         .dot-green { width: 10px; height: 10px; border-radius: 50%; background: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
         .dot-orange { width: 10px; height: 10px; border-radius: 50%; background: #FF9800; box-shadow: 0 0 8px #FF9800; }
+        .dot-blue { width: 10px; height: 10px; border-radius: 50%; background: #2196F3; box-shadow: 0 0 8px #2196F3; }
+        .dot-red { width: 10px; height: 10px; border-radius: 50%; background: #F44336; box-shadow: 0 0 8px #F44336; }
+
+        /* Barra de Control Chaos Engineering / Simulación de Resiliencia */
+        .chaos-bar {
+            background: #111A2C;
+            color: #FFFFFF;
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .chaos-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chaos-tag {
+            background: linear-gradient(135deg, #FF6B6B, #EE5253);
+            color: #FFF;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 4px 8px;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .chaos-info strong { font-size: 13.5px; color: #FFF; display: block; }
+        .chaos-info p { font-size: 11.5px; color: #919EAB; margin: 0; }
+
+        .chaos-switches {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .switch-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.14);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .switch-box:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .switch-box.caido {
+            background: rgba(238, 82, 83, 0.18);
+            border-color: #EE5253;
+        }
+
+        .switch-box input[type="checkbox"] {
+            appearance: none;
+            width: 32px;
+            height: 18px;
+            background: #4A5568;
+            border-radius: 999px;
+            position: relative;
+            outline: none;
+            cursor: pointer;
+            transition: background 0.25s;
+            margin: 0;
+        }
+
+        .switch-box input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            background: #FFF;
+            transition: transform 0.25s;
+        }
+
+        .switch-box input[type="checkbox"]:checked {
+            background: #10B981;
+        }
+
+        .switch-box input[type="checkbox"]:checked::before {
+            transform: translateX(14px);
+        }
+
+        .switch-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #E2E8F0;
+        }
+
+        .badge-failover {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10.5px;
+            font-weight: 700;
+            margin-left: 4px;
+        }
+        .badge-groq { background: #FFF4E5; color: #B76E00; border: 1px solid #FFE0B2; }
+        .badge-local { background: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
+        .badge-norag { background: #FDEDED; color: #D32F2F; border: 1px solid #FFCDD2; }
 
         .container {
             display: grid;
@@ -290,6 +406,31 @@
         </div>
     </header>
 
+    <!-- Barra de Control Chaos Engineering / Simulación de Resiliencia en Vivo -->
+    <div class="chaos-bar">
+        <div class="chaos-info">
+            <span class="chaos-tag">🧪 CHAOS LAB</span>
+            <div>
+                <strong>Simulador de Resiliencia y Alta Disponibilidad (Demo Grado)</strong>
+                <p>Desactive cualquier componente para simular fallos en vivo y comprobar el salto a respaldos.</p>
+            </div>
+        </div>
+        <div class="chaos-switches">
+            <label class="switch-box" id="boxGemini" title="Activa o simula la caída de Google Gemini (429/503)">
+                <input type="checkbox" id="toggleGemini" checked onchange="actualizarEstadoSimulacion()">
+                <span class="switch-label" id="lblGemini">🟢 Gemini 3.5: ACTIVO</span>
+            </label>
+            <label class="switch-box" id="boxGroq" title="Activa o simula la caída de Groq Cloud">
+                <input type="checkbox" id="toggleGroq" checked onchange="actualizarEstadoSimulacion()">
+                <span class="switch-label" id="lblGroq">🟢 Groq Cloud: ACTIVO</span>
+            </label>
+            <label class="switch-box" id="boxRAG" title="Activa o desconecta el repositorio de 15 manuales técnicos">
+                <input type="checkbox" id="toggleRAG" checked onchange="actualizarEstadoSimulacion()">
+                <span class="switch-label" id="lblRAG">🟢 RAG (15 PDFs): ACTIVO</span>
+            </label>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Panel lateral de nuevo reporte -->
         <aside class="sidebar">
@@ -474,6 +615,18 @@
                     citaTxt = '⚠️ Solicitud No Técnica / Fuera de Alcance (Sin avería)';
                 } else if (t.citas && t.citas.length > 0) {
                     citaTxt = `📖 <b>${t.citas[0].documento_id}:</b> ${t.citas[0].paso_exacto}`;
+                } else if (t.requiere_revision_humana) {
+                    citaTxt = '⚠️ <span class="badge-failover badge-norag">RAG Desconectado · Escalado Nivel 2</span>';
+                }
+
+                // IA y badge de failover / resiliencia
+                let iaTxt = `${t.metadatos_ia.proveedor} (${t.metadatos_ia.modelo.slice(0, 15)}...)`;
+                if (t.metadatos_ia.conmutado) {
+                    if (t.metadatos_ia.proveedor === 'groq') {
+                        iaTxt += ` <span class="badge-failover badge-groq">🟠 Respaldo Groq</span>`;
+                    } else {
+                        iaTxt += ` <span class="badge-failover badge-local">🔵 Motor Local Offline</span>`;
+                    }
                 }
 
                 card.innerHTML = `
@@ -487,7 +640,7 @@
                         <div class="meta-row"><span class="meta-lbl">Nivel ITIL:</span> <span class="badge-nivel ${nivelClase}">${nivelIcono} ${nivelTexto}</span></div>
                         <div class="meta-row"><span class="meta-lbl">Categoría:</span> <b>${t.categoria}</b></div>
                         <div class="meta-row"><span class="meta-lbl">Impacto x Urg.:</span> ${t.impacto} x ${t.urgencia}</div>
-                        <div class="meta-row"><span class="meta-lbl">IA:</span> ${t.metadatos_ia.proveedor} (${t.metadatos_ia.modelo.slice(0, 15)}...)</div>
+                        <div class="meta-row"><span class="meta-lbl">IA:</span> ${iaTxt}</div>
                     </div>
                     <div class="ticket-cita">${citaTxt}</div>
                     <div class="ticket-actions">
@@ -524,6 +677,62 @@
             }
         }
 
+        function actualizarEstadoSimulacion() {
+            const geminiOk = document.getElementById('toggleGemini').checked;
+            const groqOk = document.getElementById('toggleGroq').checked;
+            const ragOk = document.getElementById('toggleRAG').checked;
+
+            const boxGemini = document.getElementById('boxGemini');
+            const lblGemini = document.getElementById('lblGemini');
+            if (geminiOk) {
+                boxGemini.classList.remove('caido');
+                lblGemini.textContent = '🟢 Gemini 3.5: ACTIVO';
+            } else {
+                boxGemini.classList.add('caido');
+                lblGemini.textContent = '🔴 Gemini: CAÍDO (Simulado)';
+            }
+
+            const boxGroq = document.getElementById('boxGroq');
+            const lblGroq = document.getElementById('lblGroq');
+            if (groqOk) {
+                boxGroq.classList.remove('caido');
+                lblGroq.textContent = '🟢 Groq Cloud: ACTIVO';
+            } else {
+                boxGroq.classList.add('caido');
+                lblGroq.textContent = '🔴 Groq: CAÍDO (Simulado)';
+            }
+
+            const boxRAG = document.getElementById('boxRAG');
+            const lblRAG = document.getElementById('lblRAG');
+            if (ragOk) {
+                boxRAG.classList.remove('caido');
+                lblRAG.textContent = '🟢 RAG (15 PDFs): ACTIVO';
+            } else {
+                boxRAG.classList.add('caido');
+                lblRAG.textContent = '🔴 RAG: DESCONECTADO';
+            }
+
+            const badge = document.getElementById('iaStatusBadge');
+            if (geminiOk) {
+                badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Google Gemini (gemini-3.5-flash-lite)</span>`;
+            } else if (groqOk) {
+                badge.innerHTML = `<span class="dot-orange"></span><span>🟠 Failover Preparado: Groq Cloud (openai/gpt-oss-120b)</span>`;
+            } else {
+                badge.innerHTML = `<span class="dot-blue"></span><span>🔵 Respaldo Offline: Motor ITIL Heurístico Local</span>`;
+            }
+        }
+
+        function actualizarHeaderBadge(metadatos) {
+            const badge = document.getElementById('iaStatusBadge');
+            if (metadatos.proveedor === 'gemini') {
+                badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Google Gemini (${metadatos.modelo})</span>`;
+            } else if (metadatos.proveedor === 'groq') {
+                badge.innerHTML = `<span class="dot-orange"></span><span>🟠 Respaldo Activo: Groq Cloud (${metadatos.modelo})</span>`;
+            } else {
+                badge.innerHTML = `<span class="dot-blue"></span><span>🔵 Modo Autónomo Local Offline (${metadatos.modelo})</span>`;
+            }
+        }
+
         document.getElementById('ticketForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btnSubmit');
@@ -534,7 +743,10 @@
                 nombre_cliente: document.getElementById('nombreCliente').value,
                 email_cliente: document.getElementById('emailCliente').value,
                 codigo_abonado: document.getElementById('codigoAbonado').value || null,
-                descripcion_problema: document.getElementById('descripcionProblema').value
+                descripcion_problema: document.getElementById('descripcionProblema').value,
+                simular_caida_gemini: !document.getElementById('toggleGemini').checked,
+                simular_caida_groq: !document.getElementById('toggleGroq').checked,
+                simular_caida_rag: !document.getElementById('toggleRAG').checked
             };
 
             try {
@@ -547,15 +759,8 @@
                 if (res.ok) {
                     const ticketCreado = await res.json();
                     
-                    // Actualizar distintivo de IA según si hubo conmutación
-                    const badge = document.getElementById('iaStatusBadge');
-                    const badgeText = document.getElementById('iaStatusText');
-                    
-                    if (ticketCreado.metadatos_ia.conmutado) {
-                        badge.innerHTML = `<span class="dot-orange"></span><span>🟠 Respaldo Activo: Groq Cloud (Llama 3.3)</span>`;
-                    } else {
-                        badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Google Gemini (${ticketCreado.metadatos_ia.modelo})</span>`;
-                    }
+                    actualizarHeaderBadge(ticketCreado.metadatos_ia);
+                    mostrarToast(`⚡ Ticket ${ticketCreado.ticket_codigo} clasificado con ${ticketCreado.metadatos_ia.proveedor}`, 'exito');
 
                     document.getElementById('ticketForm').reset();
                     cargarTickets();
@@ -571,7 +776,8 @@
             }
         });
 
-        // Cargar tickets al iniciar
+        // Inicializar estado de simulación y cargar tickets
+        actualizarEstadoSimulacion();
         cargarTickets();
     </script>
 </body>

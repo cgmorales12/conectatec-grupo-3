@@ -56,7 +56,7 @@ def test_clasificacion_ticket_offline(monkeypatch):
     Prueba el flujo completo de POST /v1/tickets/clasificar usando un Mock de IA
     para garantizar que la prueba sea reproducible y sin costo de red.
     """
-    def mock_clasificar(texto):
+    def mock_clasificar(texto, *args, **kwargs):
         return (
             ClasificacionIA(
                 categoria="Conectividad y Fibra Óptica",
@@ -116,7 +116,7 @@ def test_validacion_entrada_rfc9457():
 
 def test_transparencia_conmutacion_failover(monkeypatch):
     """Verifica que cuando actúa el respaldo Groq, los metadatos lo indiquen transparentemente."""
-    def mock_clasificar_conmutado(texto):
+    def mock_clasificar_conmutado(texto, *args, **kwargs):
         return (
             ClasificacionIA(
                 categoria="Calidad y Velocidad",
@@ -185,5 +185,60 @@ def test_solicitud_fuera_de_alcance_no_tecnica():
     assert ticket["requiere_revision_humana"] is True
     assert len(ticket["citas"]) == 0
     assert "no describe ninguna avería técnica" in ticket["solucion_propuesta"]
+
+
+def test_simulacion_caida_gemini_activa_groq():
+    """Prueba de Chaos Engineering: simular caída de Gemini fuerza failover a Groq o analizador."""
+    payload = {
+        "nombre_cliente": "Demostracion Evaluador",
+        "email_cliente": "evaluador@uniandes.edu.ec",
+        "descripcion_problema": "Router Huawei con luz LOS roja parpadeando sin servicio.",
+        "simular_caida_gemini": True,
+        "simular_caida_groq": False,
+        "simular_caida_rag": False
+    }
+    response = client.post("/v1/tickets/clasificar", json=payload)
+    assert response.status_code == 201
+    ticket = response.json()
+    assert ticket["metadatos_ia"]["conmutado"] is True
+    assert "Simulación de caída inducida en Google Gemini" in ticket["metadatos_ia"]["motivo_conmutacion"]
+
+
+def test_simulacion_caida_total_activa_heuristico_offline():
+    """Prueba de Chaos Engineering: simular caída de Gemini + Groq activa el motor offline."""
+    payload = {
+        "nombre_cliente": "Demostracion Evaluador",
+        "email_cliente": "evaluador@uniandes.edu.ec",
+        "descripcion_problema": "Corte de fibra optica en la acometida exterior con luz roja.",
+        "simular_caida_gemini": True,
+        "simular_caida_groq": True,
+        "simular_caida_rag": False
+    }
+    response = client.post("/v1/tickets/clasificar", json=payload)
+    assert response.status_code == 201
+    ticket = response.json()
+    assert ticket["metadatos_ia"]["proveedor"] == "conmutador-local-offline"
+    assert ticket["metadatos_ia"]["modelo"] == "analizador-itil-heuristico"
+    assert ticket["metadatos_ia"]["conmutado"] is True
+
+
+def test_simulacion_caida_rag_sin_citas_escala_a_humano():
+    """Prueba de Chaos Engineering: simular desconexión de 15 manuales escala a Nivel 2."""
+    payload = {
+        "nombre_cliente": "Demostracion Evaluador",
+        "email_cliente": "evaluador@uniandes.edu.ec",
+        "descripcion_problema": "Deseo configurar modo bridge en mi router propio.",
+        "simular_caida_gemini": False,
+        "simular_caida_groq": False,
+        "simular_caida_rag": True
+    }
+    response = client.post("/v1/tickets/clasificar", json=payload)
+    assert response.status_code == 201
+    ticket = response.json()
+    assert ticket["requiere_revision_humana"] is True
+    assert len(ticket["citas"]) == 0
+    assert "CONTINGENCIA RAG ACTIVADA" in ticket["solucion_propuesta"]
+    assert ticket["estado"] == "en_atencion"
+
 
 

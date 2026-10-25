@@ -39,11 +39,24 @@ def _obtener_contenido_manual(doc_id: str) -> Optional[str]:
                 return archivo.read()
     return None
 
-def consultar_base_conocimiento(texto_problema: str) -> DiagnosticoRAG:
+def consultar_base_conocimiento(texto_problema: str, simular_caida_rag: bool = False) -> DiagnosticoRAG:
     """
     Busca los procedimientos técnicos más relevantes en el corpus de 15 manuales
     y extrae citas verificables con ID de documento y paso operativo.
+    Soporta bandera de simulación de caída (Chaos Engineering) para pruebas de contingencia.
     """
+    if simular_caida_rag:
+        print("[CHAOS ENGINEERING] Simulación de desconexión inducida del corpus RAG (15 manuales técnicos).")
+        return DiagnosticoRAG(
+            solucion_propuesta=(
+                "⚠️ [CONTINGENCIA RAG ACTIVADA] El repositorio documental de los 15 manuales técnicos "
+                "se encuentra temporalmente fuera de línea por simulación de fallo. No es posible brindar autoatención guiada de Nivel 1. "
+                "El incidente ha sido derivado a Nivel 2 para diagnóstico y atención directa por personal técnico humano."
+            ),
+            citas=[],
+            requiere_visita_campo=False
+        )
+
     texto_lower = texto_problema.lower()
     puntajes: List[Tuple[str, int]] = []
     

@@ -35,25 +35,32 @@ def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn):
     Recibe el reporte de una avería, extrae impacto y urgencia con Gemini/Groq,
     calcula la prioridad matemática con la matriz ITIL y consulta los manuales técnicos RAG.
     """
-    # 1. Extracción estructurada con IA y Gateway resiliente
-    clasificacion_ia, metadatos_ia = clasificar_solicitud(solicitud.descripcion_problema)
+    # 1. Extracción estructurada con IA y Gateway resiliente (con soporte de Chaos Engineering)
+    clasificacion_ia, metadatos_ia = clasificar_solicitud(
+        solicitud.descripcion_problema,
+        simular_caida_gemini=solicitud.simular_caida_gemini,
+        simular_caida_groq=solicitud.simular_caida_groq
+    )
     
     # 2. Priorización determinista por código Python (Matriz ITIL)
     prioridad_sla = calcular_prioridad_itil(clasificacion_ia.impacto, clasificacion_ia.urgencia)
     
-    # 3. Consulta RAG sobre el corpus de 15 manuales
-    diagnostico_rag = consultar_base_conocimiento(solicitud.descripcion_problema)
+    # 3. Consulta RAG sobre el corpus de 15 manuales (con soporte de desconexión simulada)
+    diagnostico_rag = consultar_base_conocimiento(
+        solicitud.descripcion_problema,
+        simular_caida_rag=solicitud.simular_caida_rag
+    )
     
     # 4. Asignación de identificador único de ticket
     codigo_ticket = f"TCK-{str(uuid.uuid4())[:8].upper()}"
     fecha_actual = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-    
-    estado_inicial = "escalado_cuadrilla" if diagnostico_rag.requiere_visita_campo else "nuevo"
+    estado_inicial = "escalado_cuadrilla" if diagnostico_rag.requiere_visita_campo else ("en_atencion" if solicitud.simular_caida_rag else "nuevo")
     requiere_revision = (
         metadatos_ia.conmutado or 
         clasificacion_ia.impacto == "Alto" or
-        clasificacion_ia.categoria == "Solicitud No Técnica / Fuera de Alcance"
+        clasificacion_ia.categoria == "Solicitud No Técnica / Fuera de Alcance" or
+        solicitud.simular_caida_rag
     )
     
     datos_ticket = {

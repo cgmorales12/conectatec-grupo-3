@@ -55,10 +55,15 @@ def anonimizar_datos_sensibles(texto: str) -> str:
     """
     return PATRON_PASSWORD.sub(r'\1: [CONFIDENCIAL_REMOVIDO]', texto)
 
-def clasificar_solicitud(texto_usuario: str) -> Tuple[ClasificacionIA, MetadatosIA]:
+def clasificar_solicitud(
+    texto_usuario: str,
+    simular_caida_gemini: bool = False,
+    simular_caida_groq: bool = False
+) -> Tuple[ClasificacionIA, MetadatosIA]:
     """
     Clasifica la solicitud aplicando la delimitación <solicitud>, sanitización de claves
-    e invoca a Gemini 1.5 Flash con failover transparente hacia Groq si ocurre fallo 429/503.
+    e invoca a Gemini 3.5 Flash Lite con failover transparente hacia Groq si ocurre fallo 429/503.
+    Soporta banderas de simulación de fallos (Chaos Engineering) para demostración evaluativa.
     """
     t_inicio = time.time()
     
@@ -68,96 +73,107 @@ def clasificar_solicitud(texto_usuario: str) -> Tuple[ClasificacionIA, Metadatos
     # Capa 2: Delimitación semántica contra Inyección de Prompts (OWASP LLM01)
     prompt_usuario = f"{SYSTEM_PROMPT}\n\n<solicitud>\n{texto_seguro}\n</solicitud>"
     
+    motivo_fallo = None
+
     # Intento 1: Proveedor Primario Google Gemini (vía REST API ultrarrápida en Python 3.14)
-    key_gemini = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
-    if key_gemini and key_gemini != "tu_clave_de_gemini_aqui":
-        try:
-            import httpx
-            url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={key_gemini}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt_usuario}]}],
-                "generationConfig": {
-                    "temperature": 0.1,
-                    "responseMimeType": "application/json"
-                }
-            }
-            
-            with httpx.Client(timeout=15.0) as client:
-                res = client.post(url_gemini, json=payload)
-                
-            if res.status_code == 200:
-                res_data = res.json()
-                contenido_json = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                latencia = round((time.time() - t_inicio) * 1000, 2)
-                clasificacion = ClasificacionIA.model_validate_json(contenido_json)
-                
-                metadatos = MetadatosIA(
-                    proveedor="gemini",
-                    modelo="gemini-3.5-flash-lite",
-                    conmutado=False,
-                    motivo_conmutacion=None,
-                    latencia_ms=latencia
-                )
-                return clasificacion, metadatos
-            else:
-                raise RuntimeError(f"HTTP {res.status_code}: {res.text[:120]}")
-                
-        except Exception as e:
-            # Captura de fallos de Gemini (429 cuota, 503 indisponible, timeout)
-            motivo_fallo = f"Fallo en Gemini ({type(e).__name__}): {str(e)[:100]}. Activando respaldo."
-            print(f"[ALERTA DE RESILIENCIA] {motivo_fallo}")
+    if simular_caida_gemini:
+        motivo_fallo = "Simulación de caída inducida en Google Gemini (HTTP 503 / Cuota 429 agotada). Conmutando a respaldo Groq."
+        print(f"[CHAOS ENGINEERING] {motivo_fallo}")
     else:
-        motivo_fallo = "GEMINI_API_KEY no configurada o en modo demostración."
+        key_gemini = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
+        if key_gemini and key_gemini != "tu_clave_de_gemini_aqui":
+            try:
+                import httpx
+                url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={key_gemini}"
+                payload = {
+                    "contents": [{"parts": [{"text": prompt_usuario}]}],
+                    "generationConfig": {
+                        "temperature": 0.1,
+                        "responseMimeType": "application/json"
+                    }
+                }
+                
+                with httpx.Client(timeout=15.0) as client:
+                    res = client.post(url_gemini, json=payload)
+                    
+                if res.status_code == 200:
+                    res_data = res.json()
+                    contenido_json = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    latencia = round((time.time() - t_inicio) * 1000, 2)
+                    clasificacion = ClasificacionIA.model_validate_json(contenido_json)
+                    
+                    metadatos = MetadatosIA(
+                        proveedor="gemini",
+                        modelo="gemini-3.5-flash-lite",
+                        conmutado=False,
+                        motivo_conmutacion=None,
+                        latencia_ms=latencia
+                    )
+                    return clasificacion, metadatos
+                else:
+                    raise RuntimeError(f"HTTP {res.status_code}: {res.text[:120]}")
+                    
+            except Exception as e:
+                # Captura de fallos de Gemini (429 cuota, 503 indisponible, timeout)
+                motivo_fallo = f"Fallo en Gemini ({type(e).__name__}): {str(e)[:100]}. Activando respaldo."
+                print(f"[ALERTA DE RESILIENCIA] {motivo_fallo}")
+        else:
+            motivo_fallo = "GEMINI_API_KEY no configurada o en modo demostración."
 
     # Intento 2: Proveedor de Respaldo / Failover Groq Cloud
-    key_groq = os.environ.get("GROQ_API_KEY") or GROQ_API_KEY
-    if key_groq and key_groq != "tu_clave_de_groq_aqui":
-        try:
-            from groq import Groq
-            client = Groq(api_key=key_groq)
-            
-            # Modelos candidatos en orden de preferencia según disponibilidad en la cuenta Groq
-            modelos_groq = ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "qwen/qwen3.8-27b"]
-            chat_completion = None
-            modelo_usado = None
-            ultimo_error_groq = None
-            
-            for modelo_cand in modelos_groq:
-                try:
-                    chat_completion = client.chat.completions.create(
-                        messages=[
-                            {"role": "system", "content": SYSTEM_PROMPT},
-                            {"role": "user", "content": f"<solicitud>\n{texto_seguro}\n</solicitud>"}
-                        ],
-                        model=modelo_cand,
-                        temperature=0.1,
-                        response_format={"type": "json_object"}
-                    )
-                    modelo_usado = modelo_cand
-                    break
-                except Exception as ex_m:
-                    ultimo_error_groq = ex_m
-                    continue
-            
-            if chat_completion and modelo_usado:
-                latencia = round((time.time() - t_inicio) * 1000, 2)
-                contenido = chat_completion.choices[0].message.content
-                clasificacion = ClasificacionIA.model_validate_json(contenido)
+    if simular_caida_groq:
+        motivo_groq = "Simulación de indisponibilidad inducida en Groq Cloud. Activando motor determinista local."
+        motivo_fallo = f"{motivo_fallo} | {motivo_groq}" if motivo_fallo else motivo_groq
+        print(f"[CHAOS ENGINEERING] {motivo_fallo}")
+    else:
+        key_groq = os.environ.get("GROQ_API_KEY") or GROQ_API_KEY
+        if key_groq and key_groq != "tu_clave_de_groq_aqui":
+            try:
+                from groq import Groq
+                client = Groq(api_key=key_groq)
                 
-                metadatos = MetadatosIA(
-                    proveedor="groq",
-                    modelo=modelo_usado,
-                    conmutado=True,
-                    motivo_conmutacion=motivo_fallo,
-                    latencia_ms=latencia
-                )
-                return clasificacion, metadatos
-            elif ultimo_error_groq:
-                raise ultimo_error_groq
-            
-        except Exception as e_groq:
-            motivo_fallo += f" | Fallo en Groq ({type(e_groq).__name__}): {str(e_groq)[:100]}"
-            print(f"[ERROR DE GATEWAY] {motivo_fallo}")
+                # Modelos candidatos en orden de preferencia según disponibilidad en la cuenta Groq
+                modelos_groq = ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "qwen/qwen3.8-27b"]
+                chat_completion = None
+                modelo_usado = None
+                ultimo_error_groq = None
+                
+                for modelo_cand in modelos_groq:
+                    try:
+                        chat_completion = client.chat.completions.create(
+                            messages=[
+                                {"role": "system", "content": SYSTEM_PROMPT},
+                                {"role": "user", "content": f"<solicitud>\n{texto_seguro}\n</solicitud>"}
+                            ],
+                            model=modelo_cand,
+                            temperature=0.1,
+                            response_format={"type": "json_object"}
+                        )
+                        modelo_usado = modelo_cand
+                        break
+                    except Exception as ex_m:
+                        ultimo_error_groq = ex_m
+                        continue
+                
+                if chat_completion and modelo_usado:
+                    latencia = round((time.time() - t_inicio) * 1000, 2)
+                    contenido = chat_completion.choices[0].message.content
+                    clasificacion = ClasificacionIA.model_validate_json(contenido)
+                    
+                    metadatos = MetadatosIA(
+                        proveedor="groq",
+                        modelo=modelo_usado,
+                        conmutado=True,
+                        motivo_conmutacion=motivo_fallo,
+                        latencia_ms=latencia
+                    )
+                    return clasificacion, metadatos
+                elif ultimo_error_groq:
+                    raise ultimo_error_groq
+                
+            except Exception as e_groq:
+                motivo_fallo = f"{motivo_fallo} | Fallo en Groq ({type(e_groq).__name__}): {str(e_groq)[:100]}"
+                print(f"[ERROR DE GATEWAY] {motivo_fallo}")
 
     # Fallback Heurístico Local (Garantiza 100% de disponibilidad sin internet o sin saldo)
     latencia = round((time.time() - t_inicio) * 1000, 2)

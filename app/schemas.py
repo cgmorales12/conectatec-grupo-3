@@ -25,6 +25,10 @@ class SolicitudTicketIn(BaseModel):
         description="Descripción detallada de la avería, síntomas o luces del equipo"
     )
     codigo_abonado: Optional[str] = Field(None, max_length=20, description="Código de contrato o cliente ISP")
+    # Banderas de Simulación de Resiliencia / Chaos Engineering (Demostración de Grado)
+    simular_caida_gemini: bool = Field(False, description="Simula fallo HTTP 503 o cuota 429 en Google Gemini")
+    simular_caida_groq: bool = Field(False, description="Simula indisponibilidad en el respaldo Groq Cloud")
+    simular_caida_rag: bool = Field(False, description="Simula corte o desconexión del corpus de 15 manuales RAG")
 
 
 class ActualizarEstadoIn(BaseModel):
