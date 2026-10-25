@@ -1321,6 +1321,7 @@
                     ${estado !== 'en_atencion' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'en_atencion')">⚙️ Atender</button>` : ''}
                     ${estado !== 'escalado_cuadrilla' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'escalado_cuadrilla')">🚚 Escalar</button>` : ''}
                     ${estado !== 'resuelto' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'resuelto')">✅ Resolver</button>` : ''}
+                    ${estado === 'resuelto' ? `<button class="act-btn" style="background:#FEE2E2; color:#DC2626; border-color:#FCA5A5; font-weight:600;" onclick="solicitarQuitarTicket(${t.id}, '${t.ticket_codigo}')" title="Quitar o archivar este ticket resuelto del tablero Kanban">🗑️ Quitar del Tablero</button>` : ''}
                 </div>
             `;
             return card;
@@ -1687,10 +1688,11 @@
 
         window._sesionTIC = null;
         let _ticketIdAEliminar = null;
+        let _ticketCodigoAEliminar = null;
         let _manualesCargados = [];
 
         function cargarSesionGuardada() {
-            const guardada = sessionStorage.getItem('conectatec_tic_sesion');
+            const guardada = localStorage.getItem('conectatec_tic_sesion') || sessionStorage.getItem('conectatec_tic_sesion');
             if (guardada) {
                 try {
                     window._sesionTIC = JSON.parse(guardada);
@@ -1764,10 +1766,16 @@
                 if (res.ok) {
                     const data = await res.json();
                     window._sesionTIC = data;
+                    localStorage.setItem('conectatec_tic_sesion', JSON.stringify(data));
                     sessionStorage.setItem('conectatec_tic_sesion', JSON.stringify(data));
                     cerrarModalLoginTIC();
                     actualizarEstadoSesionTIC();
                     mostrarToast(`✅ Sesión iniciada: Bienvenido, ${data.nombre_completo}`);
+                    
+                    // Si el usuario intentaba quitar un ticket antes de loguearse, abrir confirmación
+                    if (_ticketIdAEliminar && _ticketCodigoAEliminar) {
+                        confirmarEliminarTicket(_ticketIdAEliminar, _ticketCodigoAEliminar);
+                    }
                 } else {
                     const err = await res.json();
                     msgError.textContent = err.detail || 'Credenciales no válidas. Intente nuevamente.';
@@ -1784,20 +1792,34 @@
 
         function cerrarSesionTIC() {
             window._sesionTIC = null;
+            localStorage.removeItem('conectatec_tic_sesion');
             sessionStorage.removeItem('conectatec_tic_sesion');
             actualizarEstadoSesionTIC();
             mostrarToast('🔒 Sesión cerrada correctamente.');
         }
 
-        // --- Eliminación de Tickets (Soft-Delete) ---
+        // --- Eliminación y Retiro de Tickets (Soft-Delete) ---
+        function solicitarQuitarTicket(ticketId, ticketCodigo) {
+            if (window._sesionTIC && window._sesionTIC.token) {
+                confirmarEliminarTicket(ticketId, ticketCodigo);
+            } else {
+                _ticketIdAEliminar = ticketId;
+                _ticketCodigoAEliminar = ticketCodigo;
+                mostrarToast('🔐 Inicia sesión como personal TIC para quitar o archivar este ticket.', 'alerta');
+                abrirModalLoginTIC();
+            }
+        }
+
         function confirmarEliminarTicket(ticketId, ticketCodigo) {
             _ticketIdAEliminar = ticketId;
+            _ticketCodigoAEliminar = ticketCodigo;
             document.getElementById('lblCodigoTicketEliminar').textContent = ticketCodigo;
             document.getElementById('modalConfirmarEliminarTicket').classList.add('activo');
         }
 
         function cerrarModalConfirmarEliminar() {
             _ticketIdAEliminar = null;
+            _ticketCodigoAEliminar = null;
             document.getElementById('modalConfirmarEliminarTicket').classList.remove('activo');
         }
 
