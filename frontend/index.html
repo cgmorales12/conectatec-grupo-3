@@ -213,6 +213,18 @@
             margin-bottom: 10px;
         }
 
+        .badge-nivel {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
+        }
+        .nivel-1 { background: #EDF7ED; color: #2E7D32; border: 1px solid #C8E6C9; }
+        .nivel-2 { background: #FFF4E5; color: #B76E00; border: 1px solid #FFE0B2; }
+        .nivel-3 { background: #FDEDED; color: #D32F2F; border: 1px solid #FFCDD2; }
+        .nivel-0 { background: #ECEFF1; color: #546E7A; border: 1px solid #CFD8DC; }
+
         .ticket-actions {
             display: flex;
             gap: 6px;
@@ -437,7 +449,27 @@
                 const prioClass = t.prioridad === 'Alta' ? 'p-alta' : (t.prioridad === 'Media' ? 'p-media' : 'p-baja');
                 card.className = `ticket-card ${prioClass}`;
 
-                let citaTxt = 'ℹ️ Autoatención Nivel 1';
+                // Determinación explícita del Nivel de Soporte ITIL
+                let nivelTexto = 'Nivel 1 · Autoatención Guiada';
+                let nivelClase = 'nivel-1';
+                let nivelIcono = 'ℹ️';
+
+                if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
+                    nivelTexto = 'Nivel 0 · Fuera de Alcance';
+                    nivelClase = 'nivel-0';
+                    nivelIcono = '⚪';
+                } else if (estado === 'escalado_cuadrilla' || t.prioridad === 'Alta' || t.categoria.includes('Fibra')) {
+                    nivelTexto = 'Nivel 3 · Cuadrilla de Campo';
+                    nivelClase = 'nivel-3';
+                    nivelIcono = '🚚';
+                } else if (t.prioridad === 'Media' || t.categoria.includes('Velocidad') || t.categoria.includes('Calidad') || t.categoria.includes('Atención General')) {
+                    nivelTexto = 'Nivel 2 · Soporte Remoto / NOC';
+                    nivelClase = 'nivel-2';
+                    nivelIcono = '💻';
+                }
+
+                // Cita del manual técnico RAG
+                let citaTxt = '📖 Guía operativa de mesa de ayuda';
                 if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
                     citaTxt = '⚠️ Solicitud No Técnica / Fuera de Alcance (Sin avería)';
                 } else if (t.citas && t.citas.length > 0) {
@@ -452,6 +484,7 @@
                     <div class="ticket-client">${t.nombre_cliente}</div>
                     <div class="ticket-desc">${t.descripcion_problema}</div>
                     <div class="ticket-meta">
+                        <div class="meta-row"><span class="meta-lbl">Nivel ITIL:</span> <span class="badge-nivel ${nivelClase}">${nivelIcono} ${nivelTexto}</span></div>
                         <div class="meta-row"><span class="meta-lbl">Categoría:</span> <b>${t.categoria}</b></div>
                         <div class="meta-row"><span class="meta-lbl">Impacto x Urg.:</span> ${t.impacto} x ${t.urgencia}</div>
                         <div class="meta-row"><span class="meta-lbl">IA:</span> ${t.metadatos_ia.proveedor} (${t.metadatos_ia.modelo.slice(0, 15)}...)</div>
