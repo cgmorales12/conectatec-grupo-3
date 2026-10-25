@@ -554,7 +554,7 @@
                     if (ticketCreado.metadatos_ia.conmutado) {
                         badge.innerHTML = `<span class="dot-orange"></span><span>🟠 Respaldo Activo: Groq Cloud (Llama 3.3)</span>`;
                     } else {
-                        badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Gemini 1.5 Flash (Nominal)</span>`;
+                        badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Google Gemini (${ticketCreado.metadatos_ia.modelo})</span>`;
                     }
 
                     document.getElementById('ticketForm').reset();

@@ -63,34 +63,42 @@ def clasificar_solicitud(texto_usuario: str) -> Tuple[ClasificacionIA, Metadatos
     # Capa 2: Delimitación semántica contra Inyección de Prompts (OWASP LLM01)
     prompt_usuario = f"{SYSTEM_PROMPT}\n\n<solicitud>\n{texto_seguro}\n</solicitud>"
     
-    # Intento 1: Proveedor Primario Google Gemini
+    # Intento 1: Proveedor Primario Google Gemini (vía REST API ultrarrápida en Python 3.14)
     if GEMINI_API_KEY and GEMINI_API_KEY != "tu_clave_de_gemini_aqui":
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=GEMINI_API_KEY)
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            import httpx
+            url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={GEMINI_API_KEY}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt_usuario}]}],
+                "generationConfig": {
+                    "temperature": 0.1,
+                    "responseMimeType": "application/json"
+                }
+            }
             
-            # Inferencia con límite de tiempo de 15 segundos
-            response = model.generate_content(
-                prompt_usuario,
-                generation_config={"temperature": 0.1, "response_mime_type": "application/json"}
-            )
-            
-            latencia = round((time.time() - t_inicio) * 1000, 2)
-            clasificacion = ClasificacionIA.model_validate_json(response.text.strip())
-            
-            metadatos = MetadatosIA(
-                proveedor="gemini",
-                modelo="gemini-1.5-flash",
-                conmutado=False,
-                motivo_conmutacion=None,
-                latencia_ms=latencia
-            )
-            return clasificacion, metadatos
-            
+            with httpx.Client(timeout=15.0) as client:
+                res = client.post(url_gemini, json=payload)
+                
+            if res.status_code == 200:
+                res_data = res.json()
+                contenido_json = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                latencia = round((time.time() - t_inicio) * 1000, 2)
+                clasificacion = ClasificacionIA.model_validate_json(contenido_json)
+                
+                metadatos = MetadatosIA(
+                    proveedor="gemini",
+                    modelo="gemini-3.5-flash-lite",
+                    conmutado=False,
+                    motivo_conmutacion=None,
+                    latencia_ms=latencia
+                )
+                return clasificacion, metadatos
+            else:
+                raise RuntimeError(f"HTTP {res.status_code}: {res.text[:120]}")
+                
         except Exception as e:
             # Captura de fallos de Gemini (429 cuota, 503 indisponible, timeout)
-            motivo_fallo = f"Fallo en Gemini 1.5 Flash ({type(e).__name__}): {str(e)[:100]}. Activando respaldo."
+            motivo_fallo = f"Fallo en Gemini ({type(e).__name__}): {str(e)[:100]}. Activando respaldo."
             print(f"[ALERTA DE RESILIENCIA] {motivo_fallo}")
     else:
         motivo_fallo = "GEMINI_API_KEY no configurada o en modo demostración."
