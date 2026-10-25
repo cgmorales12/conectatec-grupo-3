@@ -11,7 +11,12 @@ import json
 import time
 from typing import Tuple, Optional
 from datetime import datetime
+from dotenv import load_dotenv
+
 from app.schemas import ClasificacionIA, MetadatosIA
+
+# Cargar automáticamente credenciales del archivo .env local
+load_dotenv(override=True)
 
 # Configuración de variables de entorno
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -64,10 +69,11 @@ def clasificar_solicitud(texto_usuario: str) -> Tuple[ClasificacionIA, Metadatos
     prompt_usuario = f"{SYSTEM_PROMPT}\n\n<solicitud>\n{texto_seguro}\n</solicitud>"
     
     # Intento 1: Proveedor Primario Google Gemini (vía REST API ultrarrápida en Python 3.14)
-    if GEMINI_API_KEY and GEMINI_API_KEY != "tu_clave_de_gemini_aqui":
+    key_gemini = os.environ.get("GEMINI_API_KEY") or GEMINI_API_KEY
+    if key_gemini and key_gemini != "tu_clave_de_gemini_aqui":
         try:
             import httpx
-            url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={GEMINI_API_KEY}"
+            url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={key_gemini}"
             payload = {
                 "contents": [{"parts": [{"text": prompt_usuario}]}],
                 "generationConfig": {

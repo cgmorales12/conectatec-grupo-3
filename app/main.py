@@ -14,6 +14,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+# Cargar variables de entorno desde .env
+load_dotenv(override=True)
+
 from app.routers import tickets_router, salud_router
 from app.database import inicializar_bd
 
