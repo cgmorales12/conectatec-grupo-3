@@ -234,3 +234,6 @@ data/*.sqlite3
 logs/
 *.log
 
+# Material de estudio privado, clases y guia de defensa (No subir a GitHub)
+material_estudio/
+
