@@ -99,8 +99,25 @@ async def limitador_tasa_token_bucket(request: Request, call_next):
 async def manejador_error_validacion_422(request: Request, exc: RequestValidationError):
     req_id = f"req-{str(uuid.uuid4())[:8]}"
     primer_error = exc.errors()[0] if exc.errors() else {}
-    campo = " -> ".join(str(loc) for loc in primer_error.get("loc", []))
-    msg = primer_error.get("msg", "Entrada no válida")
+    campo_raw = " -> ".join(str(loc) for loc in primer_error.get("loc", []))
+    
+    # Nombres en español para los campos del formulario
+    nombres_campos = {
+        "body -> descripcion_problema": "Descripción del problema",
+        "body -> nombre_cliente": "Nombre del abonado",
+        "body -> email_cliente": "Correo electrónico",
+        "body -> codigo_abonado": "Código de abonado"
+    }
+    campo = nombres_campos.get(campo_raw, campo_raw)
+    
+    tipo_error = primer_error.get("type", "")
+    if "string_too_short" in tipo_error or "at_least" in primer_error.get("msg", ""):
+        min_chars = primer_error.get("ctx", {}).get("min_length", 10)
+        detalle = f"El campo '{campo}' debe tener al menos {min_chars} caracteres para que la IA realice el triaje."
+    elif "email" in tipo_error or "value_error" in tipo_error:
+        detalle = f"El campo '{campo}' debe ser una dirección de correo válida (ej. usuario@dominio.com)."
+    else:
+        detalle = f"Error en campo '{campo}': {primer_error.get('msg', 'Entrada no válida')}."
     
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -109,7 +126,7 @@ async def manejador_error_validacion_422(request: Request, exc: RequestValidatio
             "type": "/errores/entrada-invalida",
             "title": "Entrada Invalida",
             "status": 422,
-            "detail": f"Error en campo '{campo}': {msg}",
+            "detail": detalle,
             "instance": f"{request.url.path}#{req_id}"
         }
     )

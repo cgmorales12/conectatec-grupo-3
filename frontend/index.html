@@ -297,7 +297,8 @@
                 </div>
                 <div class="form-group">
                     <label for="descripcionProblema">Descripción del Problema / Síntomas</label>
-                    <textarea id="descripcionProblema" class="form-control" placeholder="Describa la avería, luces del router o error..." required></textarea>
+                    <textarea id="descripcionProblema" class="form-control" placeholder="Describa la avería o consulta (mínimo 10 caracteres)..." minlength="10" required></textarea>
+                    <small style="display:block; font-size:11px; color:#637381; margin-top:4px;">ℹ️ Ingrese al menos 10 caracteres para que la IA realice el triaje.</small>
                 </div>
                 <button type="submit" id="btnSubmit" class="btn-submit">⚡ Clasificar con IA y Crear Ticket</button>
             </form>
@@ -527,10 +528,10 @@
                     cargarTickets();
                 } else {
                     const err = await res.json();
-                    alert(`Error: ${err.detail || 'Fallo en la clasificación'}`);
+                    mostrarToast(`⚠️ ${err.detail || 'Fallo en la validación de la solicitud.'}`, 'alerta');
                 }
             } catch (err) {
-                alert("Error de conexión con el backend FastAPI.");
+                mostrarToast("⚠️ Error de conexión con el backend FastAPI.", 'alerta');
             } finally {
                 btn.disabled = false;
                 btn.textContent = '⚡ Clasificar con IA y Crear Ticket';
