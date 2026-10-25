@@ -102,12 +102,20 @@ def clasificar_solicitud(
                     latencia = round((time.time() - t_inicio) * 1000, 2)
                     clasificacion = ClasificacionIA.model_validate_json(contenido_json)
                     
+                    usage = res_data.get("usageMetadata", {})
+                    tok_prompt = usage.get("promptTokenCount")
+                    tok_comp = usage.get("candidatesTokenCount")
+                    tok_total = usage.get("totalTokenCount")
+                    
                     metadatos = MetadatosIA(
                         proveedor="gemini",
                         modelo="gemini-3.5-flash-lite",
                         conmutado=False,
                         motivo_conmutacion=None,
-                        latencia_ms=latencia
+                        latencia_ms=latencia,
+                        tokens_prompt=tok_prompt,
+                        tokens_completado=tok_comp,
+                        tokens_total=tok_total
                     )
                     return clasificacion, metadatos
                 else:
@@ -160,12 +168,20 @@ def clasificar_solicitud(
                     contenido = chat_completion.choices[0].message.content
                     clasificacion = ClasificacionIA.model_validate_json(contenido)
                     
+                    usage = getattr(chat_completion, "usage", None)
+                    tok_prompt = getattr(usage, "prompt_tokens", None) if usage else None
+                    tok_comp = getattr(usage, "completion_tokens", None) if usage else None
+                    tok_total = getattr(usage, "total_tokens", None) if usage else None
+                    
                     metadatos = MetadatosIA(
                         proveedor="groq",
                         modelo=modelo_usado,
                         conmutado=True,
                         motivo_conmutacion=motivo_fallo,
-                        latencia_ms=latencia
+                        latencia_ms=latencia,
+                        tokens_prompt=tok_prompt,
+                        tokens_completado=tok_comp,
+                        tokens_total=tok_total
                     )
                     return clasificacion, metadatos
                 elif ultimo_error_groq:
@@ -184,7 +200,10 @@ def clasificar_solicitud(
         modelo="analizador-itil-heuristico",
         conmutado=True,
         motivo_conmutacion=motivo_fallo,
-        latencia_ms=latencia
+        latencia_ms=latencia,
+        tokens_prompt=0,
+        tokens_completado=0,
+        tokens_total=0
     )
     return clasificacion, metadatos
 

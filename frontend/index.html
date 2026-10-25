@@ -773,6 +773,14 @@
                     }
                 }
 
+                // Tokens consumidos
+                let tokensTxt = '🪙 0 tokens (Modo Local)';
+                if (t.metadatos_ia.tokens_total) {
+                    tokensTxt = `🪙 <b>${t.metadatos_ia.tokens_total}</b> tokens <small style="color:#64748B;">(${t.metadatos_ia.tokens_prompt || 0} in / ${t.metadatos_ia.tokens_completado || 0} out)</small>`;
+                } else if (t.metadatos_ia.proveedor === 'conmutador-local-offline') {
+                    tokensTxt = '🪙 0 tokens (Costo $0 · Procesamiento Offline)';
+                }
+
                 card.innerHTML = `
                     <div class="ticket-header">
                         <span class="ticket-code">${t.ticket_codigo}</span>
@@ -785,6 +793,7 @@
                         <div class="meta-row"><span class="meta-lbl">Categoría:</span> <b>${t.categoria}</b></div>
                         <div class="meta-row"><span class="meta-lbl">Impacto x Urg.:</span> ${t.impacto} x ${t.urgencia}</div>
                         <div class="meta-row"><span class="meta-lbl">IA:</span> ${iaTxt}</div>
+                        <div class="meta-row"><span class="meta-lbl">Consumo:</span> <span>${tokensTxt}</span></div>
                     </div>
                     <div class="ticket-cita">${citaTxt}</div>
                     <button type="button" class="exp-btn" onclick="abrirModalExplicabilidad(${t.id})">💡 ¿Por qué esta clasificación?</button>
@@ -1053,9 +1062,9 @@
                     ${infoRAG}
                 </div>
 
-                <!-- 5. Trazabilidad Gateway -->
+                <!-- 5. Trazabilidad Gateway y Consumo de Tokens -->
                 <div class="xai-section">
-                    <div class="xai-title">🛡️ 5. Trazabilidad del Gateway y Failover</div>
+                    <div class="xai-title">🛡️ 5. Trazabilidad del Gateway y Consumo de Tokens (Capítulo 3)</div>
                     <div class="xai-grid">
                         <div class="xai-item">
                             <div class="xai-item-label">Proveedor Ejecutado:</div>
@@ -1068,6 +1077,18 @@
                         <div class="xai-item">
                             <div class="xai-item-label">Latencia Inferencia:</div>
                             <div class="xai-item-val">${meta.latencia_ms || '--'} ms</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Tokens de Entrada (Prompt):</div>
+                            <div class="xai-item-val">${meta.tokens_prompt ?? (meta.proveedor === 'conmutador-local-offline' ? 0 : '--')} tokens</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Tokens de Salida (JSON):</div>
+                            <div class="xai-item-val">${meta.tokens_completado ?? (meta.proveedor === 'conmutador-local-offline' ? 0 : '--')} tokens</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Total Tokens Consumidos:</div>
+                            <div class="xai-item-val" style="color:#0D9488;">🪙 ${meta.tokens_total ?? (meta.proveedor === 'conmutador-local-offline' ? 0 : '--')} tokens</div>
                         </div>
                         ${motivoConmutacionHtml}
                     </div>

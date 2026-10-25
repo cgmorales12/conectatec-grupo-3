@@ -56,6 +56,9 @@ class MetadatosIA(BaseModel):
     conmutado: bool = Field(False, description="True si falló el modelo primario y actuó el respaldo")
     motivo_conmutacion: Optional[str] = Field(None, description="Detalle del fallo que activó el respaldo")
     latencia_ms: Optional[float] = Field(None, description="Tiempo de inferencia en milisegundos")
+    tokens_prompt: Optional[int] = Field(None, description="Tokens de entrada consumidos (prompt + system)")
+    tokens_completado: Optional[int] = Field(None, description="Tokens de salida generados (JSON estructurado)")
+    tokens_total: Optional[int] = Field(None, description="Total de tokens consumidos en la llamada LLM")
 
 
 class ClasificacionIA(BaseModel):

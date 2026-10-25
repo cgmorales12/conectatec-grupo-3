@@ -47,7 +47,10 @@ def inicializar_bd():
             motivo_conmutacion TEXT,
             latencia_ms REAL,
             justificacion TEXT,
-            sintomas_json TEXT
+            sintomas_json TEXT,
+            tokens_prompt INTEGER,
+            tokens_completado INTEGER,
+            tokens_total INTEGER
         )
     """)
     # Migración retrocompatible para tablas preexistentes
@@ -56,6 +59,12 @@ def inicializar_bd():
         cursor.execute("ALTER TABLE tickets ADD COLUMN justificacion TEXT")
     if "sintomas_json" not in columnas:
         cursor.execute("ALTER TABLE tickets ADD COLUMN sintomas_json TEXT")
+    if "tokens_prompt" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN tokens_prompt INTEGER")
+    if "tokens_completado" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN tokens_completado INTEGER")
+    if "tokens_total" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN tokens_total INTEGER")
     conn.commit()
     conn.close()
 
@@ -74,8 +83,9 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
             descripcion_problema, categoria, impacto, urgencia, prioridad,
             sla_minutos, descripcion_sla, solucion_propuesta, citas_json,
             estado, requiere_revision_humana, proveedor_ia, modelo_ia,
-            conmutado, motivo_conmutacion, latencia_ms, justificacion, sintomas_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            conmutado, motivo_conmutacion, latencia_ms, justificacion, sintomas_json,
+            tokens_prompt, tokens_completado, tokens_total
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         datos["ticket_codigo"],
         datos["fecha_creacion"],
@@ -98,7 +108,10 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
         datos["metadatos_ia"].get("motivo_conmutacion"),
         datos["metadatos_ia"].get("latencia_ms"),
         datos.get("justificacion"),
-        json.dumps(datos.get("sintomas_detectados", []))
+        json.dumps(datos.get("sintomas_detectados", [])),
+        datos["metadatos_ia"].get("tokens_prompt"),
+        datos["metadatos_ia"].get("tokens_completado"),
+        datos["metadatos_ia"].get("tokens_total")
     ))
     
     nuevo_id = cursor.lastrowid
@@ -144,7 +157,10 @@ def listar_tickets() -> List[Dict[str, Any]]:
                 "modelo": t_raw["modelo_ia"],
                 "conmutado": bool(t_raw["conmutado"]),
                 "motivo_conmutacion": t_raw["motivo_conmutacion"],
-                "latencia_ms": t_raw["latencia_ms"]
+                "latencia_ms": t_raw["latencia_ms"],
+                "tokens_prompt": t_raw["tokens_prompt"] if "tokens_prompt" in t_raw.keys() else None,
+                "tokens_completado": t_raw["tokens_completado"] if "tokens_completado" in t_raw.keys() else None,
+                "tokens_total": t_raw["tokens_total"] if "tokens_total" in t_raw.keys() else None
             }
         }
         tickets.append(ticket_limpio)
