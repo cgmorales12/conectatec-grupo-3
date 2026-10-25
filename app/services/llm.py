@@ -110,33 +110,50 @@ def clasificar_solicitud(texto_usuario: str) -> Tuple[ClasificacionIA, Metadatos
         motivo_fallo = "GEMINI_API_KEY no configurada o en modo demostración."
 
     # Intento 2: Proveedor de Respaldo / Failover Groq Cloud
-    if GROQ_API_KEY and GROQ_API_KEY != "tu_clave_de_groq_aqui":
+    key_groq = os.environ.get("GROQ_API_KEY") or GROQ_API_KEY
+    if key_groq and key_groq != "tu_clave_de_groq_aqui":
         try:
             from groq import Groq
-            client = Groq(api_key=GROQ_API_KEY)
+            client = Groq(api_key=key_groq)
             
-            chat_completion = client.chat.completions.create(
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": f"<solicitud>\n{texto_seguro}\n</solicitud>"}
-                ],
-                model="llama-3.3-70b-versatile",
-                temperature=0.1,
-                response_format={"type": "json_object"}
-            )
+            # Modelos candidatos en orden de preferencia según disponibilidad en la cuenta Groq
+            modelos_groq = ["openai/gpt-oss-120b", "llama-3.3-70b-versatile", "qwen/qwen3.8-27b"]
+            chat_completion = None
+            modelo_usado = None
+            ultimo_error_groq = None
             
-            latencia = round((time.time() - t_inicio) * 1000, 2)
-            contenido = chat_completion.choices[0].message.content
-            clasificacion = ClasificacionIA.model_validate_json(contenido)
+            for modelo_cand in modelos_groq:
+                try:
+                    chat_completion = client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": f"<solicitud>\n{texto_seguro}\n</solicitud>"}
+                        ],
+                        model=modelo_cand,
+                        temperature=0.1,
+                        response_format={"type": "json_object"}
+                    )
+                    modelo_usado = modelo_cand
+                    break
+                except Exception as ex_m:
+                    ultimo_error_groq = ex_m
+                    continue
             
-            metadatos = MetadatosIA(
-                proveedor="groq",
-                modelo="llama-3.3-70b-versatile",
-                conmutado=True,
-                motivo_conmutacion=motivo_fallo,
-                latencia_ms=latencia
-            )
-            return clasificacion, metadatos
+            if chat_completion and modelo_usado:
+                latencia = round((time.time() - t_inicio) * 1000, 2)
+                contenido = chat_completion.choices[0].message.content
+                clasificacion = ClasificacionIA.model_validate_json(contenido)
+                
+                metadatos = MetadatosIA(
+                    proveedor="groq",
+                    modelo=modelo_usado,
+                    conmutado=True,
+                    motivo_conmutacion=motivo_fallo,
+                    latencia_ms=latencia
+                )
+                return clasificacion, metadatos
+            elif ultimo_error_groq:
+                raise ultimo_error_groq
             
         except Exception as e_groq:
             motivo_fallo += f" | Fallo en Groq ({type(e_groq).__name__}): {str(e_groq)[:100]}"
