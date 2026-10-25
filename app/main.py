@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 # Cargar variables de entorno desde .env
 load_dotenv(override=True)
 
-from app.routers import tickets_router, salud_router
+from app.routers import tickets_router, salud_router, auth_router, manuales_router
 from app.database import inicializar_bd
 
 # ============================================================================
@@ -168,6 +168,8 @@ async def manejador_errores_http_estandar(request: Request, exc: StarletteHTTPEx
 
 app.include_router(tickets_router)
 app.include_router(salud_router)
+app.include_router(auth_router)
+app.include_router(manuales_router)
 
 @app.get("/", tags=["Raíz"])
 def raiz():

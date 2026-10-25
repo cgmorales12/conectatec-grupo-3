@@ -667,8 +667,208 @@
             opacity: 1;
         }
         .toast-notif.alerta {
-            border-left: 5px solid #FFAB00;
+        /* ========================================================================== */
+        /* Estilos del Módulo de Acceso y Gestión Personal TIC                        */
+        /* ========================================================================== */
+        .btn-tic-nav {
+            background: linear-gradient(135deg, #1E6F64, #145048);
+            color: #FFFFFF;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
+        .btn-tic-nav:hover {
+            background: linear-gradient(135deg, #248275, #195f55);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(30, 111, 100, 0.3);
+        }
+
+        .badge-tic-user {
+            background: rgba(30, 111, 100, 0.25);
+            border: 1px solid #2EB8A6;
+            color: #A7F3D0;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-tic-action {
+            background: #2563EB;
+            color: #FFF;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-tic-action:hover { background: #1D4ED8; }
+
+        .btn-tic-logout {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #FCA5A5;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-tic-logout:hover {
+            background: rgba(239, 68, 68, 0.35);
+            color: #FFF;
+        }
+
+        /* Botón de eliminación en la tarjeta */
+        .btn-eliminar-ticket {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            color: #94A3B8;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.15s;
+            line-height: 1;
+        }
+        .btn-eliminar-ticket:hover {
+            background: #FEE2E2;
+            color: #DC2626;
+            transform: scale(1.15);
+        }
+
+        /* Modal Gestor TIC Grande */
+        .modal-card-lg {
+            max-width: 1000px;
+            width: 95%;
+            max-height: 90vh;
+        }
+
+        .modal-tabs {
+            display: flex;
+            background: #0B132B;
+            border-bottom: 1px solid #1E293B;
+            padding: 0 16px;
+            gap: 8px;
+        }
+
+        .modal-tab-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #94A3B8;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .modal-tab-btn:hover { color: #FFF; }
+        .modal-tab-btn.activo {
+            color: #38BDF8;
+            border-bottom-color: #38BDF8;
+            font-weight: 700;
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.activo { display: block; }
+
+        /* Tabla de manuales */
+        .tabla-manuales {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12.5px;
+            margin-top: 10px;
+        }
+        .tabla-manuales th {
+            background: #F1F5F9;
+            color: #334155;
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 2px solid #CBD5E1;
+            font-weight: 700;
+        }
+        .tabla-manuales td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #E2E8F0;
+            color: #1E293B;
+            vertical-align: middle;
+        }
+        .tabla-manuales tr:hover td {
+            background: #F8FAFC;
+        }
+
+        /* Editor Markdown */
+        .editor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            height: 480px;
+            margin-top: 12px;
+        }
+        @media (max-width: 800px) {
+            .editor-container { grid-template-columns: 1fr; height: auto; }
+        }
+        .editor-textarea {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            font-family: var(--font-mono);
+            font-size: 12.5px;
+            padding: 12px;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            resize: vertical;
+            line-height: 1.5;
+            background: #FAFAFA;
+        }
+        .editor-preview {
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            padding: 16px;
+            background: #FFF;
+            overflow-y: auto;
+            height: 100%;
+            min-height: 400px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* Zona DropZone Conversor */
+        .dropzone-box {
+            border: 2px dashed #38BDF8;
+            background: #F0F9FF;
+            border-radius: 12px;
+            padding: 36px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+        .dropzone-box:hover, .dropzone-box.dragover {
+            background: #E0F2FE;
+            border-color: #0284C7;
+            transform: scale(1.01);
+        }
+        .dropzone-icon { font-size: 38px; margin-bottom: 10px; }
+        .dropzone-title { font-size: 15px; font-weight: 700; color: #0369A1; margin-bottom: 4px; }
+        .dropzone-sub { font-size: 12.5px; color: #64748B; }
 
         @media (max-width: 1200px) {
             .container { grid-template-columns: 1fr; }
@@ -686,9 +886,17 @@
             <h1>ConectaTec · Triaje Inteligente ISP</h1>
             <p>Caso N.º 03 · Grupo 3 UNIANDES | Mesa de Ayuda y Diagnóstico con IA & RAG</p>
         </div>
-        <div id="iaStatusBadge" class="ia-status-badge">
-            <span class="dot-green"></span>
-            <span id="iaStatusText">🟢 Proveedor: Google Gemini (gemini-3.5-flash-lite)</span>
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div id="iaStatusBadge" class="ia-status-badge">
+                <span class="dot-green"></span>
+                <span id="iaStatusText">🟢 Proveedor: Google Gemini (gemini-3.5-flash-lite)</span>
+            </div>
+            <!-- Contenedor Dinámico de Acceso y Gestión Personal TIC -->
+            <div id="ticNavContainer" style="display:flex; align-items:center; gap:8px;">
+                <button type="button" id="btnAccesoTIC" class="btn-tic-nav" onclick="abrirModalLoginTIC()" title="Iniciar sesión como técnico o administrador TIC">
+                    🔐 Acceso TIC
+                </button>
+            </div>
         </div>
     </header>
 
@@ -1086,9 +1294,16 @@
                 tokensTxt = '🪙 0 tokens (Costo $0 · Procesamiento Offline)';
             }
 
+            const esTIC = Boolean(window._sesionTIC && window._sesionTIC.token);
+            const botonEliminarHtml = esTIC ? 
+                `<button type="button" class="btn-eliminar-ticket" onclick="confirmarEliminarTicket(${t.id}, '${t.ticket_codigo}')" title="Eliminar ticket (Acción auditada bajo LOPDP)">🗑️</button>` : '';
+
             card.innerHTML = `
                 <div class="ticket-header">
-                    <span class="ticket-code">${t.ticket_codigo}</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="ticket-code">${t.ticket_codigo}</span>
+                        ${botonEliminarHtml}
+                    </div>
                     <span class="ticket-prio">${t.prioridad} · SLA ${t.sla_minutos}m</span>
                 </div>
                 <div class="ticket-client">${t.nombre_cliente}</div>
@@ -1446,16 +1661,530 @@
         function cerrarModalSiClickAfuera(event) {
             if (event.target.id === 'modalExplicabilidad') {
                 cerrarModalExplicabilidad();
+            } else if (event.target.id === 'modalLoginTIC') {
+                cerrarModalLoginTIC();
+            } else if (event.target.id === 'modalConfirmarEliminarTicket') {
+                cerrarModalConfirmarEliminar();
+            } else if (event.target.id === 'modalGestorManualesTIC') {
+                cerrarGestorManualesTIC();
             }
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') cerrarModalExplicabilidad();
+            if (e.key === 'Escape') {
+                cerrarModalExplicabilidad();
+                cerrarModalLoginTIC();
+                cerrarModalConfirmarEliminar();
+                cerrarModalGestorManualesTIC();
+            }
         });
 
-        // Inicializar estado de simulación y cargar tickets
+        // ====================================================================
+        // Módulo de Autenticación, Borrado y Gestión TIC (Caso N.º 03)
+        // ====================================================================
+        const API_AUTH = '/v1/auth';
+        const API_ADMIN = '/v1/admin';
+
+        window._sesionTIC = null;
+        let _ticketIdAEliminar = null;
+        let _manualesCargados = [];
+
+        function cargarSesionGuardada() {
+            const guardada = sessionStorage.getItem('conectatec_tic_sesion');
+            if (guardada) {
+                try {
+                    window._sesionTIC = JSON.parse(guardada);
+                } catch (e) {
+                    window._sesionTIC = null;
+                }
+            }
+            actualizarEstadoSesionTIC();
+        }
+
+        function actualizarEstadoSesionTIC() {
+            const container = document.getElementById('ticNavContainer');
+            if (!container) return;
+
+            if (window._sesionTIC && window._sesionTIC.token) {
+                const u = window._sesionTIC.usuario;
+                const nombreCorto = u.includes('@') ? u.split('@')[0] : u;
+                container.innerHTML = `
+                    <span class="badge-tic-user" title="Sesión TIC activa (${window._sesionTIC.rol})">
+                        <span class="dot-green"></span> TIC: ${nombreCorto}
+                    </span>
+                    <button type="button" class="btn-tic-action" onclick="abrirGestorManualesTIC('catalogo')" title="Administrar los 15 manuales técnicos RAG y Conversor">
+                        📚 Base de Conocimiento (CRUD)
+                    </button>
+                    <button type="button" class="btn-tic-logout" onclick="cerrarSesionTIC()" title="Cerrar sesión segura de TIC">
+                        🚪 Salir
+                    </button>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button type="button" id="btnAccesoTIC" class="btn-tic-nav" onclick="abrirModalLoginTIC()" title="Iniciar sesión como personal de soporte TIC">
+                        🔐 Acceso TIC
+                    </button>
+                `;
+            }
+
+            // Refrescar tarjetas Kanban para mostrar u ocultar el botón 🗑️
+            if (window._ticketsCargados) {
+                renderizarTablero(window._ticketsCargados);
+            }
+        }
+
+        function abrirModalLoginTIC() {
+            document.getElementById('formLoginTIC').reset();
+            document.getElementById('msgErrorLogin').style.display = 'none';
+            document.getElementById('modalLoginTIC').classList.add('activo');
+        }
+
+        function cerrarModalLoginTIC() {
+            document.getElementById('modalLoginTIC').classList.remove('activo');
+        }
+
+        async function ejecutarLoginTIC(e) {
+            e.preventDefault();
+            const usuario = document.getElementById('txtUsuarioTIC').value.trim();
+            const password = document.getElementById('txtPasswordTIC').value;
+            const btn = document.getElementById('btnSubmitLogin');
+            const msgError = document.getElementById('msgErrorLogin');
+
+            msgError.style.display = 'none';
+            btn.disabled = true;
+            btn.textContent = '⏳ Verificando...';
+
+            try {
+                const res = await fetch(`${API_AUTH}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario, password })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    window._sesionTIC = data;
+                    sessionStorage.setItem('conectatec_tic_sesion', JSON.stringify(data));
+                    cerrarModalLoginTIC();
+                    actualizarEstadoSesionTIC();
+                    mostrarToast(`✅ Sesión iniciada: Bienvenido, ${data.nombre_completo}`);
+                } else {
+                    const err = await res.json();
+                    msgError.textContent = err.detail || 'Credenciales no válidas. Intente nuevamente.';
+                    msgError.style.display = 'block';
+                }
+            } catch (err) {
+                msgError.textContent = 'Error de conexión con el servicio de autenticación.';
+                msgError.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔓 Iniciar Sesión';
+            }
+        }
+
+        function cerrarSesionTIC() {
+            window._sesionTIC = null;
+            sessionStorage.removeItem('conectatec_tic_sesion');
+            actualizarEstadoSesionTIC();
+            mostrarToast('🔒 Sesión cerrada correctamente.');
+        }
+
+        // --- Eliminación de Tickets (Soft-Delete) ---
+        function confirmarEliminarTicket(ticketId, ticketCodigo) {
+            _ticketIdAEliminar = ticketId;
+            document.getElementById('lblCodigoTicketEliminar').textContent = ticketCodigo;
+            document.getElementById('modalConfirmarEliminarTicket').classList.add('activo');
+        }
+
+        function cerrarModalConfirmarEliminar() {
+            _ticketIdAEliminar = null;
+            document.getElementById('modalConfirmarEliminarTicket').classList.remove('activo');
+        }
+
+        async function ejecutarEliminarTicket() {
+            if (!_ticketIdAEliminar || !window._sesionTIC) return;
+            const btn = document.getElementById('btnConfirmarBorrado');
+            btn.disabled = true;
+            btn.textContent = '⏳ Eliminando...';
+
+            try {
+                const res = await fetch(`${API_URL}/${_ticketIdAEliminar}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${window._sesionTIC.token}`
+                    }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    cerrarModalConfirmarEliminar();
+                    mostrarToast(`🗑️ ${data.mensaje}`);
+                    cargarTickets();
+                } else if (res.status === 401) {
+                    cerrarModalConfirmarEliminar();
+                    mostrarToast('⚠️ Su sesión expiró. Inicie sesión nuevamente.', 'alerta');
+                    cerrarSesionTIC();
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || 'No se pudo eliminar el ticket.');
+                }
+            } catch (err) {
+                alert('Error al comunicarse con el servidor.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🗑️ Sí, Eliminar Ticket';
+            }
+        }
+
+        // --- Gestor Documental de Manuales RAG ---
+        function abrirGestorManualesTIC(pestaña = 'catalogo') {
+            if (!window._sesionTIC) {
+                abrirModalLoginTIC();
+                return;
+            }
+            cambiarPestanaTIC(pestaña);
+            document.getElementById('modalGestorManualesTIC').classList.add('activo');
+            cargarManualesTIC();
+        }
+
+        function cerrarGestorManualesTIC() {
+            document.getElementById('modalGestorManualesTIC').classList.remove('activo');
+        }
+
+        function cambiarPestanaTIC(pestaña) {
+            document.querySelectorAll('.modal-tab-btn').forEach(b => b.classList.remove('activo'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('activo'));
+
+            const tabBtn = document.getElementById(`tabBtn-${pestaña}`);
+            const tabCont = document.getElementById(`tabCont-${pestaña}`);
+            if (tabBtn) tabBtn.classList.add('activo');
+            if (tabCont) tabCont.classList.add('activo');
+        }
+
+        async function cargarManualesTIC() {
+            const tbody = document.getElementById('tbodyManuales');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#64748B;">⏳ Cargando catálogo de manuales oficiales...</td></tr>';
+
+            try {
+                const res = await fetch(`${API_ADMIN}/manuales`, {
+                    headers: { 'Authorization': `Bearer ${window._sesionTIC.token}` }
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    _manualesCargados = data.manuales;
+                    renderizarTablaManuales(_manualesCargados);
+                } else if (res.status === 401) {
+                    cerrarGestorManualesTIC();
+                    cerrarSesionTIC();
+                    mostrarToast('⚠️ Sesión expirada.', 'alerta');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#DC2626; padding:20px;">Error al cargar manuales.</td></tr>';
+                }
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#DC2626; padding:20px;">Fallo de conexión.</td></tr>';
+            }
+        }
+
+        function renderizarTablaManuales(lista) {
+            const tbody = document.getElementById('tbodyManuales');
+            document.getElementById('lblTotalManuales').textContent = `${lista.length} manuales`;
+
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px; color:#94A3B8;">No se encontraron manuales en data/raw/.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = lista.map(m => `
+                <tr>
+                    <td><b style="color:#0284C7; font-family:var(--font-mono);">${m.documento_id}</b></td>
+                    <td>
+                        <strong>${m.titulo}</strong>
+                        <div style="font-size:11px; color:#64748B; font-family:var(--font-mono);">${m.archivo}</div>
+                    </td>
+                    <td><span style="background:#E2E8F0; padding:2px 8px; border-radius:4px; font-size:11px;">${m.categoria}</span></td>
+                    <td style="font-family:var(--font-mono); font-size:11.5px;">${Math.round(m.tamano_bytes / 1024 * 10) / 10} KB</td>
+                    <td style="font-size:11.5px; color:#64748B;">${m.fecha_modificacion}</td>
+                    <td>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="btn-tic-action" style="padding:4px 8px; font-size:11px; background:#0284C7;" onclick="editarManualTIC('${m.archivo}')" title="Editar en Markdown">✏️ Editar</button>
+                            <button type="button" class="btn-eliminar-ticket" style="padding:4px 6px;" onclick="eliminarManualTIC('${m.archivo}')" title="Eliminar manual de data/raw/">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function filtrarManuales(texto) {
+            const q = texto.toLowerCase().trim();
+            const filtrados = _manualesCargados.filter(m =>
+                m.documento_id.toLowerCase().includes(q) ||
+                m.titulo.toLowerCase().includes(q) ||
+                m.archivo.toLowerCase().includes(q) ||
+                m.categoria.toLowerCase().includes(q)
+            );
+            renderizarTablaManuales(filtrados);
+        }
+
+        async function editarManualTIC(nombreArchivo) {
+            try {
+                const res = await fetch(`${API_ADMIN}/manuales/${nombreArchivo}`, {
+                    headers: { 'Authorization': `Bearer ${window._sesionTIC.token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('txtNombreArchivoMD').value = data.archivo;
+                    document.getElementById('txtNombreArchivoMD').readOnly = true;
+                    document.getElementById('txtEditorMarkdown').value = data.contenido_markdown;
+                    actualizarPreviewMarkdown();
+                    cambiarPestanaTIC('editor');
+                } else {
+                    alert('No se pudo cargar el archivo.');
+                }
+            } catch (e) {
+                alert('Error al obtener contenido.');
+            }
+        }
+
+        function nuevoManualTIC() {
+            document.getElementById('txtNombreArchivoMD').value = '';
+            document.getElementById('txtNombreArchivoMD').readOnly = false;
+            insertarPlantillaMarkdown();
+            cambiarPestanaTIC('editor');
+        }
+
+        function insertarPlantillaMarkdown() {
+            const plantilla = `# DOC-XX: Título Descriptivo del Procedimiento
+
+**Categoría:** Equipos de Cliente / ONT  
+**Fabricante / Origen:** Soporte Técnico ConectaTec ISP  
+**Versión / Vigencia:** v1.0 - Actualizado 2026  
+
+## Descripción General
+Explicación concisa del problema técnico, alcance y equipos involucrados.
+
+## Procedimiento Operativo Paso a Paso
+### Paso 1: Verificación de Condiciones Iniciales
+Inspeccione el estado físico de los equipos y las luces LED frontales.
+
+### Paso 2: Procedimiento de Configuración o Reseteo
+Ejecute la acción técnica correspondiente paso a paso.
+
+### Paso 3: Confirmación de Servicio
+Verifique que los niveles de potencia o navegación vuelvan a parámetros nominales.
+
+## Matriz de Diagnóstico Rápido
+| Indicador | Estado Normal | Estado de Avería | Acción Inmediata |
+| --- | --- | --- | --- |
+| PON / Power | Verde Fijo | Apagado / Rojo | Verificar alimentación o fibra |
+
+---
+*ConectaTec ISP · Base de Conocimiento Oficial RAG · UNIANDES 2026*
+`;
+            document.getElementById('txtEditorMarkdown').value = plantilla;
+            actualizarPreviewMarkdown();
+        }
+
+        function actualizarPreviewMarkdown() {
+            const raw = document.getElementById('txtEditorMarkdown').value;
+            const container = document.getElementById('previewEditorMarkdown');
+
+            // Renderizador seguro básico de Markdown
+            let html = raw
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                .replace(/^# (.*$)/gim, '<h1 style="font-size:18px; margin:10px 0 6px; color:#0F172A; border-bottom:2px solid #E2E8F0; padding-bottom:4px;">$1</h1>')
+                .replace(/^## (.*$)/gim, '<h2 style="font-size:15px; margin:14px 0 6px; color:#1E293B;">$1</h2>')
+                .replace(/^### (.*$)/gim, '<h3 style="font-size:13.5px; margin:10px 0 4px; color:#0284C7;">$1</h3>')
+                .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+                .replace(/`([^`]+)`/gim, '<code style="background:#F1F5F9; padding:2px 4px; border-radius:4px; font-family:var(--font-mono); font-size:11.5px;">$1</code>')
+                .replace(/\n\n/gim, '<p style="margin-bottom:8px;"></p>');
+
+            container.innerHTML = html;
+        }
+
+        async function guardarManualTIC(e) {
+            e.preventDefault();
+            const archivo = document.getElementById('txtNombreArchivoMD').value.trim();
+            const contenido = document.getElementById('txtEditorMarkdown').value;
+            const btn = document.getElementById('btnGuardarManual');
+
+            if (!archivo) {
+                alert('Por favor ingrese el nombre del archivo (ej. DOC-16_nombre.md).');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Guardando...';
+
+            const esEdicion = document.getElementById('txtNombreArchivoMD').readOnly;
+            const url = esEdicion ? `${API_ADMIN}/manuales/${archivo}` : `${API_ADMIN}/manuales`;
+            const metodo = esEdicion ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: metodo,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${window._sesionTIC.token}`
+                    },
+                    body: JSON.stringify({
+                        archivo: archivo,
+                        contenido_markdown: contenido,
+                        sobrescribir: true
+                    })
+                });
+
+                if (res.ok) {
+                    mostrarToast(`💾 Manual ${archivo} guardado exitosamente.`);
+                    cambiarPestanaTIC('catalogo');
+                    cargarManualesTIC();
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || 'Error al guardar el manual.');
+                }
+            } catch (err) {
+                alert('Error de conexión al guardar manual.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '💾 Guardar en Base de Conocimiento';
+            }
+        }
+
+        async function eliminarManualTIC(nombreArchivo) {
+            if (!confirm(`¿Está seguro de eliminar permanentemente '${nombreArchivo}' de la base de conocimiento?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_ADMIN}/manuales/${nombreArchivo}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${window._sesionTIC.token}` }
+                });
+
+                if (res.ok) {
+                    mostrarToast(`🗑️ Manual '${nombreArchivo}' eliminado.`);
+                    cargarManualesTIC();
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || 'No se pudo eliminar el manual.');
+                }
+            } catch (err) {
+                alert('Error al comunicarse con el servidor.');
+            }
+        }
+
+        // --- Conversor Word / PDF ---
+        function manejarSeleccionArchivoConversor(input) {
+            if (input.files && input.files[0]) {
+                procesarArchivoConversor(input.files[0]);
+            }
+        }
+
+        function procesarArchivoConversor(file) {
+            const nombre = file.name;
+            const ext = nombre.split('.').pop().toLowerCase();
+            if (ext !== 'docx' && ext !== 'pdf') {
+                alert('Solo se admiten documentos en formato Word (.docx) o PDF (.pdf).');
+                return;
+            }
+
+            const statusBox = document.getElementById('conversorStatus');
+            statusBox.style.display = 'block';
+            statusBox.innerHTML = `⏳ Leyendo y convirtiendo <b>${nombre}</b> (${Math.round(file.size / 1024)} KB) ...`;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const base64Data = e.target.result.split(',')[1];
+                const guardarDirecto = document.getElementById('chkGuardarDirecto').checked;
+
+                try {
+                    const res = await fetch(`${API_ADMIN}/convertir-documento`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${window._sesionTIC.token}`
+                        },
+                        body: JSON.stringify({
+                            nombre_archivo: nombre,
+                            contenido_base64: base64Data,
+                            guardar_directo: guardarDirecto
+                        })
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        statusBox.innerHTML = `
+                            <div style="background:#ECFDF5; border:1px solid #6EE7B7; color:#065F46; padding:12px; border-radius:8px;">
+                                <div style="font-weight:700;">✅ ¡Conversión Exitosa a Markdown RAG!</div>
+                                <div style="font-size:12.5px; margin-top:4px;">
+                                    • Código Asignado: <b>${data.documento_id}</b><br>
+                                    • Título Detectado: <b>${data.titulo}</b><br>
+                                    • Archivo Sugerido: <code>${data.nombre_archivo_md}</code>
+                                </div>
+                                <div style="margin-top:10px;">
+                                    <button type="button" class="btn-tic-action" onclick="cargarConvertidoEnEditor('${data.nombre_archivo_md}')">
+                                        ✏️ Abrir y Revisar en el Editor
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        window._ultimoDocConvertido = data;
+                        if (guardarDirecto) {
+                            mostrarToast(`🎉 Guardado como data/raw/${data.nombre_archivo_md}`);
+                            cargarManualesTIC();
+                        }
+                    } else {
+                        const err = await res.json();
+                        statusBox.innerHTML = `<div style="color:#DC2626; padding:10px;">❌ Error: ${err.detail || 'Fallo al convertir'}</div>`;
+                    }
+                } catch (err) {
+                    statusBox.innerHTML = `<div style="color:#DC2626; padding:10px;">❌ Fallo de conexión durante la conversión.</div>`;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function cargarConvertidoEnEditor(nombreArchivo) {
+            if (!window._ultimoDocConvertido) return;
+            const data = window._ultimoDocConvertido;
+            document.getElementById('txtNombreArchivoMD').value = data.nombre_archivo_md;
+            document.getElementById('txtNombreArchivoMD').readOnly = false;
+            document.getElementById('txtEditorMarkdown').value = data.contenido_markdown;
+            actualizarPreviewMarkdown();
+            cambiarPestanaTIC('editor');
+        }
+
+        // Dropzone drag & drop listeners
+        function configurarDropzone() {
+            const dz = document.getElementById('dropzoneBox');
+            if (!dz) return;
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dz.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dz.classList.add('dragover');
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dz.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dz.classList.remove('dragover');
+                }, false);
+            });
+            dz.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files[0]) {
+                    procesarArchivoConversor(files[0]);
+                }
+            });
+        }
+
+        // Inicializar estado de simulación, sesión TIC y cargar tickets
         actualizarEstadoSimulacion();
+        cargarSesionGuardada();
         cargarTickets();
+        configurarDropzone();
     </script>
 
     <!-- Ventana Modal de Explicabilidad y Trazabilidad XAI -->
@@ -1470,5 +2199,162 @@
             </div>
         </div>
     </div>
+
+    <!-- Ventana Modal: Inicio de Sesión Personal TIC -->
+    <div id="modalLoginTIC" class="modal-backdrop" onclick="cerrarModalSiClickAfuera(event)">
+        <div class="modal-card" style="max-width:440px;">
+            <div class="modal-header">
+                <h3>🔐 Acceso Personal Técnico TIC</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalLoginTIC()" title="Cerrar ventana">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="formLoginTIC" onsubmit="ejecutarLoginTIC(event)">
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label for="txtUsuarioTIC">Usuario o Correo Institucional</label>
+                        <input type="text" id="txtUsuarioTIC" class="form-control" value="admin" placeholder="admin o admin.tic@conectatec.local" required autocomplete="username">
+                    </div>
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label for="txtPasswordTIC">Contraseña de Soporte TIC</label>
+                        <input type="password" id="txtPasswordTIC" class="form-control" value="TicUniandes2026!" placeholder="••••••••••••" required autocomplete="current-password">
+                    </div>
+                    <div id="msgErrorLogin" style="display:none; color:#DC2626; background:#FEE2E2; border:1px solid #FCA5A5; padding:8px 12px; border-radius:6px; font-size:12px; margin-bottom:12px;"></div>
+                    <button type="submit" id="btnSubmitLogin" class="btn-submit" style="width:100%;">🔓 Iniciar Sesión</button>
+                    <p style="font-size:11.5px; color:#64748B; margin-top:12px; text-align:center;">
+                        🛡️ Acceso restringido para operadores y técnicos autorizados de ConectaTec ISP (Grupo 3 UNIANDES).
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventana Modal: Confirmar Borrado de Ticket -->
+    <div id="modalConfirmarEliminarTicket" class="modal-backdrop" onclick="cerrarModalSiClickAfuera(event)">
+        <div class="modal-card" style="max-width:460px;">
+            <div class="modal-header" style="background:#7F1D1D; border-bottom:2px solid #DC2626;">
+                <h3>🗑️ Confirmar Eliminación de Ticket</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalConfirmarEliminar()" title="Cerrar ventana">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size:14px; color:#1E293B;">
+                    ¿Está seguro de eliminar el ticket <strong id="lblCodigoTicketEliminar" style="color:#DC2626;"></strong> del tablero Kanban?
+                </p>
+                <div style="background:#FEF2F2; border-left:4px solid #DC2626; padding:10px 12px; border-radius:0 6px 6px 0; margin-top:10px; font-size:12px; color:#7F1D1D;">
+                    🛡️ <b>Trazabilidad y Cumplimiento LOPDP:</b><br>
+                    Se aplicará eliminación lógica (Soft-delete). El incidente dejará de verse en el tablero, pero su auditoría permanecerá registrada en la base de datos con responsable y fecha.
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+                    <button type="button" class="act-btn" onclick="cerrarModalConfirmarEliminar()">Cancelar</button>
+                    <button type="button" id="btnConfirmarBorrado" class="btn-submit" style="background:#DC2626; border:none;" onclick="ejecutarEliminarTicket()">🗑️ Sí, Eliminar Ticket</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventana Modal: Gestor de Base de Conocimiento RAG & Conversor Documental -->
+    <div id="modalGestorManualesTIC" class="modal-backdrop" onclick="cerrarModalSiClickAfuera(event)">
+        <div class="modal-card modal-card-lg">
+            <div class="modal-header" style="background:#0F172A; border-bottom:2px solid #38BDF8;">
+                <h3>📚 Base de Conocimiento RAG & Conversor · Personal TIC</h3>
+                <button type="button" class="modal-close" onclick="cerrarGestorManualesTIC()" title="Cerrar ventana">✕</button>
+            </div>
+            
+            <!-- Barra de Pestañas -->
+            <div class="modal-tabs">
+                <button type="button" class="modal-tab-btn activo" id="tabBtn-catalogo" onclick="cambiarPestanaTIC('catalogo')">
+                    📑 Catálogo Oficial (<span id="lblTotalManuales">15 manuales</span>)
+                </button>
+                <button type="button" class="modal-tab-btn" id="tabBtn-editor" onclick="cambiarPestanaTIC('editor')">
+                    ✏️ Editor Markdown
+                </button>
+                <button type="button" class="modal-tab-btn" id="tabBtn-conversor" onclick="cambiarPestanaTIC('conversor')">
+                    🔄 Conversor Word / PDF
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding:16px 20px;">
+                <!-- Pestaña 1: Catálogo de Manuales -->
+                <div id="tabCont-catalogo" class="tab-panel activo">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap;">
+                        <input type="text" class="form-control" placeholder="🔍 Buscar manual por código, título o categoría..." style="max-width:380px;" oninput="filtrarManuales(this.value)">
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" class="btn-tic-action" onclick="nuevoManualTIC()">➕ Nuevo Manual</button>
+                            <button type="button" class="btn-tic-action" style="background:#0284C7;" onclick="cambiarPestanaTIC('conversor')">📤 Importar Word / PDF</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto; max-height:450px;">
+                        <table class="tabla-manuales">
+                            <thead>
+                                <tr>
+                                    <th style="width:85px;">Código</th>
+                                    <th>Título y Archivo</th>
+                                    <th>Categoría</th>
+                                    <th style="width:80px;">Tamaño</th>
+                                    <th style="width:140px;">Última Edición</th>
+                                    <th style="width:120px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyManuales">
+                                <!-- Rellenado dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Pestaña 2: Editor Markdown con Preview en Vivo -->
+                <div id="tabCont-editor" class="tab-panel">
+                    <form onsubmit="guardarManualTIC(event)">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:260px;">
+                                <label style="font-size:12px; font-weight:700; color:#334155;">Nombre del Archivo .md:</label>
+                                <input type="text" id="txtNombreArchivoMD" class="form-control" placeholder="DOC-16_antena_ubiquiti.md" required>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:flex-end;">
+                                <button type="button" class="act-btn" onclick="insertarPlantillaMarkdown()" title="Carga la estructura oficial con pasos y tabla">📋 Insertar Plantilla</button>
+                                <button type="submit" id="btnGuardarManual" class="btn-submit" style="background:#0D9488;">💾 Guardar en Base de Conocimiento</button>
+                            </div>
+                        </div>
+
+                        <div class="editor-container">
+                            <div>
+                                <label style="font-size:11.5px; font-weight:700; color:#64748B;">Markdown Fuente (data/raw/):</label>
+                                <textarea id="txtEditorMarkdown" class="editor-textarea" oninput="actualizarPreviewMarkdown()" placeholder="Escriba aquí el contenido estructurado del manual..."></textarea>
+                            </div>
+                            <div>
+                                <label style="font-size:11.5px; font-weight:700; color:#64748B;">Previsualización en Vivo:</label>
+                                <div id="previewEditorMarkdown" class="editor-preview"></div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Pestaña 3: Conversor Word / PDF a Markdown -->
+                <div id="tabCont-conversor" class="tab-panel">
+                    <div style="max-width:700px; margin:0 auto; text-align:center;">
+                        <h4 style="font-size:16px; color:#0F172A; margin-bottom:6px;">🔄 Conversor Rápido de Documentos a Markdown</h4>
+                        <p style="font-size:13px; color:#64748B; margin-bottom:16px;">
+                            Suelte sus guías o manuales oficiales en Word (<code>.docx</code>) o <code>.pdf</code>. El sistema extraerá el texto, identificará los pasos operativos y generará el formato compatible con el motor RAG de ConectaTec.
+                        </p>
+
+                        <div id="dropzoneBox" class="dropzone-box" onclick="document.getElementById('inputFileConversor').click()">
+                            <div class="dropzone-icon">📄 ➡️ 📑</div>
+                            <div class="dropzone-title">Arrastre aquí su archivo Word (.docx) o PDF</div>
+                            <div class="dropzone-sub">o haga clic para seleccionar desde su equipo</div>
+                            <input type="file" id="inputFileConversor" accept=".docx,.pdf" style="display:none;" onchange="manejarSeleccionArchivoConversor(this)">
+                        </div>
+
+                        <div style="margin-top:14px; text-align:left; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <label style="font-size:12.5px; color:#334155; cursor:pointer;">
+                                <input type="checkbox" id="chkGuardarDirecto" checked> Guardar automáticamente en <code>data/raw/</code>
+                            </label>
+                            <span style="font-size:11.5px; color:#64748B;">También puede usar en consola: <code>python scripts/convertir_a_markdown.py</code></span>
+                        </div>
+
+                        <div id="conversorStatus" style="display:none; margin-top:16px; text-align:left;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
+

@@ -149,3 +149,96 @@ class DetalleProblemaRFC9457(BaseModel):
     status: int = Field(..., description="Código de estado HTTP")
     detail: str = Field(..., description="Explicación detallada del error")
     instance: str = Field(..., description="Identificador único opaco de la solicitud")
+
+
+# ============================================================================
+# Esquemas del Personal TIC: Autenticación, RBAC y Gestión de Manuales RAG
+# ============================================================================
+
+class LoginIn(BaseModel):
+    """Credenciales de acceso para el personal técnico TIC."""
+    model_config = ConfigDict(extra="forbid")
+
+    usuario: str = Field(..., min_length=3, max_length=100, description="Correo o alias del técnico TIC")
+    password: str = Field(..., min_length=4, max_length=128, description="Contraseña de acceso")
+
+
+class LoginOut(BaseModel):
+    """Respuesta con token de sesión firmado para el operador TIC."""
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(..., description="Token Bearer HMAC-SHA256")
+    usuario: str = Field(..., description="Usuario autenticado")
+    nombre_completo: str = Field(..., description="Nombre completo del técnico")
+    rol: str = Field(..., description="Rol asignado (ej. administrador_tic)")
+    expira_en_horas: int = Field(8, description="Vigencia del token en horas")
+
+
+class PerfilTICOut(BaseModel):
+    """Datos de la sesión activa del personal TIC."""
+    model_config = ConfigDict(extra="forbid")
+
+    usuario: str
+    nombre_completo: str
+    rol: str
+
+
+class ManualItemOut(BaseModel):
+    """Resumen de un manual técnico almacenado en data/raw/."""
+    model_config = ConfigDict(extra="forbid")
+
+    archivo: str = Field(..., description="Nombre del archivo (ej. DOC-01_luces_led_ont_huawei.md)")
+    documento_id: str = Field(..., description="Código oficial (ej. DOC-01)")
+    titulo: str = Field(..., description="Título descriptivo del procedimiento")
+    categoria: str = Field(..., description="Categoría técnica (ONT, Wi-Fi, Fibra, etc.)")
+    vigencia: Optional[str] = Field(None, description="Versión o fecha de vigencia del documento")
+    tamano_bytes: int = Field(..., description="Tamaño del archivo en bytes")
+    fecha_modificacion: str = Field(..., description="Fecha y hora de última modificación")
+
+
+class ListaManualesOut(BaseModel):
+    """Catálogo completo de manuales para el gestor documental TIC."""
+    model_config = ConfigDict(extra="forbid")
+
+    total: int
+    manuales: List[ManualItemOut]
+
+
+class ManualDetalleOut(BaseModel):
+    """Contenido completo de un manual para visualización o edición."""
+    model_config = ConfigDict(extra="forbid")
+
+    archivo: str
+    documento_id: str
+    titulo: str
+    contenido_markdown: str
+
+
+class GuardarManualIn(BaseModel):
+    """Payload para crear o editar un archivo Markdown en la base de conocimiento."""
+    model_config = ConfigDict(extra="forbid")
+
+    archivo: str = Field(..., min_length=3, max_length=150, description="Nombre del archivo .md")
+    contenido_markdown: str = Field(..., min_length=20, description="Contenido estructurado en Markdown")
+    sobrescribir: bool = Field(False, description="True para permitir sobrescribir archivos existentes")
+
+
+class ConvertirDocIn(BaseModel):
+    """Payload para conversión directa de archivos Word o PDF codificados en Base64."""
+    model_config = ConfigDict(extra="forbid")
+
+    nombre_archivo: str = Field(..., min_length=4, max_length=200, description="Nombre con extensión (.docx o .pdf)")
+    contenido_base64: str = Field(..., description="Contenido del documento codificado en Base64")
+    guardar_directo: bool = Field(False, description="True para guardar inmediatamente en data/raw/")
+
+
+class ResultadoConversionOut(BaseModel):
+    """Resultado estructurado de la extracción y conversión a Markdown."""
+    model_config = ConfigDict(extra="forbid")
+
+    nombre_archivo_md: str
+    documento_id: str
+    titulo: str
+    contenido_markdown: str
+    guardado_en_raw: bool
+    mensaje: str

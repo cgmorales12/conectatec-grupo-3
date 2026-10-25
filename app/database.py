@@ -53,7 +53,20 @@ def inicializar_bd():
             tokens_total INTEGER
         )
     """)
-    # Migración retrocompatible para tablas preexistentes
+    # Tabla de Usuarios TIC para Control de Acceso (RBAC y LOPDP)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios_tic (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            usuario TEXT UNIQUE NOT NULL,
+            nombre_completo TEXT NOT NULL,
+            rol TEXT NOT NULL DEFAULT 'tecnico_tic',
+            hash_password TEXT NOT NULL,
+            salt TEXT NOT NULL,
+            activo INTEGER NOT NULL DEFAULT 1,
+            fecha_creacion TEXT NOT NULL
+        )
+    """)
+    # Migración retrocompatible para tabla de tickets
     columnas = [col[1] for col in cursor.execute("PRAGMA table_info(tickets)").fetchall()]
     if "justificacion" not in columnas:
         cursor.execute("ALTER TABLE tickets ADD COLUMN justificacion TEXT")
@@ -69,6 +82,32 @@ def inicializar_bd():
         cursor.execute("ALTER TABLE tickets ADD COLUMN modo_vulnerable INTEGER DEFAULT 0")
     if "alucinacion_detectada" not in columnas:
         cursor.execute("ALTER TABLE tickets ADD COLUMN alucinacion_detectada INTEGER DEFAULT 0")
+    if "eliminado" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN eliminado INTEGER DEFAULT 0")
+    if "fecha_eliminacion" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN fecha_eliminacion TEXT")
+    if "eliminado_por" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN eliminado_por TEXT")
+    
+    # Sembrar usuario administrador TIC inicial si no existe
+    usuario_existente = cursor.execute("SELECT id FROM usuarios_tic WHERE usuario = ?", ("admin.tic@conectatec.local",)).fetchone()
+    if not usuario_existente:
+        import hashlib
+        import secrets
+        salt = secrets.token_hex(16)
+        hash_pass = hashlib.pbkdf2_hmac("sha256", "TicUniandes2026!".encode("utf-8"), salt.encode("utf-8"), 100000).hex()
+        ahora_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("""
+            INSERT INTO usuarios_tic (usuario, nombre_completo, rol, hash_password, salt, activo, fecha_creacion)
+            VALUES (?, ?, ?, ?, ?, 1, ?)
+        """, ("admin.tic@conectatec.local", "Administrador TIC - ConectaTec", "administrador_tic", hash_pass, salt, ahora_iso))
+        
+        # También alias corto para pruebas ágiles
+        cursor.execute("""
+            INSERT OR IGNORE INTO usuarios_tic (usuario, nombre_completo, rol, hash_password, salt, activo, fecha_creacion)
+            VALUES (?, ?, ?, ?, ?, 1, ?)
+        """, ("admin", "Administrador TIC - ConectaTec", "administrador_tic", hash_pass, salt, ahora_iso))
+    
     conn.commit()
     conn.close()
 
@@ -129,11 +168,14 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
     conn.close()
     return nuevo_id
 
-def listar_tickets() -> List[Dict[str, Any]]:
-    """Recupera todos los tickets registrados en la base de datos excluyendo campos internos."""
+def listar_tickets(incluir_eliminados: bool = False) -> List[Dict[str, Any]]:
+    """Recupera todos los tickets registrados en la base de datos excluyendo los eliminados lógicamente."""
     conn = _obtener_conexion()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tickets ORDER BY id DESC")
+    if incluir_eliminados:
+        cursor.execute("SELECT * FROM tickets ORDER BY id DESC")
+    else:
+        cursor.execute("SELECT * FROM tickets WHERE (eliminado IS NULL OR eliminado = 0) ORDER BY id DESC")
     rows = cursor.fetchall()
     conn.close()
     
@@ -177,7 +219,6 @@ def listar_tickets() -> List[Dict[str, Any]]:
         }
         tickets.append(ticket_limpio)
     return tickets
-    return tickets
 
 def actualizar_estado_ticket(ticket_id: int, nuevo_estado: str) -> bool:
     """Actualiza el estado de un ticket de forma parametrizada."""
@@ -188,3 +229,65 @@ def actualizar_estado_ticket(ticket_id: int, nuevo_estado: str) -> bool:
     conn.commit()
     conn.close()
     return afectados > 0
+
+def eliminar_ticket_logico(ticket_id: int, eliminado_por: str = "personal_tic") -> bool:
+    """
+    Marca un ticket como eliminado (Soft-delete) registrando fecha y responsable para auditoría LOPDP.
+    """
+    conn = _obtener_conexion()
+    cursor = conn.cursor()
+    ahora_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+        UPDATE tickets 
+        SET eliminado = 1, fecha_eliminacion = ?, eliminado_por = ? 
+        WHERE id = ? AND (eliminado IS NULL OR eliminado = 0)
+    """, (ahora_iso, eliminado_por, ticket_id))
+    afectados = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return afectados > 0
+
+def obtener_ticket_por_id(ticket_id: int) -> Optional[Dict[str, Any]]:
+    """Obtiene un ticket por su identificador primario."""
+    conn = _obtener_conexion()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
+
+def obtener_usuario_tic(usuario: str) -> Optional[Dict[str, Any]]:
+    """Busca un usuario técnico TIC por correo o alias."""
+    conn = _obtener_conexion()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, usuario, nombre_completo, rol, hash_password, salt, activo FROM usuarios_tic WHERE usuario = ? AND activo = 1", (usuario.strip(),))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
+
+def verificar_credenciales_tic(usuario: str, password_plana: str) -> Optional[Dict[str, Any]]:
+    """Valida usuario y contraseña con PBKDF2-HMAC-SHA256."""
+    user = obtener_usuario_tic(usuario)
+    if not user:
+        return None
+    
+    import hashlib
+    hash_calculado = hashlib.pbkdf2_hmac(
+        "sha256",
+        password_plana.encode("utf-8"),
+        user["salt"].encode("utf-8"),
+        100000
+    ).hex()
+    
+    if hash_calculado == user["hash_password"]:
+        return {
+            "id": user["id"],
+            "usuario": user["usuario"],
+            "nombre_completo": user["nombre_completo"],
+            "rol": user["rol"]
+        }
+    return None

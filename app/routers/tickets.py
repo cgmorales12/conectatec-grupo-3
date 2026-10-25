@@ -3,7 +3,7 @@ Enrutador de Tickets de Soporte Técnico - ConectaTec
 Endpoints: Clasificación Inteligente, Consulta de Tickets y Cambio de Estado Kanban.
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Depends, status
 from datetime import datetime, timezone
 import uuid
 
@@ -20,7 +20,8 @@ from app.schemas import (
 from app.services.llm import clasificar_solicitud
 from app.tools.priorizar import calcular_prioridad_itil
 from app.services.rag import consultar_base_conocimiento
-from app.database import guardar_ticket, listar_tickets, actualizar_estado_ticket
+from app.database import guardar_ticket, listar_tickets, actualizar_estado_ticket, eliminar_ticket_logico
+from app.services.auth import obtener_usuario_autenticado
 
 router = APIRouter(prefix="/v1/tickets", tags=["Tickets de Soporte"])
 
@@ -163,4 +164,31 @@ def cambiar_estado_ticket(ticket_id: int, payload: ActualizarEstadoIn):
         "ticket_id": ticket_id,
         "nuevo_estado": payload.nuevo_estado,
         "observacion": payload.observacion
+    }
+
+
+@router.delete(
+    "/{ticket_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Elimina lógicamente un ticket de soporte (Exclusivo Personal TIC)"
+)
+def eliminar_ticket(
+    ticket_id: int,
+    usuario_tic: dict = Depends(obtener_usuario_autenticado)
+):
+    """
+    Eliminación lógica de tickets (Soft-delete).
+    Registra el usuario responsable y la marca de tiempo para auditoría de seguridad y LOPDP.
+    """
+    exito = eliminar_ticket_logico(ticket_id, eliminado_por=usuario_tic["usuario"])
+    if not exito:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"El ticket #{ticket_id} no fue encontrado o ya se encuentra eliminado."
+        )
+    return {
+        "status": "ok",
+        "mensaje": f"Ticket #{ticket_id} eliminado exitosamente del tablero Kanban.",
+        "ticket_id": ticket_id,
+        "eliminado_por": usuario_tic["usuario"]
     }
