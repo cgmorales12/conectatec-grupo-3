@@ -46,3 +46,12 @@
 ### Pregunta 5: *«¿Por qué eligieron FastAPI y no Django o Flask?»*
 * **Respuesta del Equipo:**  
   *«Por tres razones técnicas (registradas en nuestro ADR-001): integración nativa con Pydantic V2 para validación estricta de contratos, documentación Swagger automática (`/docs`), y concurrencia segura mediante AnyIO, que delega las llamadas síncronas al LLM a un pool de 40 hilos de trabajo, evitando el bloqueo que afectaría a los usuarios concurrentes.»*
+
+### Pregunta 6: *«¿Dónde y cómo están programadas las defensas contra inyección de prompts y alucinaciones (OWASP LLM01)?»*
+* **Respuesta del Equipo:**  
+  *«En 3 archivos complementarios: en `app/services/llm.py` mediante el aislamiento semántico `<solicitud>{texto}</solicitud>`, en `app/schemas.py` mediante contratos Pydantic V2 con `extra="forbid"`, y en `app/tools/priorizar.py` calculando el SLA con código determinista puro en Python. Toda la trazabilidad está detallada en nuestro documento [docs/10-perimetro-seguridad-y-defensas-llm.md](file:///c:/Users/Cris/Downloads/Programas%20APP/Seminario/APP%20IA/docs/10-perimetro-seguridad-y-defensas-llm.md).»*
+
+### Pregunta 7: *«¿Cómo demuestran en vivo la diferencia entre un LLM vulnerable y su sistema con gobernanza determinista?»*
+* **Respuesta del Equipo:**  
+  *«Implementamos un interruptor en el Simulador de Resiliencia: 'Modo Vulnerable (Sin Defensas)'. Al apagar las defensas, el evaluador observa en vivo cómo el LLM cede al prompt adverso, alucinando 'Prioridad Infinita' y el manual falso 'DOC-99' en una tarjeta roja. Al encender nuevamente 'Defensas IA', el sistema contiene el mismo ataque de forma matemática en Prioridad Baja y Nivel 0 Fuera de Alcance.»*
+
