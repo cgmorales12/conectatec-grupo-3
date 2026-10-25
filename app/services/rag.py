@@ -60,8 +60,20 @@ def consultar_base_conocimiento(texto_problema: str) -> DiagnosticoRAG:
     if any(termino in texto_lower for termino in ["los roja", "corte de fibra", "rotura", "mordido", "fibra rota", "los parpadea"]):
         requiere_cuadrilla = True
 
-    # Si hay coincidencias específicas, recuperar citas de los manuales
-    docs_a_citar = [p[0] for p in puntajes[:2]] if puntajes else ["DOC-03", "DOC-15"]
+    # Si no hay coincidencias con ningún manual y no es corte óptico, responder fuera de alcance
+    if not puntajes and not requiere_cuadrilla:
+        return DiagnosticoRAG(
+            solucion_propuesta=(
+                "La consulta no describe ninguna avería técnica ni falla en la infraestructura de Internet o telecomunicaciones. "
+                "No se requiere despacho de cuadrilla ni manipulación de equipos. "
+                "Si experimenta problemas de conectividad o luces anómalas en el módem/ONT, por favor descríbalos detalladamente."
+            ),
+            citas=[],
+            requiere_visita_campo=False
+        )
+
+    # Si hay coincidencias específicas, recuperar citas de los manuales más relevantes
+    docs_a_citar = [p[0] for p in puntajes[:2]] if puntajes else ["DOC-01"]
     
     for doc_id in docs_a_citar:
         contenido = _obtener_contenido_manual(doc_id)

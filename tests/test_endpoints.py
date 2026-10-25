@@ -167,3 +167,23 @@ def test_listar_tickets_tablero():
         assert "metadatos_ia" in primer_ticket
         assert "proveedor" in primer_ticket["metadatos_ia"]
 
+
+def test_solicitud_fuera_de_alcance_no_tecnica():
+    """Valida que solicitudes no relacionadas con averías de telecomunicaciones se identifiquen como fuera de alcance."""
+    payload = {
+        "nombre_cliente": "Christian Morales",
+        "email_cliente": "christian@example.com",
+        "descripcion_problema": "Hola soporte, quisiera saber porque no llueve hoy en la ciudad."
+    }
+
+    response = client.post("/v1/tickets/clasificar", json=payload)
+    assert response.status_code == 201
+    ticket = response.json()
+
+    assert ticket["categoria"] == "Solicitud No Técnica / Fuera de Alcance"
+    assert ticket["prioridad"] == "Baja"
+    assert ticket["requiere_revision_humana"] is True
+    assert len(ticket["citas"]) == 0
+    assert "no describe ninguna avería técnica" in ticket["solucion_propuesta"]
+
+

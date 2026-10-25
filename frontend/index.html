@@ -436,8 +436,12 @@
                 const prioClass = t.prioridad === 'Alta' ? 'p-alta' : (t.prioridad === 'Media' ? 'p-media' : 'p-baja');
                 card.className = `ticket-card ${prioClass}`;
 
-                const citaTxt = t.citas && t.citas.length > 0 ? 
-                    `📖 <b>${t.citas[0].documento_id}:</b> ${t.citas[0].paso_exacto}` : 'Autoatención Nivel 1';
+                let citaTxt = 'ℹ️ Autoatención Nivel 1';
+                if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
+                    citaTxt = '⚠️ Solicitud No Técnica / Fuera de Alcance (Sin avería)';
+                } else if (t.citas && t.citas.length > 0) {
+                    citaTxt = `📖 <b>${t.citas[0].documento_id}:</b> ${t.citas[0].paso_exacto}`;
+                }
 
                 card.innerHTML = `
                     <div class="ticket-header">

@@ -28,7 +28,7 @@ Tu función es clasificar las incidencias reportadas por los clientes en formato
 
 Debes extraer exactamente los siguientes campos:
 {
-  "categoria": "Equipos de Cliente / ONT | Conectividad y Fibra Óptica | Redes Inalámbricas y Wi-Fi | Calidad y Velocidad | Facturacion y Cuentas",
+  "categoria": "Equipos de Cliente / ONT | Conectividad y Fibra Óptica | Redes Inalámbricas y Wi-Fi | Calidad y Velocidad | Facturacion y Cuentas | Solicitud No Técnica / Fuera de Alcance",
   "impacto": "Alto | Medio | Bajo",
   "urgencia": "Alta | Media | Baja",
   "sintomas_detectados": ["lista", "de", "luces", "o", "fallos"],
@@ -39,7 +39,8 @@ Reglas de negocio:
 1. Si se menciona corte total de servicio, luz LOS roja en la ONT o corte de fibra, Impacto=Alto y Urgencia=Alta.
 2. Si se menciona lentitud o mala cobertura en habitaciones lejanas, Impacto=Medio y Urgencia=Media.
 3. Si se solicita cambio de clave Wi-Fi o consulta de pago, Impacto=Bajo y Urgencia=Baja.
-4. Responde ÚNICAMENTE el objeto JSON sin bloques Markdown adicionales ni texto antes o después.
+4. Si la solicitud NO contiene una avería ni problema técnico de conectividad o telecomunicaciones (ej. preguntas ajenas como 'porque no llueve', clima, comida, saludos aislados o bromas), clasifica en categoria="Solicitud No Técnica / Fuera de Alcance", Impacto="Bajo", Urgencia="Baja" y explica en justificacion que la consulta no corresponde al soporte del ISP.
+5. Responde ÚNICAMENTE el objeto JSON sin bloques Markdown adicionales ni texto antes o después.
 """
 
 def anonimizar_datos_sensibles(texto: str) -> str:
@@ -141,9 +142,28 @@ def clasificar_solicitud(texto_usuario: str) -> Tuple[ClasificacionIA, Metadatos
     return clasificacion, metadatos
 
 def _clasificar_heuristicamente(texto: str) -> ClasificacionIA:
-    """Clasificación determinista de contingencia basada en reglas ITIL."""
+    """Clasificación determinista de contingencia basada en reglas ITIL y detección de alcance."""
     t = texto.lower()
     
+    # Términos técnicos representativos del dominio de soporte ISP
+    palabras_tecnicas = [
+        "internet", "red", "fibra", "wifi", "wi-fi", "router", "modem", "ont", "cable",
+        "luz", "luces", "pon", "los", "lan", "wlan", "clave", "contraseña", "password",
+        "lento", "lentitud", "velocidad", "mbps", "ping", "dns", "ip", "mora", "factura",
+        "pago", "servicio", "conectar", "conecta", "navegar", "navego", "pagina", "puerto",
+        "pppoe", "señal", "enlace", "desconexión", "intermitente", "caida", "caída"
+    ]
+    
+    # Detección de mensajes fuera del ámbito técnico (ej. preguntas sobre clima, saludos sin contexto)
+    if not any(k in t for k in palabras_tecnicas):
+        return ClasificacionIA(
+            categoria="Solicitud No Técnica / Fuera de Alcance",
+            impacto="Bajo",
+            urgencia="Baja",
+            sintomas_detectados=["Sin incidencia técnica identificable"],
+            justificacion="El reporte no describe ninguna avería, falla técnica ni problema en el servicio de Internet."
+        )
+
     if any(k in t for k in ["los roja", "fibra rota", "corte total", "sin servicio", "no navego", "luz roja"]):
         return ClasificacionIA(
             categoria="Conectividad y Fibra Óptica",
@@ -151,6 +171,14 @@ def _clasificar_heuristicamente(texto: str) -> ClasificacionIA:
             urgencia="Alta",
             sintomas_detectados=["LED LOS rojo", "Pérdida de enlace óptico"],
             justificacion="Detección de corte de fibra o alarma óptica crítica."
+        )
+    elif any(k in t for k in ["mora", "factura", "pago", "cobranza", "corte por mora", "suspensión"]):
+        return ClasificacionIA(
+            categoria="Facturación y Cuentas",
+            impacto="Bajo",
+            urgencia="Baja",
+            sintomas_detectados=["Corte comercial por cobranzas"],
+            justificacion="Suspensión temporal por valores pendientes de pago."
         )
     elif any(k in t for k in ["lento", "lentitud", "velocidad", "microcorte", "intermitente"]):
         return ClasificacionIA(
@@ -173,6 +201,6 @@ def _clasificar_heuristicamente(texto: str) -> ClasificacionIA:
             categoria="Atención General / Soporte Nivel 1",
             impacto="Medio",
             urgencia="Media",
-            sintomas_detectados=["Consulta de soporte general"],
-            justificacion="Clasificación estándar para seguimiento de mesa de ayuda."
+            sintomas_detectados=["Consulta técnica general"],
+            justificacion="Clasificación estándar para seguimiento de mesa de ayuda técnica."
         )

@@ -50,7 +50,11 @@ def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn):
 
     
     estado_inicial = "escalado_cuadrilla" if diagnostico_rag.requiere_visita_campo else "nuevo"
-    requiere_revision = metadatos_ia.conmutado or clasificacion_ia.impacto == "Alto"
+    requiere_revision = (
+        metadatos_ia.conmutado or 
+        clasificacion_ia.impacto == "Alto" or
+        clasificacion_ia.categoria == "Solicitud No Técnica / Fuera de Alcance"
+    )
     
     datos_ticket = {
         "ticket_codigo": codigo_ticket,
