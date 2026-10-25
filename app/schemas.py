@@ -29,6 +29,7 @@ class SolicitudTicketIn(BaseModel):
     simular_caida_gemini: bool = Field(False, description="Simula fallo HTTP 503 o cuota 429 en Google Gemini")
     simular_caida_groq: bool = Field(False, description="Simula indisponibilidad en el respaldo Groq Cloud")
     simular_caida_rag: bool = Field(False, description="Simula corte o desconexión del corpus de 15 manuales RAG")
+    modo_vulnerable: bool = Field(False, description="Desactiva defensas Pydantic y matriz determinista para simular alucinación e inyección libre (OWASP LLM01)")
 
 
 class ActualizarEstadoIn(BaseModel):
@@ -59,6 +60,8 @@ class MetadatosIA(BaseModel):
     tokens_prompt: Optional[int] = Field(None, description="Tokens de entrada consumidos (prompt + system)")
     tokens_completado: Optional[int] = Field(None, description="Tokens de salida generados (JSON estructurado)")
     tokens_total: Optional[int] = Field(None, description="Total de tokens consumidos en la llamada LLM")
+    modo_vulnerable: Optional[bool] = Field(False, description="True si se procesó en modo vulnerable sin defensas de seguridad")
+    alucinacion_detectada: Optional[bool] = Field(False, description="True si se detectó violación de contrato o alucinación simulada")
 
 
 class ClasificacionIA(BaseModel):
@@ -66,8 +69,8 @@ class ClasificacionIA(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     categoria: str = Field(..., description="Categoría técnica del incidente")
-    impacto: str = Field(..., pattern="^(Alto|Medio|Bajo)$", description="Nivel de impacto según alcance")
-    urgencia: str = Field(..., pattern="^(Alta|Media|Baja)$", description="Nivel de urgencia según criticidad")
+    impacto: str = Field(..., description="Nivel de impacto según alcance")
+    urgencia: str = Field(..., description="Nivel de urgencia según criticidad")
     sintomas_detectados: List[str] = Field(default_factory=list, description="Lista de síntomas o luces identificadas")
     justificacion: str = Field(..., description="Breve justificación técnica de la clasificación")
 

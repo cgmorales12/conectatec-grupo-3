@@ -412,6 +412,18 @@
         .ticket-card.p-alta { border-left-color: var(--alta); }
         .ticket-card.p-media { border-left-color: var(--media); }
         .ticket-card.p-baja { border-left-color: var(--baja); }
+        .ticket-card.p-alucinacion {
+            border-left-color: #E11D48;
+            background: #FFF1F2;
+            border: 2px solid #FDA4AF;
+        }
+
+        .p-alucinacion .ticket-prio {
+            background: #FFE4E6;
+            color: #BE123C;
+            border: 1px solid #FECDD3;
+            font-weight: 800;
+        }
 
         .ticket-header {
             display: flex;
@@ -698,6 +710,10 @@
                 <input type="checkbox" id="toggleRAG" checked onchange="actualizarEstadoSimulacion()">
                 <span class="switch-label" id="lblRAG">🟢 RAG (15 PDFs): ACTIVO</span>
             </label>
+            <label class="switch-box" id="boxVulnerable" title="Desactiva el esquema Pydantic y la matriz ITIL para demostrar la alucinación libre e inyección directa (OWASP LLM01)">
+                <input type="checkbox" id="toggleVulnerable" onchange="actualizarEstadoSimulacion()">
+                <span class="switch-label" id="lblVulnerable">🛡️ Defensas IA: ACTIVAS</span>
+            </label>
         </div>
     </div>
 
@@ -865,15 +881,17 @@
             document.getElementById('descripcionProblema').value = p.desc;
 
             if (p.autoSimularCaida) {
-                // Desactiva automáticamente el proveedor primario en el simulador para forzar la conmutación al respaldo
+                // Activa el modo vulnerable y desconecta Gemini para forzar la alucinación y failover visible
                 document.getElementById('toggleGemini').checked = false;
+                document.getElementById('toggleVulnerable').checked = true;
                 actualizarEstadoSimulacion();
-                mostrarToast('🧪 Modo Alucinación activado: Gemini desactivado en el simulador para forzar contingencia resiliente en Groq Cloud.', 'alerta');
+                mostrarToast('🧪 Caso Alucinación Cargado: Modo Vulnerable activo para demostrar alucinación cruda.', 'alerta');
             } else {
-                // Restaurar estado nominal si se selecciona un preset estándar
+                // Restaurar estado nominal con defensas activas si se selecciona un preset estándar
                 document.getElementById('toggleGemini').checked = true;
                 document.getElementById('toggleGroq').checked = true;
                 document.getElementById('toggleRAG').checked = true;
+                document.getElementById('toggleVulnerable').checked = false;
                 actualizarEstadoSimulacion();
             }
         }
@@ -1008,7 +1026,17 @@
 
         function crearTarjetaTicketHtml(t, estado) {
             const card = document.createElement('div');
-            const prioClass = t.prioridad === 'Alta' ? 'p-alta' : (t.prioridad === 'Media' ? 'p-media' : 'p-baja');
+            const esAlucinacion = Boolean(
+                (t.metadatos_ia && t.metadatos_ia.alucinacion_detectada) ||
+                (t.metadatos_ia && t.metadatos_ia.modo_vulnerable) ||
+                (t.prioridad && t.prioridad.includes('Infinita')) ||
+                (t.impacto && t.impacto.includes('Cósmico'))
+            );
+
+            let prioClass = t.prioridad === 'Alta' ? 'p-alta' : (t.prioridad === 'Media' ? 'p-media' : 'p-baja');
+            if (esAlucinacion) {
+                prioClass = 'p-alucinacion';
+            }
             card.className = `ticket-card ${prioClass}`;
 
             // Determinación explícita del Nivel de Soporte ITIL
@@ -1137,8 +1165,23 @@
                 lblRAG.textContent = '🔴 RAG: DESCONECTADO';
             }
 
+            const vulnOk = document.getElementById('toggleVulnerable') ? document.getElementById('toggleVulnerable').checked : false;
+            const boxVuln = document.getElementById('boxVulnerable');
+            const lblVuln = document.getElementById('lblVulnerable');
+            if (boxVuln && lblVuln) {
+                if (vulnOk) {
+                    boxVuln.classList.add('caido');
+                    lblVuln.textContent = '🚨 Modo Vulnerable: SIN DEFENSAS';
+                } else {
+                    boxVuln.classList.remove('caido');
+                    lblVuln.textContent = '🛡️ Defensas IA: ACTIVAS';
+                }
+            }
+
             const badge = document.getElementById('iaStatusBadge');
-            if (geminiOk) {
+            if (vulnOk) {
+                badge.innerHTML = `<span class="dot-orange" style="background:#E11D48;"></span><span style="color:#BE123C; font-weight:700;">🚨 MODO VULNERABLE ACTIVO: Sin esquema Pydantic</span>`;
+            } else if (geminiOk) {
                 badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Google Gemini (gemini-3.5-flash-lite)</span>`;
             } else if (groqOk) {
                 badge.innerHTML = `<span class="dot-orange"></span><span>🟠 Failover Preparado: Groq Cloud (openai/gpt-oss-120b)</span>`;
@@ -1171,7 +1214,8 @@
                 descripcion_problema: document.getElementById('descripcionProblema').value,
                 simular_caida_gemini: !document.getElementById('toggleGemini').checked,
                 simular_caida_groq: !document.getElementById('toggleGroq').checked,
-                simular_caida_rag: !document.getElementById('toggleRAG').checked
+                simular_caida_rag: !document.getElementById('toggleRAG').checked,
+                modo_vulnerable: document.getElementById('toggleVulnerable') ? document.getElementById('toggleVulnerable').checked : false
             };
 
             try {
@@ -1206,6 +1250,13 @@
         function abrirModalExplicabilidad(ticketId) {
             const t = (window._ticketsCargados || []).find(x => x.id === ticketId);
             if (!t) return;
+
+            const esAlucinacion = Boolean(
+                (t.metadatos_ia && t.metadatos_ia.alucinacion_detectada) ||
+                (t.metadatos_ia && t.metadatos_ia.modo_vulnerable) ||
+                (t.prioridad && t.prioridad.includes('Infinita')) ||
+                (t.impacto && t.impacto.includes('Cósmico'))
+            );
 
             // Determinación y justificación del Nivel de Soporte ITIL
             let nivelTexto = 'Nivel 1 · Autoatención Guiada';
@@ -1271,7 +1322,18 @@
                 : '';
 
             document.getElementById('xaiCodigoTicket').textContent = `${t.ticket_codigo} · ${t.nombre_cliente}`;
+
+            const bannerAlucinacionHtml = esAlucinacion ? `
+                <div style="background:#FFF1F2; border:2px solid #FDA4AF; border-radius:8px; padding:12px; margin-bottom:14px; color:#9F1239;">
+                    <div style="font-weight:800; font-size:13.5px; margin-bottom:4px;">🚨 ALUCINACIÓN DETECTADA (Demostración de Falla OWASP LLM01)</div>
+                    <div style="font-size:12px; line-height:1.4;">
+                        Este ticket fue procesado en <b>Modo Vulnerable (Sin esquema Pydantic V2 ni Matriz ITIL)</b>. El LLM aceptó la inyección del atacante, inventó el manual inexistente <code>DOC-99</code> y manipuló la prioridad a <code>Infinita</code>, demostrando por qué la regla <em>«El modelo propone, el código dispone»</em> es indispensable.
+                    </div>
+                </div>
+            ` : '';
+
             document.getElementById('xaiContenido').innerHTML = `
+                ${bannerAlucinacionHtml}
                 <!-- 1. Clasificación IA -->
                 <div class="xai-section">
                     <div class="xai-title">🧠 1. Triaje Inteligente con Modelo de Lenguaje (LLM)</div>
@@ -1282,11 +1344,11 @@
                         </div>
                         <div class="xai-item">
                             <div class="xai-item-label">Impacto Extraído:</div>
-                            <div class="xai-item-val">${t.impacto}</div>
+                            <div class="xai-item-val" style="color: ${esAlucinacion ? '#BE123C; font-weight:700;' : 'inherit'}">${t.impacto}</div>
                         </div>
                         <div class="xai-item">
                             <div class="xai-item-label">Urgencia Extraída:</div>
-                            <div class="xai-item-val">${t.urgencia}</div>
+                            <div class="xai-item-val" style="color: ${esAlucinacion ? '#BE123C; font-weight:700;' : 'inherit'}">${t.urgencia}</div>
                         </div>
                     </div>
                     <div class="xai-quote">
@@ -1298,9 +1360,15 @@
                 <!-- 2. Matriz ITIL Determinista -->
                 <div class="xai-section">
                     <div class="xai-title">📐 2. Priorización Determinista ITIL (Código Python)</div>
-                    <p style="font-size:12px; color:#64748B; margin:0 0 8px 0;">
-                        <em>«El modelo propone, el código dispone»</em>: La prioridad no fue calculada por el LLM, sino por el backend matemático leyendo <code>config/matriz_prioridad.json</code>.
-                    </p>
+                    ${esAlucinacion ? `
+                        <div class="xai-quote" style="border-left-color:#E11D48; color:#9F1239; background:#FFF1F2;">
+                            🚨 <strong>Falla de Gobernanza:</strong> Al no tener activa la matriz determinista, el LLM impuso directamente <b>Prioridad Infinita</b>, violando los SLAs del ISP.
+                        </div>
+                    ` : `
+                        <p style="font-size:12px; color:#64748B; margin:0 0 8px 0;">
+                            <em>«El modelo propone, el código dispone»</em>: La prioridad no fue calculada por el LLM, sino por el backend matemático leyendo <code>config/matriz_prioridad.json</code>.
+                        </p>
+                    `}
                     <div class="xai-grid">
                         <div class="xai-item">
                             <div class="xai-item-label">Fórmula Aplicada:</div>

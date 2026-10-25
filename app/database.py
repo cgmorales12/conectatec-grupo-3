@@ -65,6 +65,10 @@ def inicializar_bd():
         cursor.execute("ALTER TABLE tickets ADD COLUMN tokens_completado INTEGER")
     if "tokens_total" not in columnas:
         cursor.execute("ALTER TABLE tickets ADD COLUMN tokens_total INTEGER")
+    if "modo_vulnerable" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN modo_vulnerable INTEGER DEFAULT 0")
+    if "alucinacion_detectada" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN alucinacion_detectada INTEGER DEFAULT 0")
     conn.commit()
     conn.close()
 
@@ -77,6 +81,10 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
     conn = _obtener_conexion()
     cursor = conn.cursor()
     
+    meta = datos.get("metadatos_ia", {})
+    modo_vuln = 1 if meta.get("modo_vulnerable") else 0
+    aluc_det = 1 if meta.get("alucinacion_detectada") else 0
+    
     cursor.execute("""
         INSERT INTO tickets (
             ticket_codigo, fecha_creacion, nombre_cliente, email_cliente,
@@ -84,8 +92,8 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
             sla_minutos, descripcion_sla, solucion_propuesta, citas_json,
             estado, requiere_revision_humana, proveedor_ia, modelo_ia,
             conmutado, motivo_conmutacion, latencia_ms, justificacion, sintomas_json,
-            tokens_prompt, tokens_completado, tokens_total
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            tokens_prompt, tokens_completado, tokens_total, modo_vulnerable, alucinacion_detectada
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         datos["ticket_codigo"],
         datos["fecha_creacion"],
@@ -102,16 +110,18 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
         json.dumps(datos.get("citas", [])),
         datos.get("estado", "nuevo"),
         1 if datos.get("requiere_revision_humana") else 0,
-        datos["metadatos_ia"]["proveedor"],
-        datos["metadatos_ia"]["modelo"],
-        1 if datos["metadatos_ia"]["conmutado"] else 0,
-        datos["metadatos_ia"].get("motivo_conmutacion"),
-        datos["metadatos_ia"].get("latencia_ms"),
+        meta.get("proveedor", "gemini"),
+        meta.get("modelo", "desconocido"),
+        1 if meta.get("conmutado") else 0,
+        meta.get("motivo_conmutacion"),
+        meta.get("latencia_ms"),
         datos.get("justificacion"),
         json.dumps(datos.get("sintomas_detectados", [])),
-        datos["metadatos_ia"].get("tokens_prompt"),
-        datos["metadatos_ia"].get("tokens_completado"),
-        datos["metadatos_ia"].get("tokens_total")
+        meta.get("tokens_prompt"),
+        meta.get("tokens_completado"),
+        meta.get("tokens_total"),
+        modo_vuln,
+        aluc_det
     ))
     
     nuevo_id = cursor.lastrowid
@@ -160,10 +170,13 @@ def listar_tickets() -> List[Dict[str, Any]]:
                 "latencia_ms": t_raw["latencia_ms"],
                 "tokens_prompt": t_raw["tokens_prompt"] if "tokens_prompt" in t_raw.keys() else None,
                 "tokens_completado": t_raw["tokens_completado"] if "tokens_completado" in t_raw.keys() else None,
-                "tokens_total": t_raw["tokens_total"] if "tokens_total" in t_raw.keys() else None
+                "tokens_total": t_raw["tokens_total"] if "tokens_total" in t_raw.keys() else None,
+                "modo_vulnerable": bool(t_raw["modo_vulnerable"]) if "modo_vulnerable" in t_raw.keys() else False,
+                "alucinacion_detectada": bool(t_raw["alucinacion_detectada"]) if "alucinacion_detectada" in t_raw.keys() else False
             }
         }
         tickets.append(ticket_limpio)
+    return tickets
     return tickets
 
 def actualizar_estado_ticket(ticket_id: int, nuevo_estado: str) -> bool:

@@ -58,15 +58,40 @@ def anonimizar_datos_sensibles(texto: str) -> str:
 def clasificar_solicitud(
     texto_usuario: str,
     simular_caida_gemini: bool = False,
-    simular_caida_groq: bool = False
+    simular_caida_groq: bool = False,
+    modo_vulnerable: bool = False
 ) -> Tuple[ClasificacionIA, MetadatosIA]:
     """
     Clasifica la solicitud aplicando la delimitación <solicitud>, sanitización de claves
     e invoca a Gemini 3.5 Flash Lite con failover transparente hacia Groq si ocurre fallo 429/503.
-    Soporta banderas de simulación de fallos (Chaos Engineering) para demostración evaluativa.
+    Soporta banderas de simulación de fallos (Chaos Engineering) y modo vulnerable para demostración evaluativa.
     """
     t_inicio = time.time()
     
+    # Modo de Demostración Evaluativa: LLM Vulnerable a Inyección y Alucinación (OWASP LLM01)
+    if modo_vulnerable:
+        latencia = round((time.time() - t_inicio) * 1000, 2)
+        clasificacion = ClasificacionIA(
+            categoria="🚨 Inyección Exitosa / Alucinación Libre (OWASP LLM01)",
+            impacto="Cósmico (Alucinado por LLM)",
+            urgencia="Extrema (Alucinada por LLM)",
+            sintomas_detectados=["Inyección adverso aceptada", "Bypass de delimitadores", "Manual inventado DOC-99"],
+            justificacion="El modelo de lenguaje operó sin delimitadores semánticos <solicitud> ni validación Pydantic V2, cediendo a la inyección y alucinando atributos fantásticos fuera de las reglas del ISP."
+        )
+        metadatos = MetadatosIA(
+            proveedor="groq" if simular_caida_gemini else "gemini",
+            modelo="modo-vulnerable-sin-filtros",
+            conmutado=simular_caida_gemini,
+            motivo_conmutacion="Modo Vulnerable Activo: Demostración de alucinación e inyección libre sin defensas." if not simular_caida_gemini else "Gemini caído (simulado) + Modo Vulnerable.",
+            latencia_ms=latencia if latencia > 0 else 12.4,
+            tokens_prompt=548,
+            tokens_completado=386,
+            tokens_total=934,
+            modo_vulnerable=True,
+            alucinacion_detectada=True
+        )
+        return clasificacion, metadatos
+
     # Capa 1: Sanitización de contraseñas (LOPDP)
     texto_seguro = anonimizar_datos_sensibles(texto_usuario)
     
