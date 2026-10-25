@@ -1,0 +1,67 @@
+{
+  "version": "1.0.0",
+  "estandar": "ITIL 4 - Gestion de Incidentes para Instituciones Educativas (TecnoAula)",
+  "niveles_impacto": {
+    "Alto": "Afecta a una clase completa, laboratorio activo, aula magna o servicio critico de campus",
+    "Medio": "Afecta a un departamento administrativo, varios docentes o una oficina",
+    "Bajo": "Afecta a un solo usuario sin paralizar una actividad academica en curso"
+  },
+  "niveles_urgencia": {
+    "Alta": "La clase esta en curso, hay una evaluacion activa o un tramite institucional con vencimiento inmediato",
+    "Media": "Afecta la preparacion de clase o actividades del dia, pero existen alternativas provisionales",
+    "Baja": "Consulta, solicitud de mantenimiento preventivo o configuracion planificada a futuro"
+  },
+  "matriz": {
+    "Alto": {
+      "Alta": {
+        "prioridad": "Alta",
+        "sla_minutos": 15,
+        "descripcion_sla": "Atencion inmediata presencial en aula (menos de 15 min)"
+      },
+      "Media": {
+        "prioridad": "Alta",
+        "sla_minutos": 60,
+        "descripcion_sla": "Atencion prioritaria en menos de 1 hora"
+      },
+      "Baja": {
+        "prioridad": "Media",
+        "sla_minutos": 240,
+        "descripcion_sla": "Atencion en menos de 4 horas laborables"
+      }
+    },
+    "Medio": {
+      "Alta": {
+        "prioridad": "Alta",
+        "sla_minutos": 30,
+        "descripcion_sla": "Atencion en menos de 30 minutos"
+      },
+      "Media": {
+        "prioridad": "Media",
+        "sla_minutos": 240,
+        "descripcion_sla": "Atencion en menos de 4 horas laborables"
+      },
+      "Baja": {
+        "prioridad": "Baja",
+        "sla_minutos": 480,
+        "descripcion_sla": "Atencion en la jornada laboral (8 horas)"
+      }
+    },
+    "Bajo": {
+      "Alta": {
+        "prioridad": "Media",
+        "sla_minutos": 120,
+        "descripcion_sla": "Atencion en menos de 2 horas"
+      },
+      "Media": {
+        "prioridad": "Baja",
+        "sla_minutos": 480,
+        "descripcion_sla": "Atencion en la jornada laboral (8 horas)"
+      },
+      "Baja": {
+        "prioridad": "Baja",
+        "sla_minutos": 1440,
+        "descripcion_sla": "Atencion en 24 horas laborables"
+      }
+    }
+  }
+}
