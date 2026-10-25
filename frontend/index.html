@@ -229,6 +229,33 @@
         }
         .act-btn:hover { background: #F4F6F8; border-color: #919EAB; }
 
+        .toast-notif {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #212B36;
+            color: #FFFFFF;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            font-size: 13.5px;
+            font-weight: 500;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            transform: translateY(100px);
+            opacity: 0;
+        }
+        .toast-notif.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast-notif.alerta {
+            border-left: 5px solid #FFAB00;
+        }
+
         @media (max-width: 1200px) {
             .container { grid-template-columns: 1fr; }
             .kanban-board { grid-template-columns: 1fr 1fr; }
@@ -358,12 +385,33 @@
             document.getElementById('descripcionProblema').value = p.desc;
         }
 
+        function mostrarToast(mensaje, tipo = 'info') {
+            let toast = document.getElementById('toastNotif');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'toastNotif';
+                toast.className = 'toast-notif';
+                document.body.appendChild(toast);
+            }
+            toast.className = `toast-notif visible ${tipo}`;
+            toast.textContent = mensaje;
+            clearTimeout(window._toastTimeout);
+            window._toastTimeout = setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 4000);
+        }
+
         async function cargarTickets() {
             try {
                 const res = await fetch(API_URL);
-                if (!res.ok) return;
-                const data = await res.json();
-                renderizarTablero(data.tickets);
+                if (res.ok) {
+                    const data = await res.json();
+                    renderizarTablero(data.tickets);
+                } else if (res.status === 429) {
+                    const espera = res.headers.get('Retry-After') || '2';
+                    mostrarToast(`🛡️ Token Bucket activo: Actualizando en ${espera}s...`, 'alerta');
+                    setTimeout(cargarTickets, parseInt(espera) * 1000);
+                }
             } catch (err) {
                 console.error("Error al cargar tickets:", err);
             }
@@ -426,7 +474,13 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ nuevo_estado: nuevoEstado })
                 });
-                if (res.ok) cargarTickets();
+                if (res.ok) {
+                    cargarTickets();
+                } else if (res.status === 429) {
+                    const espera = res.headers.get('Retry-After') || '2';
+                    mostrarToast(`🛡️ Token Bucket activo (RFC 6585): Reintentando cambio en ${espera}s...`, 'alerta');
+                    setTimeout(() => cambiarEstado(ticketId, nuevoEstado), parseInt(espera) * 1000);
+                }
             } catch (err) {
                 console.error("Error al cambiar estado:", err);
             }

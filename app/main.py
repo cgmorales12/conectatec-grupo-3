@@ -47,15 +47,16 @@ app.add_middleware(
 # Capacidad: 10 fichas | Recarga: 1 ficha cada 6 segundos
 # ============================================================================
 
-CUBETA_CAPACIDAD = 10.0
-CUBETA_RECARGA_SEGUNDOS = 6.0
+CUBETA_CAPACIDAD = 15.0
+CUBETA_RECARGA_SEGUNDOS = 3.0
 
 _cubetas_clientes = defaultdict(lambda: {"fichas": CUBETA_CAPACIDAD, "ultimo_tiempo": time.time()})
 
 @app.middleware("http")
 async def limitador_tasa_token_bucket(request: Request, call_next):
-    # Excluir rutas de salud y documentación de límites
-    if request.url.path in ["/", "/health", "/v1/salud", "/docs", "/redoc", "/openapi.json"]:
+    # Excluir rutas de interfaz gráfica, salud y documentación de límites de consumo
+    rutas_excluidas = ["/", "/health", "/v1/salud", "/docs", "/redoc", "/openapi.json", "/tablero", "/favicon.ico"]
+    if request.url.path in rutas_excluidas or request.url.path.startswith("/docs"):
         return await call_next(request)
         
     client_ip = request.client.host if request.client else "127.0.0.1"
