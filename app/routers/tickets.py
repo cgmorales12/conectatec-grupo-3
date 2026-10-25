@@ -79,7 +79,9 @@ def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn):
         "citas": [c.model_dump() for c in diagnostico_rag.citas],
         "estado": estado_inicial,
         "requiere_revision_humana": requiere_revision,
-        "metadatos_ia": metadatos_ia.model_dump()
+        "metadatos_ia": metadatos_ia.model_dump(),
+        "justificacion": clasificacion_ia.justificacion,
+        "sintomas_detectados": clasificacion_ia.sintomas_detectados
     }
     
     # 5. Persistencia en SQLite
@@ -87,6 +89,8 @@ def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn):
     datos_ticket["id"] = nuevo_id
     datos_ticket["citas"] = diagnostico_rag.citas
     datos_ticket["metadatos_ia"] = metadatos_ia
+    datos_ticket["justificacion"] = clasificacion_ia.justificacion
+    datos_ticket["sintomas_detectados"] = clasificacion_ia.sintomas_detectados
     
     return TicketOut(**datos_ticket)
 

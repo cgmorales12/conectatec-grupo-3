@@ -20,7 +20,7 @@ def _obtener_conexion():
     return conn
 
 def inicializar_bd():
-    """Crea la tabla de tickets si no existe."""
+    """Crea la tabla de tickets si no existe y aplica migraciones automáticas."""
     conn = _obtener_conexion()
     cursor = conn.cursor()
     cursor.execute("""
@@ -45,9 +45,17 @@ def inicializar_bd():
             modelo_ia TEXT NOT NULL,
             conmutado INTEGER NOT NULL DEFAULT 0,
             motivo_conmutacion TEXT,
-            latencia_ms REAL
+            latencia_ms REAL,
+            justificacion TEXT,
+            sintomas_json TEXT
         )
     """)
+    # Migración retrocompatible para tablas preexistentes
+    columnas = [col[1] for col in cursor.execute("PRAGMA table_info(tickets)").fetchall()]
+    if "justificacion" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN justificacion TEXT")
+    if "sintomas_json" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN sintomas_json TEXT")
     conn.commit()
     conn.close()
 
@@ -66,8 +74,8 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
             descripcion_problema, categoria, impacto, urgencia, prioridad,
             sla_minutos, descripcion_sla, solucion_propuesta, citas_json,
             estado, requiere_revision_humana, proveedor_ia, modelo_ia,
-            conmutado, motivo_conmutacion, latencia_ms
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            conmutado, motivo_conmutacion, latencia_ms, justificacion, sintomas_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         datos["ticket_codigo"],
         datos["fecha_creacion"],
@@ -88,7 +96,9 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
         datos["metadatos_ia"]["modelo"],
         1 if datos["metadatos_ia"]["conmutado"] else 0,
         datos["metadatos_ia"].get("motivo_conmutacion"),
-        datos["metadatos_ia"].get("latencia_ms")
+        datos["metadatos_ia"].get("latencia_ms"),
+        datos.get("justificacion"),
+        json.dumps(datos.get("sintomas_detectados", []))
     ))
     
     nuevo_id = cursor.lastrowid
@@ -108,6 +118,8 @@ def listar_tickets() -> List[Dict[str, Any]]:
     for r in rows:
         t_raw = dict(r)
         citas_data = json.loads(t_raw["citas_json"]) if t_raw.get("citas_json") else []
+        sintomas_data = json.loads(t_raw["sintomas_json"]) if t_raw.get("sintomas_json") else []
+        
         ticket_limpio = {
             "id": t_raw["id"],
             "ticket_codigo": t_raw["ticket_codigo"],
@@ -125,6 +137,8 @@ def listar_tickets() -> List[Dict[str, Any]]:
             "citas": citas_data,
             "estado": t_raw["estado"],
             "requiere_revision_humana": bool(t_raw["requiere_revision_humana"]),
+            "justificacion": t_raw.get("justificacion") or "Clasificación generada automáticamente según políticas y matriz ITIL.",
+            "sintomas_detectados": sintomas_data,
             "metadatos_ia": {
                 "proveedor": t_raw["proveedor_ia"],
                 "modelo": t_raw["modelo_ia"],

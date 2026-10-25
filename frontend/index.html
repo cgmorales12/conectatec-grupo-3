@@ -357,6 +357,153 @@
         }
         .act-btn:hover { background: #F4F6F8; border-color: #919EAB; }
 
+        .exp-btn {
+            background: #F0FDF4;
+            color: #166534;
+            border: 1px solid #BBF7D0;
+            font-weight: 700;
+            width: 100%;
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .exp-btn:hover {
+            background: #DCFCE7;
+            border-color: #86EFAC;
+            box-shadow: 0 2px 4px rgba(22, 101, 52, 0.1);
+        }
+
+        /* Modal de Explicabilidad XAI */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 16px;
+        }
+
+        .modal-backdrop.activo {
+            display: flex;
+        }
+
+        .modal-card {
+            background: #FFFFFF;
+            width: 100%;
+            max-width: 680px;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid #E2E8F0;
+            overflow: hidden;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            animation: modalEntrada 0.25s ease-out;
+        }
+
+        @keyframes modalEntrada {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-header {
+            background: #111A2C;
+            color: #FFF;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #206E62;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: #94A3B8;
+            font-size: 20px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: color 0.15s;
+        }
+
+        .modal-close:hover { color: #FFF; }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .xai-section {
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 12px 16px;
+            background: #F8FAFC;
+        }
+
+        .xai-title {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            color: #475569;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .xai-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .xai-item {
+            background: #FFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+
+        .xai-item-label { font-size: 11px; color: #64748B; font-weight: 600; margin-bottom: 2px; }
+        .xai-item-val { font-size: 13px; font-weight: 700; color: #0F172A; }
+
+        .xai-quote {
+            background: #FFF;
+            border-left: 3px solid #206E62;
+            padding: 8px 12px;
+            font-size: 12.5px;
+            color: #334155;
+            border-radius: 0 8px 8px 0;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
         .toast-notif {
             position: fixed;
             bottom: 24px;
@@ -572,6 +719,7 @@
         }
 
         function renderizarTablero(tickets) {
+            window._ticketsCargados = tickets;
             const cols = {
                 nuevo: document.getElementById('cards-nuevo'),
                 en_atencion: document.getElementById('cards-en_atencion'),
@@ -643,6 +791,7 @@
                         <div class="meta-row"><span class="meta-lbl">IA:</span> ${iaTxt}</div>
                     </div>
                     <div class="ticket-cita">${citaTxt}</div>
+                    <button type="button" class="exp-btn" onclick="abrirModalExplicabilidad(${t.id})">💡 ¿Por qué esta clasificación?</button>
                     <div class="ticket-actions">
                         ${estado !== 'en_atencion' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'en_atencion')">⚙️ Atender</button>` : ''}
                         ${estado !== 'escalado_cuadrilla' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'escalado_cuadrilla')">🚚 Escalar</button>` : ''}
@@ -776,9 +925,192 @@
             }
         });
 
+        function abrirModalExplicabilidad(ticketId) {
+            const t = (window._ticketsCargados || []).find(x => x.id === ticketId);
+            if (!t) return;
+
+            // Determinación y justificación del Nivel de Soporte ITIL
+            let nivelTexto = 'Nivel 1 · Autoatención Guiada';
+            let nivelIcono = 'ℹ️';
+            let motivoNivel = 'La avería puede resolverse de forma guiada por el propio cliente siguiendo las instrucciones operativas del manual técnico oficial.';
+
+            if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
+                nivelTexto = 'Nivel 0 · Fuera de Alcance';
+                nivelIcono = '⚪';
+                motivoNivel = 'La consulta no describe ninguna avería técnica ni falla en la infraestructura de Internet o telecomunicaciones del ISP.';
+            } else if (t.estado === 'escalado_cuadrilla' || t.prioridad === 'Alta' || t.categoria.includes('Fibra')) {
+                nivelTexto = 'Nivel 3 · Cuadrilla de Campo';
+                nivelIcono = '🚚';
+                motivoNivel = 'Se detectó corte de fibra óptica o indicador óptico crítico (luz LOS roja), requiriendo intervención presencial de cuadrilla con fusionadora.';
+            } else if (t.prioridad === 'Media' || t.categoria.includes('Velocidad') || t.categoria.includes('Calidad') || t.categoria.includes('Atención General')) {
+                nivelTexto = 'Nivel 2 · Soporte Remoto / NOC';
+                nivelIcono = '💻';
+                motivoNivel = 'Incidencia de red, latencia o parámetros lógicos que requiere diagnóstico y configuración remota por un técnico en consola.';
+            }
+
+            // Información y citas RAG
+            let infoRAG = '';
+            if (t.citas && t.citas.length > 0) {
+                const c = t.citas[0];
+                infoRAG = `
+                    <div class="xai-grid">
+                        <div class="xai-item">
+                            <div class="xai-item-label">Documento Oficial Citado:</div>
+                            <div class="xai-item-val">${c.documento_id}: ${c.titulo_documento}</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Paso Operativo Verificado:</div>
+                            <div class="xai-item-val">${c.paso_exacto}</div>
+                        </div>
+                    </div>
+                    <div class="xai-quote">
+                        <strong>Fragmento Técnico Aplicado:</strong><br>
+                        «${c.fragmento_aplicado}»
+                    </div>
+                `;
+            } else if (t.categoria.includes('Fuera de Alcance')) {
+                infoRAG = `
+                    <div class="xai-quote" style="border-left-color: #94A3B8;">
+                        ℹ️ <strong>Sin citas documentales:</strong> La solicitud no corresponde al soporte del ISP, por lo que no aplica ningún procedimiento técnico de los 15 manuales.
+                    </div>
+                `;
+            } else {
+                infoRAG = `
+                    <div class="xai-quote" style="border-left-color: #EF4444;">
+                        ⚠️ <strong>Sin citas documentales:</strong> El repositorio RAG no estuvo disponible o no se detectó procedimiento de autoatención. Caso derivado directamente a soporte humano Nivel 2.
+                    </div>
+                `;
+            }
+
+            // Metadatos de IA y Gateway
+            const meta = t.metadatos_ia;
+            let provBadge = meta.proveedor === 'gemini' 
+                ? '🟢 Google Gemini 3.5' 
+                : (meta.proveedor === 'groq' ? '🟠 Groq Cloud (Respaldo)' : '🔵 Motor Local Heurístico');
+            
+            let motivoConmutacionHtml = meta.conmutado 
+                ? `<div class="xai-item" style="grid-column: 1 / -1;"><div class="xai-item-label">Motivo de Failover / Conmutación:</div><div class="xai-item-val" style="color:#B76E00; font-size:12px;">${meta.motivo_conmutacion || 'Activación de respaldo por indisponibilidad del modelo primario.'}</div></div>` 
+                : '';
+
+            document.getElementById('xaiCodigoTicket').textContent = `${t.ticket_codigo} · ${t.nombre_cliente}`;
+            document.getElementById('xaiContenido').innerHTML = `
+                <!-- 1. Clasificación IA -->
+                <div class="xai-section">
+                    <div class="xai-title">🧠 1. Triaje Inteligente con Modelo de Lenguaje (LLM)</div>
+                    <div class="xai-grid">
+                        <div class="xai-item">
+                            <div class="xai-item-label">Categoría Identificada:</div>
+                            <div class="xai-item-val">${t.categoria}</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Impacto Extraído:</div>
+                            <div class="xai-item-val">${t.impacto}</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Urgencia Extraída:</div>
+                            <div class="xai-item-val">${t.urgencia}</div>
+                        </div>
+                    </div>
+                    <div class="xai-quote">
+                        <strong>Justificación Técnica del Modelo:</strong><br>
+                        ${t.justificacion || 'Evaluación contextual según síntomas y reglas de triaje.'}
+                    </div>
+                </div>
+
+                <!-- 2. Matriz ITIL Determinista -->
+                <div class="xai-section">
+                    <div class="xai-title">📐 2. Priorización Determinista ITIL (Código Python)</div>
+                    <p style="font-size:12px; color:#64748B; margin:0 0 8px 0;">
+                        <em>«El modelo propone, el código dispone»</em>: La prioridad no fue calculada por el LLM, sino por el backend matemático leyendo <code>config/matriz_prioridad.json</code>.
+                    </p>
+                    <div class="xai-grid">
+                        <div class="xai-item">
+                            <div class="xai-item-label">Fórmula Aplicada:</div>
+                            <div class="xai-item-val">${t.impacto} × ${t.urgencia}</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Prioridad Resultante:</div>
+                            <div class="xai-item-val" style="color: ${t.prioridad === 'Alta' ? '#E53E3E' : (t.prioridad === 'Media' ? '#DD6B20' : '#319795')};">${t.prioridad}</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">SLA Comprometido:</div>
+                            <div class="xai-item-val">${t.sla_minutos} min (${t.descripcion_sla})</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Nivel de Soporte ITIL -->
+                <div class="xai-section">
+                    <div class="xai-title">🏷️ 3. Asignación del Nivel de Soporte ITIL</div>
+                    <div class="xai-item" style="margin-bottom:6px;">
+                        <div class="xai-item-label">Nivel Asignado:</div>
+                        <div class="xai-item-val">${nivelIcono} ${nivelTexto}</div>
+                    </div>
+                    <div class="xai-quote">
+                        <strong>Criterio de Escalación:</strong> ${motivoNivel}
+                    </div>
+                </div>
+
+                <!-- 4. Resolución RAG -->
+                <div class="xai-section">
+                    <div class="xai-title">📖 4. Resolución y Citas RAG (15 Manuales Técnicos)</div>
+                    ${infoRAG}
+                </div>
+
+                <!-- 5. Trazabilidad Gateway -->
+                <div class="xai-section">
+                    <div class="xai-title">🛡️ 5. Trazabilidad del Gateway y Failover</div>
+                    <div class="xai-grid">
+                        <div class="xai-item">
+                            <div class="xai-item-label">Proveedor Ejecutado:</div>
+                            <div class="xai-item-val">${provBadge}</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Modelo Activo:</div>
+                            <div class="xai-item-val">${meta.modelo}</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Latencia Inferencia:</div>
+                            <div class="xai-item-val">${meta.latencia_ms || '--'} ms</div>
+                        </div>
+                        ${motivoConmutacionHtml}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('modalExplicabilidad').classList.add('activo');
+        }
+
+        function cerrarModalExplicabilidad() {
+            document.getElementById('modalExplicabilidad').classList.remove('activo');
+        }
+
+        function cerrarModalSiClickAfuera(event) {
+            if (event.target.id === 'modalExplicabilidad') {
+                cerrarModalExplicabilidad();
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') cerrarModalExplicabilidad();
+        });
+
         // Inicializar estado de simulación y cargar tickets
         actualizarEstadoSimulacion();
         cargarTickets();
     </script>
+
+    <!-- Ventana Modal de Explicabilidad y Trazabilidad XAI -->
+    <div id="modalExplicabilidad" class="modal-backdrop" onclick="cerrarModalSiClickAfuera(event)">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>🔍 Explicabilidad & Trazabilidad · <span id="xaiCodigoTicket"></span></h3>
+                <button type="button" class="modal-close" onclick="cerrarModalExplicabilidad()" title="Cerrar ventana">✕</button>
+            </div>
+            <div class="modal-body" id="xaiContenido">
+                <!-- Rellenado dinámicamente con JavaScript -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>

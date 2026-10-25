@@ -118,6 +118,8 @@ class TicketOut(BaseModel):
     estado: str
     requiere_revision_humana: bool
     metadatos_ia: MetadatosIA
+    justificacion: Optional[str] = Field(None, description="Justificación técnica de la clasificación generada por la IA")
+    sintomas_detectados: List[str] = Field(default_factory=list, description="Lista de síntomas técnicos identificados")
 
 
 class ListaTicketsOut(BaseModel):
