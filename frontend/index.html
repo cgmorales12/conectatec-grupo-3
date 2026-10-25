@@ -918,9 +918,9 @@
                 <input type="checkbox" id="toggleRAG" checked onchange="actualizarEstadoSimulacion()">
                 <span class="switch-label" id="lblRAG">🟢 RAG (15 PDFs): ACTIVO</span>
             </label>
-            <label class="switch-box" id="boxVulnerable" title="Desactiva el esquema Pydantic y la matriz ITIL para demostrar la alucinación libre e inyección directa (OWASP LLM01)">
-                <input type="checkbox" id="toggleVulnerable" onchange="actualizarEstadoSimulacion()">
-                <span class="switch-label" id="lblVulnerable">🛡️ Defensas IA: ACTIVAS</span>
+            <label class="switch-box" id="boxDefensas" title="Activa o desactiva las defensas de seguridad Pydantic y la matriz ITIL determinista">
+                <input type="checkbox" id="toggleDefensas" checked onchange="actualizarEstadoSimulacion()">
+                <span class="switch-label" id="lblDefensas">🟢 🛡️ Defensas IA: ACTIVAS</span>
             </label>
         </div>
     </div>
@@ -1089,17 +1089,17 @@
             document.getElementById('descripcionProblema').value = p.desc;
 
             if (p.autoSimularCaida) {
-                // Activa el modo vulnerable y desconecta Gemini para forzar la alucinación y failover visible
+                // Desconecta Gemini y desactiva las defensas (checked = false, gris) para forzar alucinación visible
                 document.getElementById('toggleGemini').checked = false;
-                document.getElementById('toggleVulnerable').checked = true;
+                document.getElementById('toggleDefensas').checked = false;
                 actualizarEstadoSimulacion();
-                mostrarToast('🧪 Caso Alucinación Cargado: Modo Vulnerable activo para demostrar alucinación cruda.', 'alerta');
+                mostrarToast('🧪 Caso Alucinación Cargado: Defensas desactivadas para demostrar alucinación cruda.', 'alerta');
             } else {
-                // Restaurar estado nominal con defensas activas si se selecciona un preset estándar
+                // Restaurar estado nominal con defensas activas (checked = true, verde)
                 document.getElementById('toggleGemini').checked = true;
                 document.getElementById('toggleGroq').checked = true;
                 document.getElementById('toggleRAG').checked = true;
-                document.getElementById('toggleVulnerable').checked = false;
+                document.getElementById('toggleDefensas').checked = true;
                 actualizarEstadoSimulacion();
             }
         }
@@ -1381,22 +1381,22 @@
                 lblRAG.textContent = '🔴 RAG: DESCONECTADO';
             }
 
-            const vulnOk = document.getElementById('toggleVulnerable') ? document.getElementById('toggleVulnerable').checked : false;
-            const boxVuln = document.getElementById('boxVulnerable');
-            const lblVuln = document.getElementById('lblVulnerable');
-            if (boxVuln && lblVuln) {
-                if (vulnOk) {
-                    boxVuln.classList.add('caido');
-                    lblVuln.textContent = '🚨 Modo Vulnerable: SIN DEFENSAS';
+            const defensasOk = document.getElementById('toggleDefensas') ? document.getElementById('toggleDefensas').checked : true;
+            const boxDefensas = document.getElementById('boxDefensas');
+            const lblDefensas = document.getElementById('lblDefensas');
+            if (boxDefensas && lblDefensas) {
+                if (defensasOk) {
+                    boxDefensas.classList.remove('caido');
+                    lblDefensas.textContent = '🟢 🛡️ Defensas IA: ACTIVAS';
                 } else {
-                    boxVuln.classList.remove('caido');
-                    lblVuln.textContent = '🛡️ Defensas IA: ACTIVAS';
+                    boxDefensas.classList.add('caido');
+                    lblDefensas.textContent = '⚪ 🚨 Defensas IA: DESACTIVADAS';
                 }
             }
 
             const badge = document.getElementById('iaStatusBadge');
-            if (vulnOk) {
-                badge.innerHTML = `<span class="dot-orange" style="background:#E11D48;"></span><span style="color:#BE123C; font-weight:700;">🚨 MODO VULNERABLE ACTIVO: Sin esquema Pydantic</span>`;
+            if (!defensasOk) {
+                badge.innerHTML = `<span class="dot-orange" style="background:#E11D48;"></span><span style="color:#BE123C; font-weight:700;">🚨 DEFENSAS DESACTIVADAS: Simulación vulnerable sin esquema Pydantic</span>`;
             } else if (geminiOk) {
                 badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Google Gemini (gemini-3.5-flash-lite)</span>`;
             } else if (groqOk) {
@@ -1431,7 +1431,7 @@
                 simular_caida_gemini: !document.getElementById('toggleGemini').checked,
                 simular_caida_groq: !document.getElementById('toggleGroq').checked,
                 simular_caida_rag: !document.getElementById('toggleRAG').checked,
-                modo_vulnerable: document.getElementById('toggleVulnerable') ? document.getElementById('toggleVulnerable').checked : false
+                modo_vulnerable: document.getElementById('toggleDefensas') ? !document.getElementById('toggleDefensas').checked : false
             };
 
             try {
