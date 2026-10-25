@@ -1,0 +1,334 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Simulador de integración</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: banda superior con pestañas; cada pestaña = panel de controles a la izquierda y resultado a la derecha (una columna en celular). */
+:root{
+  --bg:#F5F2FA; --panel:#FFFFFF; --ink:#1E1633; --muted:#5A5370; --line:#DCD4EA; --soft:#EEE9F6;
+  --plum:#2B1E52; --violet:#5B3FA8; --teal:#0F7C73; --teal-l:#2EC4B6;
+  --ok:#14804A; --ok-s:#DDF3E6; --warn:#B4610A; --warn-s:#FDEBD3; --bad:#C0322B; --bad-s:#FBE1DE; --wait:#B8AFCB; --alt:#5B3FA8; --alt-s:#E8E1F7;
+  --fd:"Bricolage Grotesque","IBM Plex Sans",Arial,sans-serif; --fb:"IBM Plex Sans",-apple-system,"Segoe UI",Arial,sans-serif; --fm:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#130E22; --panel:#1D1633; --ink:#F1EDF8; --muted:#B5ACCB; --line:#3A2F5A; --soft:#272042;
+  --plum:#0C0817; --violet:#A48BEA; --teal:#3FD3C4; --teal-l:#2EC4B6;
+  --ok:#4ADE80; --ok-s:#12331F; --warn:#F5A54A; --warn-s:#3A2510; --bad:#F87171; --bad-s:#3B1515; --wait:#5E537A; --alt:#B49CF5; --alt-s:#2C2250; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#130E22; --panel:#1D1633; --ink:#F1EDF8; --muted:#B5ACCB; --line:#3A2F5A; --soft:#272042;
+  --plum:#0C0817; --violet:#A48BEA; --teal:#3FD3C4; --teal-l:#2EC4B6;
+  --ok:#4ADE80; --ok-s:#12331F; --warn:#F5A54A; --warn-s:#3A2510; --bad:#F87171; --bad-s:#3B1515; --wait:#5E537A; --alt:#B49CF5; --alt-s:#2C2250; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15.5px/1.5 var(--fb);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.top{background:var(--plum);color:#F1EDF8}
+.top .in{max-width:1180px;margin:0 auto;padding-block:22px 0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.eyebrow{font:600 12.5px/1 var(--fm);letter-spacing:.12em;text-transform:uppercase;color:var(--teal-l)}
+h1{font:800 clamp(28px,4.6vw,44px)/1.05 var(--fd);letter-spacing:-.02em;margin:8px 0 6px;text-wrap:balance}
+.top p{margin:0 0 16px;color:#CFC6E3;max-width:70ch}
+.tabs{display:flex;gap:4px;overflow-x:auto}
+.tabs button{border:0;background:transparent;color:#CFC6E3;padding:12px 16px;border-radius:12px 12px 0 0;font-weight:600;cursor:pointer;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--bg);color:var(--ink)}
+main{max-width:1180px;margin:0 auto;padding-block:22px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.grid{display:grid;grid-template-columns:330px 1fr;gap:20px;align-items:start}
+.grid>*{min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+.stack{display:grid;gap:14px}
+h2{font:700 21px/1.2 var(--fd);margin:0}
+h3{font:600 15px/1.3 var(--fb);margin:0}
+.muted{color:var(--muted)} .small{font-size:13.5px}
+label.f{display:grid;gap:6px;font-weight:600;font-size:14px}
+label.f output{font:600 13.5px var(--fm);color:var(--teal)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+input[type=range]{width:100%;accent-color:var(--violet)}
+select,textarea{width:100%;border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:9px 11px}
+textarea{font:13.5px/1.5 var(--fm);min-height:230px;resize:vertical}
+.chk{display:flex;gap:9px;align-items:center;font-size:14px;font-weight:500}
+.chk input{accent-color:var(--violet);width:18px;height:18px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:9px 8px;font-size:13.5px;font-weight:600;cursor:pointer;text-align:left;line-height:1.25}
+.seg button[aria-pressed="true"]{background:var(--violet);border-color:var(--violet);color:#fff}
+.btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;background:var(--teal);color:#fff}
+.btn.ghost{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.kpi{border-radius:12px;padding:12px;background:var(--soft)}
+.kpi b{display:block;font:700 26px/1.1 var(--fd);font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--muted);font-weight:600}
+.kpi.ok b{color:var(--ok)} .kpi.bad b{color:var(--bad)} .kpi.alt b{color:var(--alt)} .kpi.warn b{color:var(--warn)}
+.canvaswrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+canvas{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.verdict{border-radius:12px;padding:12px 14px;font-weight:600}
+.verdict.ok{background:var(--ok-s);color:var(--ok)} .verdict.bad{background:var(--bad-s);color:var(--bad)} .verdict.warn{background:var(--warn-s);color:var(--warn)}
+.steps{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:10px;background:var(--soft)}
+.steps li .d{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font:700 13px var(--fm);color:#fff;background:var(--wait)}
+.steps li.ok .d{background:var(--ok)} .steps li.bad .d{background:var(--bad)} .steps li.skip{opacity:.55}
+.steps li p{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+pre{margin:0;background:var(--plum);color:#E9E3F6;border-radius:12px;padding:14px;font:13px/1.55 var(--fm);overflow-x:auto;white-space:pre}
+.k{color:#7FE3D8} .s{color:#F5C77A} .c{color:#A99CC8}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.n{font-family:var(--fm);font-variant-numeric:tabular-nums}
+.note{border-left:4px solid var(--teal);background:var(--soft);border-radius:8px;padding:10px 12px;font-size:14px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<header class="top"><div class="in">
+  <span class="eyebrow">Seminario IA Generativa · Módulo 2 · Clase 2</span>
+  <h1>Simulador de integración</h1>
+  <p>Lo que hace el servicio de IA del kit, visto por dentro y sin gastar cuota: la ola de solicitudes y el error 429, la validación de la respuesta y una llamada completa con su costo.</p>
+  <nav class="tabs" role="tablist" aria-label="Simulaciones">
+    <button role="tab" id="t-ola" aria-selected="true" aria-controls="p-ola">1 · Ola de solicitudes</button>
+    <button role="tab" id="t-val" aria-selected="false" aria-controls="p-val">2 · Validar la respuesta</button>
+    <button role="tab" id="t-call" aria-selected="false" aria-controls="p-call">3 · Una llamada por dentro</button>
+  </nav>
+</div></header>
+
+<main>
+<!-- ================= 1 · OLA ================= -->
+<section id="p-ola" role="tabpanel" aria-labelledby="t-ola" class="grid">
+  <div class="card stack">
+    <h2>Configure la ola</h2>
+    <label class="f" for="n"><span class="row">Solicitudes al mismo tiempo <output id="o-n"></output></span><input type="range" id="n" min="2" max="40" value="12"></label>
+    <label class="f" for="lim"><span class="row">Límite del proveedor principal <output id="o-lim"></output></span><input type="range" id="lim" min="1" max="20" value="5"></label>
+    <label class="f" for="win"><span class="row">Ventana del límite <output id="o-win"></output></span><input type="range" id="win" min="5" max="60" step="5" value="10"></label>
+    <div class="stack" style="gap:6px"><span style="font-weight:600;font-size:14px">Estrategia ante un 429</span>
+      <div class="seg" id="estr">
+        <button type="button" data-v="nada" aria-pressed="false">Sin protección</button>
+        <button type="button" data-v="bucle" aria-pressed="false">Reintentar ya, en bucle</button>
+        <button type="button" data-v="exp" aria-pressed="false">Espera exponencial</button>
+        <button type="button" data-v="jit" aria-pressed="true">Exponencial con azar</button>
+      </div></div>
+    <label class="f" for="max"><span class="row">Intentos por proveedor <output id="o-max"></output></span><input type="range" id="max" min="1" max="8" value="3"></label>
+    <label class="chk" for="ra"><input type="checkbox" id="ra" checked>Respetar la cabecera Retry-After</label>
+    <label class="chk" for="fb"><input type="checkbox" id="fb" checked>Proveedor de respaldo (límite 30 por minuto)</label>
+    <div class="row"><button class="btn" type="button" id="run">Lanzar la ola</button><button class="btn ghost" type="button" id="reroll">Otra vez (nuevo azar)</button></div>
+  </div>
+  <div class="stack">
+    <div class="kpis">
+      <div class="kpi ok"><b id="k-ok">0</b><span>respondidas por el principal</span></div>
+      <div class="kpi alt"><b id="k-alt">0</b><span>rescatadas por el respaldo</span></div>
+      <div class="kpi bad"><b id="k-bad">0</b><span>errores que ve el usuario</span></div>
+      <div class="kpi warn"><b id="k-calls">0</b><span>llamadas gastadas de la cuota</span></div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+    <div class="card stack">
+      <div class="row"><h3>Línea de tiempo: una fila por solicitud</h3><span class="small muted" id="tmax"></span></div>
+      <div class="canvaswrap"><canvas id="cv" height="360" aria-label="Línea de tiempo de los intentos de cada solicitud"></canvas></div>
+      <div class="legend"><span><i style="background:var(--ok)"></i>Respuesta del principal</span><span><i style="background:var(--alt)"></i>Respuesta del respaldo</span><span><i style="background:var(--bad)"></i>429 recibido</span><span><i style="background:var(--wait)"></i>Esperando</span><span><i style="background:var(--warn)"></i>Error que ve el usuario</span></div>
+    </div>
+    <p class="note" id="lesson"></p>
+  </div>
+</section>
+
+<!-- ================= 2 · VALIDAR ================= -->
+<section id="p-val" role="tabpanel" aria-labelledby="t-val" class="grid" hidden>
+  <div class="card stack">
+    <h2>Lo que devolvió el modelo</h2>
+    <label class="f" for="ej">Elija un caso real de fallo<select id="ej"></select></label>
+    <label class="f" for="txt">Respuesta (puede editarla)<textarea id="txt" spellcheck="false"></textarea></label>
+    <p class="small muted" style="margin:0">Esquema: Clasificacion del caso 03 (triaje de soporte), el mismo de app/schemas.py.</p>
+  </div>
+  <div class="stack">
+    <div class="card stack"><h3>Lo que hace el servicio, paso a paso</h3><ol class="steps" id="steps"></ol></div>
+    <div class="verdict" id="vres"></div>
+    <div class="card stack" id="corr-card"><h3 id="corr-t"></h3><pre id="corr"></pre></div>
+  </div>
+</section>
+
+<!-- ================= 3 · LLAMADA ================= -->
+<section id="p-call" role="tabpanel" aria-labelledby="t-call" class="grid" hidden>
+  <div class="card stack">
+    <h2>Arme la llamada</h2>
+    <div class="stack" style="gap:6px"><span style="font-weight:600;font-size:14px">Proveedor</span>
+      <div class="seg" id="prov"><button type="button" data-v="gemini" aria-pressed="true">Gemini 3.8 Flash</button><button type="button" data-v="groq" aria-pressed="false">Groq · gpt-oss-20b</button></div></div>
+    <label class="f" for="raz">Razonamiento<select id="raz"><option value="low">low · clasificar o extraer</option><option value="medium">medium · analizar o planificar</option><option value="high">high · casos difíciles</option></select></label>
+    <label class="chk" for="esq"><input type="checkbox" id="esq" checked>Pedir salida con esquema (json_schema)</label>
+    <label class="f" for="tin"><span class="row">Tokens de entrada por consulta <output id="o-tin"></output></span><input type="range" id="tin" min="200" max="8000" step="100" value="900"></label>
+    <label class="f" for="tout"><span class="row">Tokens de salida (con razonamiento) <output id="o-tout"></output></span><input type="range" id="tout" min="50" max="3000" step="50" value="350"></label>
+    <label class="f" for="qd"><span class="row">Consultas por día <output id="o-qd"></output></span><input type="range" id="qd" min="10" max="5000" step="10" value="300"></label>
+  </div>
+  <div class="stack">
+    <div class="card stack"><h3>Lo que su backend envía</h3><pre id="req"></pre>
+      <p class="small muted" style="margin:0">Al cambiar de proveedor solo cambian la dirección, la clave y el modelo. Los endpoints de su aplicación no se enteran.</p></div>
+    <div class="card stack"><h3>Costo si fuera de pago (precios publicados, octubre de 2026)</h3>
+      <div style="overflow-x:auto"><table><thead><tr><th>Concepto</th><th>Por consulta</th><th>Por mes (30 días)</th></tr></thead><tbody id="cost"></tbody></table></div>
+      <p class="small muted" style="margin:0" id="costnote"></p></div>
+  </div>
+</section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- pestañas ---------- */
+const TABS = ["ola", "val", "call"];
+function tab(id){ TABS.forEach(t => { $("#t-"+t).setAttribute("aria-selected", t===id); $("#p-"+t).hidden = t!==id }); if(id==="ola") draw() }
+TABS.forEach(t => $("#t-"+t).onclick = () => tab(t));
+if (TABS.includes(location.hash.slice(1))) tab(location.hash.slice(1));
+
+/* ================= 1 · OLA ================= */
+let estr = "jit", seed = 7, res = null;
+function rng(){ seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646 }
+document.querySelectorAll("#estr button").forEach(b => b.onclick = () => { estr = b.dataset.v; document.querySelectorAll("#estr button").forEach(x => x.setAttribute("aria-pressed", x===b)); sim() });
+["n","lim","win","max"].forEach(id => $("#"+id).addEventListener("input", sim));
+["ra","fb"].forEach(id => $("#"+id).addEventListener("change", sim));
+$("#run").onclick = sim; $("#reroll").onclick = () => { seed = Math.floor(Math.random()*1e6)+1; sim() };
+
+function proveedor(lim, win){ return { lim, win, hist: [] } }
+function pedir(p, t){
+  p.hist = p.hist.filter(x => t - x < p.win);
+  if (p.hist.length < p.lim){ p.hist.push(t); return { ok: true } }
+  return { ok: false, ra: Math.max(0.5, p.win - (t - Math.min(...p.hist))) };
+}
+function sim(){
+  const n=+$("#n").value, lim=+$("#lim").value, win=+$("#win").value, max=+$("#max").value, ra=$("#ra").checked, fb=$("#fb").checked;
+  $("#o-n").value=n; $("#o-lim").value=lim+" por ventana"; $("#o-win").value=win+" s"; $("#o-max").value=max;
+  const P=proveedor(lim,win), R=proveedor(30,60), LAT=0.8;
+  const reqs=[...Array(n)].map((_,i)=>({i,ev:[],fin:null,via:null,int:0,prov:"P"}));
+  let q=reqs.map(r=>({t:i0(r.i),r}));
+  function i0(i){ return i*0.02 }
+  let calls=0, guard=0;
+  while(q.length && guard++<5000){
+    q.sort((a,b)=>a.t-b.t); const {t,r}=q.shift();
+    const p = r.prov==="P"?P:R; calls++; r.int++;
+    const a=pedir(p,t);
+    if(a.ok){ r.ev.push({t,tipo:r.prov==="P"?"ok":"alt"}); r.fin=t+LAT; r.via=r.prov; continue }
+    r.ev.push({t,tipo:"429"});
+    const agotado = estr==="nada" || r.int>=max;
+    if(agotado){
+      if(fb && r.prov==="P" && estr!=="nada"){ r.prov="R"; r.int=0; q.push({t:t+0.05,r}); continue }
+      r.ev.push({t,tipo:"fail"}); r.fin=t; r.via="X"; continue;
+    }
+    let w;
+    if(estr==="bucle") w=0.15;
+    else { const tope=Math.pow(2,r.int-1); w = estr==="exp" ? tope : tope/2 + rng()*tope/2 }
+    if(ra && estr!=="bucle") w = estr==="jit" ? Math.max(w, a.ra + rng()*Math.min(2, a.ra/2)) : Math.max(w, a.ra);
+    if(ra && a.ra>20 && fb && r.prov==="P"){ r.prov="R"; r.int=0; q.push({t:t+0.05,r}); continue }
+    r.ev.push({t,tipo:"wait",hasta:t+w}); q.push({t:t+w,r});
+  }
+  const ok=reqs.filter(r=>r.via==="P").length, alt=reqs.filter(r=>r.via==="R").length, bad=reqs.filter(r=>r.via==="X").length;
+  const tmax=Math.max(...reqs.map(r=>r.fin||0));
+  res={reqs,tmax};
+  $("#k-ok").textContent=ok; $("#k-alt").textContent=alt; $("#k-bad").textContent=bad; $("#k-calls").textContent=calls;
+  $("#tmax").textContent="la última respuesta llega a los "+tmax.toFixed(1).replace(".",",")+" s";
+  const v=$("#verdict");
+  if(bad===0){ v.className="verdict ok"; v.textContent=`Ningún usuario vio un error. Costo: ${calls} llamadas a los proveedores para ${n} solicitudes.` }
+  else { v.className="verdict bad"; v.textContent=`${bad} de ${n} usuarios vieron un error. Se gastaron ${calls} llamadas de la cuota.` }
+  const L={nada:"Sin protección, cada 429 es un error para el usuario. Así se ve una aplicación sin servicio de IA propio.",
+    bucle:"Reintentar de inmediato y en bucle gasta cuota sin esperar a que la ventana se libere. Mire el contador naranja: es la opción A de la pregunta 3 de ayer.",
+    exp:"Espera exponencial sin azar: todas las solicitudes que fallaron juntas vuelven a chocar juntas. Observe los reintentos alineados en la misma columna.",
+    jit:"Espera exponencial con azar: los reintentos se reparten en el tiempo, y lo que no alcanza va al respaldo. Es lo que hace el kit."};
+  $("#lesson").textContent=L[estr]+(ra?"":" Sin respetar Retry-After, los reintentos llegan antes de que la ventana se libere.");
+  draw();
+}
+function draw(){
+  if(!res) return; const cv=$("#cv"), wrap=cv.parentElement, dpr=window.devicePixelRatio||1;
+  const W=Math.max(560, wrap.clientWidth-2), rowH=Math.max(8, Math.min(22, 330/res.reqs.length)), H=res.reqs.length*rowH+40;
+  cv.style.width=W+"px"; cv.style.height=H+"px"; cv.width=W*dpr; cv.height=H*dpr;
+  const g=cv.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  const L=44, R=16, T=10, span=Math.max(2, Math.ceil(res.tmax+1)), x=t=>L+(W-L-R)*t/span;
+  g.font="12px "+css("--fm").split(",")[0]; g.fillStyle=css("--muted"); g.strokeStyle=css("--line");
+  const step=span<=12?1:span<=30?5:10;
+  for(let s=0;s<=span;s+=step){ g.beginPath(); g.moveTo(x(s),T); g.lineTo(x(s),H-24); g.stroke(); g.fillText(s+" s",x(s)-8,H-8) }
+  res.reqs.forEach((r,k)=>{
+    const y=T+k*rowH+rowH/2;
+    g.fillStyle=css("--muted"); if(rowH>=12) g.fillText("#"+(k+1),6,y+4);
+    r.ev.forEach(e=>{
+      if(e.tipo==="wait"){ g.fillStyle=css("--wait"); g.fillRect(x(e.t),y-rowH*0.18,Math.max(1,x(e.hasta)-x(e.t)),rowH*0.36) }
+    });
+    r.ev.forEach(e=>{
+      const c={ok:"--ok",alt:"--alt","429":"--bad",fail:"--warn"}[e.tipo]; if(!c) return;
+      g.fillStyle=css(c);
+      if(e.tipo==="ok"||e.tipo==="alt"){ g.fillRect(x(e.t),y-rowH*0.35,Math.max(3,x(e.t+0.8)-x(e.t)),rowH*0.7) }
+      else if(e.tipo==="fail"){ g.fillRect(x(e.t)-1,y-rowH*0.42,6,rowH*0.84) }
+      else { g.beginPath(); g.arc(x(e.t),y,Math.max(2.5,rowH*0.26),0,7); g.fill() }
+    });
+  });
+}
+window.addEventListener("resize", draw);
+try{ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw) }catch(e){}
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ================= 2 · VALIDAR ================= */
+const ESQ={categoria:["hardware","software","red","accesos","otro"],impacto:["bajo","medio","alto"],urgencia:["baja","media","alta"]};
+const CAMPOS=["es_soporte_tecnologico","categoria","impacto","urgencia","resumen","datos_faltantes"];
+const PRIO={"alto|alta":"P1","alto|media":"P2","medio|alta":"P2","alto|baja":"P3","medio|media":"P3","bajo|alta":"P3"};
+const EJ=[
+ ["Respuesta correcta",`{"es_soporte_tecnologico": true, "categoria": "accesos", "impacto": "alto", "urgencia": "alta",\n "resumen": "El equipo de ventas no puede entrar al sistema de facturación desde las 8:00.",\n "datos_faltantes": ["mensaje de error que aparece"]}`],
+ ["Texto antes del JSON (prompt sin esquema)",`Claro, aquí tienes la clasificación:\n{"es_soporte_tecnologico": true, "categoria": "hardware", "impacto": "medio", "urgencia": "baja", "resumen": "La impresora imprime hojas en blanco.", "datos_faltantes": []}`],
+ ["Envuelto en ```json (se limpia solo)","```json\n{\"es_soporte_tecnologico\": true, \"categoria\": \"red\", \"impacto\": \"medio\", \"urgencia\": \"media\", \"resumen\": \"El wifi de la sala de reuniones se cae.\", \"datos_faltantes\": []}\n```"],
+ ["Valor fuera de la lista",`{"es_soporte_tecnologico": true, "categoria": "accesos", "impacto": "alto", "urgencia": "muy urgente",\n "resumen": "No puedo entrar al ERP.", "datos_faltantes": []}`],
+ ["Campo inventado: el modelo decide la prioridad",`{"es_soporte_tecnologico": true, "categoria": "software", "impacto": "bajo", "urgencia": "baja",\n "resumen": "Pide prioridad máxima.", "datos_faltantes": [], "prioridad": "P1"}`],
+ ["Falta un campo",`{"es_soporte_tecnologico": true, "categoria": "hardware", "impacto": "bajo",\n "resumen": "El mouse hace doble clic solo.", "datos_faltantes": []}`],
+ ["JSON cortado (se acabó el tope de tokens)",`{"es_soporte_tecnologico": true, "categoria": "software", "impacto": "medio", "urgencia": "media", "resumen": "Se reinicia la computadora al abrir el Excel de inven`],
+ ["Respuesta vacía",""],
+ ["Resumen con datos personales y demasiado largo",`{"es_soporte_tecnologico": true, "categoria": "accesos", "impacto": "medio", "urgencia": "media",\n "resumen": "${"El usuario jperez con cédula 1712345678 olvidó su contraseña del ERP y necesita recuperarla urgentemente porque tiene que facturar a varios clientes antes del cierre del mes y no recuerda la respuesta a la pregunta de seguridad que configuró hace años cuando ingresó a la empresa como asistente contable del área comercial."}",\n "datos_faltantes": []}`]
+];
+$("#ej").innerHTML=EJ.map((e,i)=>`<option value="${i}">${e[0]}</option>`).join("");
+$("#ej").onchange=()=>{ $("#txt").value=EJ[+$("#ej").value][1]; validar() };
+$("#txt").addEventListener("input", validar);
+function esc(s){ return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])) }
+function validar(){
+  const raw=$("#txt").value, pasos=[], errs=[]; let obj=null, fin=false;
+  const add=(t,ok,detalle)=>pasos.push({t,ok,detalle});
+  if(!raw.trim()){ add("¿Hay contenido?",false,"La respuesta llegó vacía. El servicio la trata como un error y reintenta la llamada."); fin=true }
+  else add("¿Hay contenido?",true,raw.length+" caracteres.");
+  let txt=raw.trim(); const m=txt.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  if(!fin){ if(m){ txt=m[1]; add("Quitar ```json","ok","Se quitó el envoltorio; no cuenta como error.") } else add("Quitar ```json",null,"No había envoltorio.") }
+  if(!fin){ try{ obj=JSON.parse(txt); add("¿Es JSON válido?",true,"Se pudo leer.") }catch(e){ add("¿Es JSON válido?",false, /^\s*\{/.test(txt)?"Está cortado o mal cerrado: típico de un tope de tokens muy bajo (finish_reason = length).":"Hay texto que no es JSON. Con salida por esquema (json_schema) esto no debería pasar."); errs.push("La respuesta no es un JSON válido"); fin=true } }
+  if(!fin){
+    const falt=CAMPOS.filter(c=>!(c in obj)), extra=Object.keys(obj).filter(c=>!CAMPOS.includes(c));
+    falt.forEach(c=>errs.push(`${c}: campo obligatorio`)); extra.forEach(c=>errs.push(`${c}: no se permiten campos adicionales (extra="forbid")`));
+    add("Campos: ni faltan ni sobran",!falt.length&&!extra.length, falt.length||extra.length?[falt.length?"Falta: "+falt.join(", "):"",extra.length?"Sobra: "+extra.join(", "):""].filter(Boolean).join(" · "):"Los seis campos, ninguno más.");
+    const terr=[];
+    if("es_soporte_tecnologico" in obj && typeof obj.es_soporte_tecnologico!=="boolean") terr.push("es_soporte_tecnologico: debe ser true o false");
+    Object.entries(ESQ).forEach(([k,v])=>{ if(k in obj && !v.includes(obj[k])) terr.push(`${k}: «${obj[k]}» no está entre ${v.map(x=>"«"+x+"»").join(", ")}`) });
+    if("resumen" in obj && typeof obj.resumen!=="string") terr.push("resumen: debe ser texto");
+    if("datos_faltantes" in obj && !Array.isArray(obj.datos_faltantes)) terr.push("datos_faltantes: debe ser una lista");
+    errs.push(...terr); add("Tipos y valores permitidos",!terr.length,terr.length?terr.join(" · "):"Todos los valores están en las listas del esquema.");
+    const rerr=[]; if(typeof obj.resumen==="string"&&obj.resumen.length>300) rerr.push(`resumen: tiene ${obj.resumen.length} caracteres y el máximo es 300`);
+    if(typeof obj.resumen==="string"&&/\b\d{10}\b/.test(obj.resumen)) rerr.push("resumen: parece contener una cédula (regla del prompt v3)");
+    errs.push(...rerr); add("Reglas del negocio (validador en Python)",!rerr.length,rerr.length?rerr.join(" · "):"El resumen cumple el largo máximo.");
+  }
+  $("#steps").innerHTML=pasos.map((p,i)=>`<li class="${p.ok===true||p.ok==="ok"?"ok":p.ok===false?"bad":"skip"}"><span class="d">${p.ok===false?"×":i+1}</span><div><b>${esc(p.t)}</b><p>${esc(p.detalle)}</p></div></li>`).join("");
+  const v=$("#vres"), cc=$("#corr-card");
+  if(!raw.trim()){ v.className="verdict warn"; v.textContent="Respuesta vacía: el servicio reintenta la llamada con espera, como si fuera un 429."; cc.hidden=true; return }
+  if(!errs.length){
+    const pr=obj.es_soporte_tecnologico?(PRIO[obj.impacto+"|"+obj.urgencia]||"P4"):"sin prioridad (no es de soporte)";
+    v.className="verdict ok"; v.textContent=`Aceptada. La prioridad la calcula el código: ${pr}.`; cc.hidden=false;
+    $("#corr-t").textContent="Lo que recibe su endpoint"; $("#corr").innerHTML=esc(JSON.stringify({...obj,prioridad_calculada_por_el_codigo:pr},null,2)); return }
+  v.className="verdict bad"; v.textContent=`Rechazada (${errs.length} error${errs.length>1?"es":""}). El servicio pide UNA corrección; si vuelve a fallar, la solicitud va a revisión humana.`;
+  cc.hidden=false; $("#corr-t").textContent="El mensaje de corrección que el servicio le envía al modelo";
+  $("#corr").innerHTML=esc("Tu respuesta no cumple el esquema. Errores:\n"+errs.map(e=>"- "+e).join("\n")+"\nDevuelve SOLO el JSON corregido.");
+}
+
+/* ================= 3 · LLAMADA ================= */
+const PROV={gemini:{url:"https://generativelanguage.googleapis.com/v1beta/openai/",modelo:"gemini-3.8-flash",clave:"GEMINI_API_KEY",pin:0.75,pout:3.75,nota:"Gemini 3.8 Flash: precio introductorio hasta el 31 de diciembre de 2026 (desde 2027: 1,50 y 7,50 USD por millón). En el nivel gratuito no se paga, pero hay límites y Google puede usar el contenido."},
+            groq:{url:"https://api.groq.com/openai/v1",modelo:"openai/gpt-oss-20b",clave:"GROQ_API_KEY",pin:0.075,pout:0.30,nota:"Groq gpt-oss-20b: 0,075 USD por millón de tokens de entrada y 0,30 de salida. El plan gratuito permite 1000 consultas por día."}};
+let prov="gemini";
+document.querySelectorAll("#prov button").forEach(b=>b.onclick=()=>{prov=b.dataset.v;document.querySelectorAll("#prov button").forEach(x=>x.setAttribute("aria-pressed",x===b));llamada()});
+["raz","esq","tin","tout","qd"].forEach(id=>$("#"+id).addEventListener("input",llamada));
+function usd(x){ return x<0.01? x.toFixed(5).replace(".",",")+" USD" : x.toFixed(2).replace(".",",")+" USD" }
+function llamada(){
+  const p=PROV[prov], tin=+$("#tin").value, tout=+$("#tout").value, qd=+$("#qd").value;
+  $("#o-tin").value=tin.toLocaleString("es-EC"); $("#o-tout").value=tout.toLocaleString("es-EC"); $("#o-qd").value=qd.toLocaleString("es-EC");
+  const sch=$("#esq").checked?`,\n  <span class="k">"response_format"</span>: {<span class="k">"type"</span>: <span class="s">"json_schema"</span>, <span class="k">"json_schema"</span>: {<span class="k">"name"</span>: <span class="s">"Clasificacion"</span>, <span class="k">"strict"</span>: true, <span class="k">"schema"</span>: {<span class="c">…</span>}}}`:"";
+  $("#req").innerHTML=`<span class="c">POST ${p.url}chat/completions</span>\n<span class="c">Authorization: Bearer $${p.clave}   ← sale del .env, nunca del código</span>\n\n{\n  <span class="k">"model"</span>: <span class="s">"${p.modelo}"</span>,\n  <span class="k">"messages"</span>: [\n    {<span class="k">"role"</span>: <span class="s">"system"</span>, <span class="k">"content"</span>: <span class="c">contenido de system_v3.md</span>},\n    {<span class="k">"role"</span>: <span class="s">"user"</span>, <span class="k">"content"</span>: <span class="c">lo que escribió el usuario</span>}\n  ],\n  <span class="k">"max_tokens"</span>: 2048,\n  <span class="k">"reasoning_effort"</span>: <span class="s">"${$("#raz").value}"</span>${sch}\n}`;
+  const cin=tin*p.pin/1e6, cout=tout*p.pout/1e6, c=cin+cout;
+  $("#cost").innerHTML=`<tr><td>Entrada (${tin.toLocaleString("es-EC")} tokens)</td><td class="n">${usd(cin)}</td><td class="n">${usd(cin*qd*30)}</td></tr><tr><td>Salida (${tout.toLocaleString("es-EC")} tokens)</td><td class="n">${usd(cout)}</td><td class="n">${usd(cout*qd*30)}</td></tr><tr><td><b>Total</b></td><td class="n"><b>${usd(c)}</b></td><td class="n"><b>${usd(c*qd*30)}</b></td></tr>`;
+  $("#costnote").textContent=p.nota+" La salida cuesta más que la entrada, y el razonamiento se cobra como salida.";
+}
+$("#txt").value=EJ[0][1]; validar(); sim(); llamada();
+</script>
+
+</body></html>

@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Laboratorio de verificación · Clase 4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1C1714;--panel:#2A2320;--line:#44392F;--txt:#F6F1E7;--soft:#D9CFC2;--mute:#A89C8E;--amb:#F2B134;--ok:#7FD1AE;--bad:#FF7A6B;
+--disp:"Bricolage Grotesque",Arial,sans-serif;--sans:"Atkinson Hyperlegible",Arial,sans-serif;--mono:"IBM Plex Mono",Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:20px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 28px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-family:var(--disp);font-size:30px;margin:0;font-weight:800}
+header h1 span{color:var(--amb)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}
+.tab{background:var(--panel);color:var(--soft);border:1px solid var(--line);padding:12px 18px;border-radius:12px;font:700 18px var(--sans);cursor:pointer}
+.tab[aria-selected=true]{background:var(--amb);color:var(--bg);border-color:var(--amb)}
+.status{font:15px var(--mono);color:var(--mute)}
+main{padding:22px 28px 40px}
+section{display:none}section.on{display:block}
+.lead{color:var(--soft);margin:0 0 16px;font-size:21px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.pane h2{margin:0;padding:10px 16px;font:600 16px var(--mono);color:var(--mute);border-bottom:1px solid var(--line)}
+textarea{width:100%;min-height:330px;background:#120F0D;color:var(--txt);border:0;padding:16px;font:19px/1.5 var(--mono);resize:vertical;tab-size:4}
+textarea:focus{outline:2px solid var(--amb)}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+button.b{border-radius:12px;padding:14px 20px;font:700 19px var(--sans);cursor:pointer;background:var(--panel);color:var(--txt);border:1px solid var(--line)}
+button.go{background:var(--amb);color:var(--bg);border-color:var(--amb);font-size:22px;padding:16px 28px}
+button.warn{border-color:var(--bad);color:var(--bad)}
+button.okb{border-color:var(--ok);color:var(--ok)}
+button:disabled{opacity:.5;cursor:wait}
+.summary{display:flex;align-items:center;gap:22px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 24px;margin-top:6px}
+.big{font:800 64px var(--disp);line-height:1}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+.results{display:grid;gap:10px;margin-top:14px}
+.r{display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:start;background:var(--panel);border:1px solid var(--line);border-left:8px solid var(--line);border-radius:12px;padding:12px 16px}
+.r.pass{border-left-color:var(--ok)}.r.fail{border-left-color:var(--bad)}
+.r .ic{font:800 34px var(--disp);line-height:1}
+.r .n{font:600 19px var(--mono)}
+.r .m{font:18px var(--mono);color:var(--soft);margin-top:6px;white-space:pre-wrap}
+.scan{background:#120F0D;border:1px solid var(--line);border-radius:16px;padding:16px;font:19px/1.6 var(--mono);white-space:pre-wrap;word-break:break-all;min-height:330px}
+.scan mark{background:#5A1F1A;color:#FFD0C8;border-radius:4px;padding:0 3px;outline:2px solid var(--bad)}
+.hits{display:grid;gap:8px;margin-top:12px}
+.hit{background:var(--panel);border:1px solid var(--line);border-left:8px solid var(--bad);border-radius:10px;padding:10px 14px;font-size:19px}
+.hit b{color:var(--bad)}
+.clean{background:#16261E;border:2px solid var(--ok);border-radius:14px;padding:16px 20px;font-size:22px;font-weight:700;color:var(--ok);display:none;margin-top:12px}
+input.q{width:100%;background:#120F0D;color:var(--txt);border:1px solid var(--line);border-radius:12px;padding:14px;font:21px var(--mono)}
+.doi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-top:12px;font-size:20px}
+.foot{color:var(--mute);font-size:15px;margin-top:22px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Laboratorio de verificación · <span>Clase 4</span></h1>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-t="t1">1 · La cédula que mentía</button>
+    <button class="tab" role="tab" aria-selected="false" data-t="t2">2 · Cazador de secretos</button>
+    <button class="tab" role="tab" aria-selected="false" data-t="t3">3 · ¿Existe este DOI?</button>
+  </div>
+  <div class="status" id="st">Cargando Python en el navegador…</div>
+</header>
+<main>
+<!-- ============ 1 · CÉDULA ============ -->
+<section id="t1" class="on">
+  <p class="lead">Una IA generó este validador de cédula ecuatoriana. Se ve bien y «funciona» con la primera cédula que probamos. Las pruebas dirán la verdad. <b>Cédulas sintéticas</b>, generadas con el algoritmo para la clase.</p>
+  <div class="bar">
+    <button class="b" data-p="ia">A · Código de la IA</button>
+    <button class="b okb" id="fixLive">B · Corregir en vivo</button>
+  </div>
+  <div class="grid">
+    <div class="pane"><h2>cedula.py · generado por la IA</h2><textarea id="code" spellcheck="false"></textarea></div>
+    <div class="pane"><h2>test_cedula.py · lo que exige la norma</h2><textarea id="tests" spellcheck="false"></textarea></div>
+  </div>
+  <div class="bar"><button class="b go" id="run" disabled>▶ Ejecutar pruebas</button></div>
+  <div class="summary" id="sum" style="display:none"><div class="big" id="bigN"></div><div id="sumTxt" style="font-size:24px"></div></div>
+  <div class="results" id="res"></div>
+</section>
+
+<!-- ============ 2 · SECRETOS ============ -->
+<section id="t2">
+  <p class="lead">Pegue cualquier código. El detector busca patrones de claves y contraseñas, como hacen gitleaks y la protección de GitHub antes de cada <i>push</i>. Todas las claves de ejemplo son ficticias.</p>
+  <div class="bar">
+    <button class="b warn" id="cargarSucio">A · Código con secretos</button>
+    <button class="b okb" id="cargarLimpio">B · Código corregido (variables de entorno)</button>
+    <button class="b go" id="escanear">🔍 Escanear</button>
+  </div>
+  <div class="grid">
+    <div class="pane"><h2>config.py · código a revisar (editable)</h2><textarea id="src" spellcheck="false"></textarea></div>
+    <div><div class="scan" id="scanOut">Pulse «Escanear».</div></div>
+  </div>
+  <div class="summary" id="sum2" style="display:none"><div class="big" id="big2"></div><div id="sum2Txt" style="font-size:24px"></div></div>
+  <div class="hits" id="hits"></div>
+  <div class="clean" id="clean">✓ No se encontraron secretos. Las claves viven fuera del código, en variables de entorno.</div>
+</section>
+
+<!-- ============ 3 · DOI ============ -->
+<section id="t3">
+  <p class="lead">Escriba un DOI. Se consulta en Crossref, el registro de DOI de artículos científicos. Compare el <b>título real</b> con el título que dio la IA.</p>
+  <label class="status" for="doiIn">DOI</label>
+  <input class="q" id="doiIn" value="10.1016/j.jss.2025.112640" spellcheck="false">
+  <div class="bar">
+    <button class="b go" id="buscarDoi">🔎 Verificar DOI</button>
+    <a class="b" id="abrirDoi" href="https://doi.org/10.1016/j.jss.2025.112640" target="_blank" rel="noopener" style="text-decoration:none">Abrir en doi.org ↗</a>
+  </div>
+  <div class="doi" id="doiOut">El resultado aparecerá aquí.</div>
+  <p class="foot">Si Crossref no responde (sin internet o DOI de otro registro, como arXiv), use «Abrir en doi.org»: si dice «DOI Not Found», la referencia es inventada.</p>
+</section>
+<p class="foot">Python se ejecuta dentro del navegador con Pyodide; nada se instala. Necesita internet la primera vez. Datos y claves ficticios para la clase.</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/pyodide@0.26.4/pyodide.js"></script>
+<script>
+const PYODIDE_URL = "https://cdn.jsdelivr.net/npm/pyodide@0.26.4/";
+document.querySelectorAll('header .tab').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('header .tab').forEach(x=>x.setAttribute('aria-selected',x===b));
+  document.querySelectorAll('main section').forEach(s=>s.classList.toggle('on',s.id===b.dataset.t));
+});
+
+/* ---------- 1 · Cédula ---------- */
+const CODE_IA = `def validar_cedula(cedula):
+    if len(cedula) != 10 or not cedula.isdigit():
+        return False
+    coef = [2, 1, 2, 1, 2, 1, 2, 1, 2]
+    suma = 0
+    for i in range(9):
+        p = int(cedula[i]) * coef[i]
+        suma += p - 9 if p > 9 else p
+    verificador = 10 - suma % 10
+    return verificador == int(cedula[9])
+`;
+const CODE_OK = `def validar_cedula(cedula):
+    if len(cedula) != 10 or not cedula.isdigit():
+        return False
+    provincia = int(cedula[:2])
+    if not (1 <= provincia <= 24 or provincia == 30):
+        return False
+    if int(cedula[2]) >= 6:
+        return False
+    coef = [2, 1, 2, 1, 2, 1, 2, 1, 2]
+    suma = 0
+    for i in range(9):
+        p = int(cedula[i]) * coef[i]
+        suma += p - 9 if p > 9 else p
+    verificador = (10 - suma % 10) % 10
+    return verificador == int(cedula[9])
+`;
+const TESTS = `from cedula import validar_cedula
+
+def test_cedula_valida():
+    assert validar_cedula("1712345675") == True
+
+def test_digito_verificador_incorrecto():
+    assert validar_cedula("1712345674") == False
+
+def test_verificador_cero_es_valida():
+    # cuando la suma termina en 0, el verificador es 0
+    assert validar_cedula("1807654320") == True
+
+def test_provincia_25_no_existe():
+    assert validar_cedula("2512345675") == False
+
+def test_tercer_digito_mayor_a_5():
+    assert validar_cedula("1772345672") == False
+
+def test_texto_no_es_cedula():
+    assert validar_cedula("17123A5675") == False
+`;
+function load1(){ document.getElementById('code').value=CODE_IA; document.getElementById('tests').value=TESTS; document.getElementById('res').innerHTML=''; document.getElementById('sum').style.display='none'; }
+document.querySelector('[data-p=ia]').onclick=load1; load1();
+document.getElementById('fixLive').onclick=async()=>{
+  const ta=document.getElementById('code'); ta.value=CODE_IA; let cur=CODE_IA;
+  const steps=[
+    ['        return False\n', '        return False\n    provincia = int(cedula[:2])\n    if not (1 <= provincia <= 24 or provincia == 30):\n        return False\n    if int(cedula[2]) >= 6:\n        return False\n'],
+    ['    verificador = 10 - suma % 10\n','    verificador = (10 - suma % 10) % 10\n']];
+  for(const [a,b] of steps){
+    const i=cur.indexOf(a); const head=cur.slice(0,i+ (a===steps[0][0]?a.length:0)); const tail=cur.slice(i+a.length);
+    const ins = a===steps[0][0] ? b.slice(a.length) : b;
+    const start = a===steps[0][0] ? head : cur.slice(0,i);
+    for(let k=1;k<=ins.length;k++){ ta.value=start+ins.slice(0,k)+tail; await new Promise(r=>setTimeout(r,18)); }
+    cur=ta.value;
+  }
+  ta.style.outline='3px solid #7FD1AE'; setTimeout(()=>ta.style.outline='',1500);
+};
+const RUNNER = `
+import ast, json, sys, types, traceback
+class _T(ast.NodeTransformer):
+    def visit_Assert(self, node):
+        t = node.test
+        if isinstance(t, ast.Compare) and len(t.ops)==1 and isinstance(t.ops[0], ast.Eq):
+            return ast.copy_location(ast.Expr(ast.Call(ast.Name("_chk", ast.Load()), [t.left, t.comparators[0]], [])), node)
+        return node
+def _chk(a, b):
+    if a != b: raise AssertionError(f"Esperado: {b!r}\\nObtenido: {a!r}")
+def run_all(code, tests):
+    out = {"error": None, "results": []}
+    mod = types.ModuleType("cedula")
+    try: exec(compile(code, "cedula.py", "exec"), mod.__dict__)
+    except Exception as e:
+        out["error"] = "Error en cedula.py: " + "".join(traceback.format_exception_only(type(e), e)).strip(); return json.dumps(out)
+    sys.modules["cedula"] = mod
+    try:
+        tree = _T().visit(ast.parse(tests, "test_cedula.py")); ast.fix_missing_locations(tree)
+        ns = {"_chk": _chk}; exec(compile(tree, "test_cedula.py", "exec"), ns)
+    except Exception as e:
+        out["error"] = "Error en test_cedula.py: " + "".join(traceback.format_exception_only(type(e), e)).strip(); return json.dumps(out)
+    for name, fn in ns.items():
+        if name.startswith("test_") and callable(fn):
+            try: fn(); out["results"].append([name, True, ""])
+            except AssertionError as e: out["results"].append([name, False, str(e) or "No se cumplió"])
+            except Exception as e: out["results"].append([name, False, type(e).__name__ + ": " + str(e)])
+    return json.dumps(out)
+`;
+let py=null;
+(async()=>{ try{ py=await loadPyodide({indexURL:PYODIDE_URL}); py.runPython(RUNNER); document.getElementById('run').disabled=false; document.getElementById('st').textContent='Listo · Python cargado'; }
+  catch(e){ document.getElementById('st').textContent='No se pudo cargar Python: revise internet y recargue (F5).'; } })();
+document.getElementById('run').onclick=()=>{
+  const r=JSON.parse(py.globals.get('run_all')(document.getElementById('code').value, document.getElementById('tests').value));
+  const res=document.getElementById('res'); res.innerHTML=''; const sum=document.getElementById('sum'), big=document.getElementById('bigN'), st=document.getElementById('sumTxt'); sum.style.display='flex';
+  if(r.error){ big.textContent='✗'; big.className='big bad'; st.textContent=r.error; return; }
+  const ok=r.results.filter(x=>x[1]).length, n=r.results.length;
+  big.textContent=`${ok} / ${n}`; big.className='big '+(ok===n?'ok':'bad');
+  st.innerHTML= ok===n?'<b class="ok">Todas las pruebas pasan</b>':`<b class="bad">${n-ok} prueba${n-ok>1?'s fallan':' falla'}</b> · el código no cumple la norma`;
+  r.results.forEach(([name,pass,msg])=>{ const d=document.createElement('div'); d.className='r '+(pass?'pass':'fail');
+    d.innerHTML=`<div class="ic ${pass?'ok':'bad'}">${pass?'✓':'✗'}</div><div><div class="n"></div>${pass?'':'<div class="m"></div>'}</div>`;
+    d.querySelector('.n').textContent=name; if(!pass) d.querySelector('.m').textContent=msg; res.appendChild(d); });
+};
+
+/* ---------- 2 · Secretos ---------- */
+const SUCIO = `import requests
+
+AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE"
+GEMINI_API_KEY = "AIzaSyD3m0-Cl4se4-Ejempl0-N0Rea1-x7Q9wZ"
+GITHUB_TOKEN = "ghp_EjemploFicticio0123456789abcdefABCDE"
+DB_URL = "postgresql://admin:Uniandes2026!@db.ejemplo.ec:5432/tickets"
+password = "SuperSecreta123"
+
+def consultar(prompt):
+    return requests.post(URL, headers={"x-goog-api-key": GEMINI_API_KEY}, json={"q": prompt})
+`;
+const LIMPIO = `import os
+import requests
+
+AWS_ACCESS_KEY_ID = os.environ["AWS_ACCESS_KEY_ID"]
+GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
+DB_URL = os.environ["DATABASE_URL"]
+
+def consultar(prompt):
+    return requests.post(URL, headers={"x-goog-api-key": GEMINI_API_KEY}, json={"q": prompt})
+`;
+const RULES=[
+ ['Clave de acceso de AWS', /AKIA[0-9A-Z]{16}/g],
+ ['Clave de API de Google (Gemini)', /AIza[0-9A-Za-z_\-]{35}/g],
+ ['Token personal de GitHub', /ghp_[A-Za-z0-9]{36}/g],
+ ['Contraseña dentro de una URL de base de datos', /[a-z]+:\/\/[^:\s"]+:[^@\s"]+@/g],
+ ['Contraseña escrita en el código', /(password|passwd|contrase(?:ñ|n)a|secret)\s*=\s*"[^"]{6,}"/gi]
+];
+const src=document.getElementById('src');
+document.getElementById('cargarSucio').onclick=()=>{src.value=SUCIO; resetScan();};
+document.getElementById('cargarLimpio').onclick=()=>{src.value=LIMPIO; resetScan();};
+src.value=SUCIO;
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function resetScan(){ document.getElementById('scanOut').textContent='Pulse «Escanear».'; document.getElementById('hits').innerHTML=''; document.getElementById('clean').style.display='none'; document.getElementById('sum2').style.display='none'; }
+document.getElementById('escanear').onclick=()=>{
+  const t=src.value; const found=[];
+  RULES.forEach(([name,re])=>{ re.lastIndex=0; let m; while((m=re.exec(t))){ found.push({name,start:m.index,end:m.index+m[0].length,text:m[0]}); } });
+  found.sort((a,b)=>a.start-b.start);
+  const merged=[]; found.forEach(f=>{ if(!merged.length || f.start>=merged[merged.length-1].end) merged.push(f); });
+  let html='',pos=0; merged.forEach(f=>{ html+=esc(t.slice(pos,f.start))+'<mark>'+esc(t.slice(f.start,f.end))+'</mark>'; pos=f.end; }); html+=esc(t.slice(pos));
+  document.getElementById('scanOut').innerHTML=html;
+  const hits=document.getElementById('hits'); hits.innerHTML='';
+  const s2=document.getElementById('sum2'), b2=document.getElementById('big2'), t2=document.getElementById('sum2Txt'); s2.style.display='flex';
+  if(!merged.length){ b2.textContent='0'; b2.className='big ok'; t2.innerHTML='<b class="ok">secretos encontrados</b>'; document.getElementById('clean').style.display='block'; return; }
+  document.getElementById('clean').style.display='none';
+  b2.textContent=merged.length; b2.className='big bad'; t2.innerHTML='<b class="bad">secretos encontrados</b> · este código no debe subir al repositorio';
+  merged.forEach(f=>{ const line=t.slice(0,f.start).split('\n').length; const d=document.createElement('div'); d.className='hit'; d.innerHTML=`<b>Línea ${line}</b> · ${esc(f.name)}`; hits.appendChild(d); });
+};
+
+/* ---------- 3 · DOI ---------- */
+const doiIn=document.getElementById('doiIn'), abrir=document.getElementById('abrirDoi');
+doiIn.addEventListener('input',()=>abrir.href='https://doi.org/'+doiIn.value.trim());
+document.getElementById('buscarDoi').onclick=async()=>{
+  const d=doiIn.value.trim().replace(/^https?:\/\/(dx\.)?doi\.org\//,''); abrir.href='https://doi.org/'+d;
+  const out=document.getElementById('doiOut'); out.textContent='Consultando Crossref…';
+  try{
+    const r=await fetch('https://api.crossref.org/works/'+encodeURIComponent(d));
+    if(r.status===404){ out.innerHTML='<b class="bad">✗ Crossref no tiene este DOI.</b> Ábralo en doi.org: si dice «DOI Not Found», la referencia es inventada.'; return; }
+    const j=await r.json(); const m=j.message;
+    const autores=(m.author||[]).slice(0,3).map(a=>a.family).join(', ');
+    out.innerHTML=`<b class="ok">✓ El DOI existe.</b> Ahora compare:<br><b>Título real:</b> ${esc((m.title||[''])[0])}<br><b>Publicado en:</b> ${esc((m['container-title']||[''])[0]||'')} · ${m.issued&&m.issued['date-parts']?m.issued['date-parts'][0][0]:''}<br><b>Autores:</b> ${esc(autores)}`;
+  }catch(e){ out.innerHTML='No se pudo consultar Crossref. Use «Abrir en doi.org».'; }
+};
+</script>
+</body>
+</html>

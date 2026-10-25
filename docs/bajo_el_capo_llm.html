@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bajo el capó de un LLM</title>
+<meta name="description" content="Explicación visual e interactiva de la infraestructura física y de software sobre la que se construyen y operan los modelos de lenguaje, y del proceso para crearlos paso a paso. Clase 1, UNIANDES.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400..700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0E1A30; --bg2:#13233F; --panel:#182B4D; --panel2:#1E3459; --line:#2C4470;
+  --ink:#F4F1E8; --soft:#C3CDDD; --mute:#8D9BB4;
+  --gold:#D9B35C; --gold2:#F0D79A; --sky:#7FB0EE; --coral:#EE8B73; --mint:#7FD1B2; --lav:#B9A6F0;
+  --serif:"Source Serif 4", Georgia, serif; --sans:"IBM Plex Sans","Segoe UI",Arial,sans-serif; --mono:"JetBrains Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:76px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:radial-gradient(1100px 600px at 90% -10%,rgba(127,176,238,.10),transparent 60%),var(--bg);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.55}
+h1,h2,h3{font-family:var(--serif);font-weight:600;margin:0;line-height:1.12;letter-spacing:-.01em}
+p{margin:0 0 .8em}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.mono{font-family:var(--mono)}
+.top{position:sticky;top:0;z-index:20;display:flex;gap:16px;align-items:center;padding:12px 24px;background:rgba(14,26,48,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top b{font-family:var(--serif);color:var(--gold);font-size:19px;white-space:nowrap}
+.top nav{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.top nav::-webkit-scrollbar{display:none}
+.top a{flex:none;color:var(--soft);text-decoration:none;font-size:14px;padding:7px 13px;border:1px solid var(--line);border-radius:999px}
+.top a:hover,.top a.on{background:var(--gold);color:#1B1606;border-color:var(--gold)}
+main{max-width:1320px;margin:0 auto;padding:0 28px 80px}
+.hero{padding:56px 0 30px;display:grid;grid-template-columns:1.15fr 1fr;gap:40px;align-items:center}
+.hero h1{font-size:clamp(40px,5vw,72px)}
+.hero h1 em{color:var(--gold)}
+.hero p.l{font-size:20px;color:var(--soft);max-width:58ch;margin-top:16px}
+.qs{display:flex;flex-direction:column;gap:10px}
+.q{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel);font-family:var(--serif);font-size:21px}
+.q span{display:block;font-family:var(--sans);font-size:14px;color:var(--gold);margin-top:4px}
+section.part{margin-top:56px;padding-top:30px;border-top:1px solid var(--line)}
+.kicker{font-size:14px;color:var(--gold);font-weight:600;margin-bottom:6px}
+.part>h2{font-size:clamp(32px,3.6vw,52px)}
+.lede{color:var(--soft);font-size:19px;max-width:80ch;margin-top:10px}
+.block{margin-top:30px}
+.block>h3{font-size:28px;margin-bottom:6px}
+.block>p.d{color:var(--soft);max-width:80ch}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:22px;margin-top:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0}
+.panel.alt{background:var(--panel2)}
+.panel h4{font-family:var(--serif);font-size:24px;margin:0 0 8px}
+.note{font-size:13px;color:var(--mute);margin-top:10px}
+.btn{border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:8px 14px;cursor:pointer;font-size:15px}
+.btn:hover{border-color:var(--sky)}
+.btn[aria-pressed="true"],.btn.on{background:var(--gold);border-color:var(--gold);color:#1B1606;font-weight:600}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.spec{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.spec div{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.spec b{display:block;font-family:var(--serif);font-size:24px;color:var(--gold2);line-height:1.1}
+.spec span{font-size:13px;color:var(--mute)}
+.callout{border-left:4px solid var(--gold);background:rgba(217,179,92,.08);border-radius:0 12px 12px 0;padding:12px 16px;margin-top:14px;color:var(--soft)}
+.callout b{color:var(--gold2)}
+
+/* zoom explorer */
+.zoom{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.zoom button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:118px}
+.zoom button small{font-size:11px;color:var(--mute)}
+.zoom button[aria-pressed="true"] small{color:#4D3C10}
+.stage{width:100%;height:auto;display:block;background:var(--bg2);border-radius:14px;border:1px solid var(--line)}
+.stage text{font-family:var(--sans);fill:var(--soft);font-size:13px}
+@media (prefers-reduced-motion:no-preference){ .stage .anim{animation:fadein .5s ease both} }
+@keyframes fadein{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+
+/* supply chain */
+.chain{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin-top:14px}
+.chain button{position:relative;text-align:left;background:var(--panel);border:1px solid var(--line);border-left:none;padding:14px 12px;cursor:pointer;min-height:118px}
+.chain button:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}
+.chain button:last-child{border-radius:0 14px 14px 0}
+.chain button i{font-style:normal;font-family:var(--mono);font-size:12px;color:var(--gold)}
+.chain button b{display:block;font-family:var(--serif);font-size:18px;margin:4px 0}
+.chain button span{font-size:13px;color:var(--mute)}
+.chain button.on{background:var(--panel2);box-shadow:inset 0 -4px 0 var(--gold)}
+.chainInfo{margin-top:12px;min-height:72px}
+
+/* calculators */
+.field{display:grid;grid-template-columns:170px 1fr 120px;gap:12px;align-items:center;margin:9px 0}
+.field label{font-size:15px;color:var(--soft)}
+.field output{font-family:var(--mono);text-align:right;color:var(--gold2);font-size:14px}
+input[type=range]{width:100%;accent-color:var(--gold)}
+select{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+.result{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.result div{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.result b{display:block;font-family:var(--serif);font-size:28px;color:var(--gold2);line-height:1.05}
+.result span{font-size:12px;color:var(--mute)}
+.gpus{display:flex;flex-wrap:wrap;gap:3px;margin-top:12px;max-height:150px;overflow:hidden}
+.gpus i{width:12px;height:12px;border-radius:2px;background:var(--sky)}
+.gpus i.used{background:var(--gold)}
+.chart{width:100%;height:auto;display:block}
+.chart text{font-family:var(--sans);font-size:12px;fill:var(--soft)}
+
+/* software stack */
+.stack{display:flex;flex-direction:column;gap:6px}
+.layer{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;text-align:left;border:1px solid var(--line);border-radius:12px;padding:10px 14px;cursor:pointer;background:var(--panel);transition:transform .15s,border-color .15s}
+.layer:hover{border-color:var(--sky);transform:translateX(4px)}
+.layer.on{border-color:var(--gold);background:var(--panel2);transform:translateX(8px)}
+.layer .n{font-family:var(--mono);font-size:13px;color:var(--mute)}
+.layer b{font-family:var(--serif);font-size:19px}
+.layer small{display:block;color:var(--mute);font-size:13px}
+.layer .tags{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;max-width:360px}
+.tag{font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;background:var(--bg2);border:1px solid var(--line);color:var(--soft)}
+.detail h4{font-size:26px}
+.detail .who{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.code{font-family:var(--mono);font-size:13px;background:#0B1528;border:1px solid var(--line);border-radius:10px;padding:12px;white-space:pre-wrap;color:#D5DEEC;margin-top:10px;overflow:auto}
+
+/* parallelism */
+.pgrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:12px}
+.pgrid div{aspect-ratio:1.4;border-radius:8px;display:grid;place-items:center;font-family:var(--mono);font-size:11px;color:#10192C;font-weight:600;transition:background .35s}
+
+/* request trace */
+.trace{width:100%;height:auto;display:block}
+.trace text{font-family:var(--sans);font-size:13px;fill:var(--ink)}
+.trace .sm{font-size:11px;fill:var(--mute)}
+.tl{display:flex;height:34px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin-top:12px}
+.tl div{display:flex;align-items:center;justify-content:center;font-size:12px;color:#10192C;font-weight:600;white-space:nowrap;overflow:hidden}
+.streamed{font-family:var(--serif);font-size:22px;min-height:66px;margin-top:12px}
+.streamed span{background:rgba(127,176,238,.18);border-radius:5px;padding:0 3px;margin-right:2px}
+
+/* pipeline */
+.steps{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:14px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;cursor:pointer;position:relative}
+.step i{font-style:normal;font-family:var(--serif);font-size:32px;color:var(--gold);line-height:1}
+.step b{display:block;font-size:15px;margin-top:6px}
+.step.on{background:var(--gold);color:#1B1606;border-color:var(--gold)}
+.step.on i{color:#1B1606}
+.stepbox{margin-top:14px;display:grid;grid-template-columns:1.4fr 1fr;gap:22px}
+.io{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.io div{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:15px}
+.io b{display:block;font-size:12px;color:var(--gold);font-weight:600;margin-bottom:2px}
+.funnel{display:flex;flex-direction:column;gap:6px;align-items:center;margin-top:10px}
+.funnel div{height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#10192C;font-weight:600;text-align:center;padding:0 8px}
+.gantt{margin-top:10px}
+.gantt .gr{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;margin:5px 0;font-size:13px;color:var(--soft)}
+.gantt .gb{position:relative;height:16px;background:var(--bg2);border-radius:4px}
+.gantt .gb i{position:absolute;top:0;bottom:0;border-radius:4px;background:var(--sky)}
+.gantt .gb i.cur{background:var(--gold)}
+.refs{margin-top:60px;border-top:1px solid var(--line);padding-top:24px}
+.refs h2{font-size:30px;margin-bottom:12px}
+.refs li{font-size:14px;color:var(--soft);margin:.45em 0;max-width:110ch}
+figure.photo{margin:14px 0 0;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#0B1528}
+figure.photo .ph{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,#182B4D,#0B1528)}
+figure.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+figure.photo .fb{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:16px;color:var(--mute);font-size:14px}
+figure.photo .fb a{color:var(--sky)}
+figure.photo.err img{display:none}
+figure.photo.err .fb{display:grid}
+figure.photo figcaption{padding:9px 12px;font-size:13px;color:var(--soft);line-height:1.4}
+figure.photo figcaption a{color:var(--mute);font-size:12px;text-decoration:none;border-bottom:1px dotted var(--mute)}
+.reallab{display:inline-block;font-size:11px;font-weight:600;color:#1B1606;background:var(--gold);border-radius:6px;padding:1px 7px;margin-right:6px}
+.chainBody{display:grid;grid-template-columns:1fr 1.5fr;gap:20px;align-items:start}
+.chainBody .pics{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:14px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--soft);margin-top:8px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+@media (max-width:1000px){.chainBody,.grid2{grid-template-columns:1fr}}
+footer{max-width:1320px;margin:0 auto;padding:0 28px 30px;color:var(--mute);font-size:13px}
+
+@media (max-width:1000px){
+  .hero,.grid,.stepbox{grid-template-columns:1fr}
+  .chain{grid-template-columns:repeat(2,1fr)}
+  .chain button,.chain button:first-child,.chain button:last-child{border:1px solid var(--line);border-radius:12px;margin:3px}
+  .steps{grid-template-columns:repeat(4,1fr)}
+  .result{grid-template-columns:repeat(2,1fr)}
+  .layer{grid-template-columns:34px 1fr}
+  .layer .tags{display:none}
+}
+@media (max-width:560px){
+  main{padding:0 16px 60px}
+  .top{padding:10px 14px}
+  .field{grid-template-columns:1fr 92px}
+  .field label{grid-column:1/-1}
+  .steps{grid-template-columns:repeat(2,1fr)}
+  .pgrid{grid-template-columns:repeat(4,1fr)}
+  .spec,.io{grid-template-columns:1fr}
+  .gantt .gr{grid-template-columns:96px 1fr}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <b>Bajo el capó de un LLM</b>
+  <nav aria-label="Secciones">
+    <a href="#hardware">1 · Hardware</a>
+    <a href="#software">2 · Software</a>
+    <a href="#pasos">3 · Paso a paso</a>
+    <a href="#peticion">4 · Una petición en vivo</a>
+    <a href="#fuentes">Fuentes</a>
+  </nav>
+</header>
+
+<main>
+<div class="hero">
+  <div>
+    <div class="kicker">Clase 1 · Material complementario · UNIANDES</div>
+    <h1>Detrás de cada respuesta hay <em>arena, electricidad y código</em></h1>
+    <p class="l">En clase vimos cómo «piensa» un modelo: tokens, embeddings, atención y predicción. Esta página responde la pregunta siguiente: ¿sobre qué corre todo eso, qué software lo hace posible y cómo se fabrica un modelo de principio a fin?</p>
+  </div>
+  <div class="qs">
+    <div class="q">¿En qué máquinas vive un LLM?<span>Parte 1 · del chip al centro de datos</span></div>
+    <div class="q">¿Qué programas se instalan para crearlo y servirlo?<span>Parte 2 · la pila de software, capa por capa</span></div>
+    <div class="q">¿Cómo se crea, paso a paso?<span>Parte 3 · de los datos crudos al modelo publicado</span></div>
+    <div class="q">¿Qué pasa cuando escribo un prompt?<span>Parte 4 · el viaje de una petición</span></div>
+  </div>
+</div>
+
+<!-- ======================= PARTE 1 ======================= -->
+<section class="part" id="hardware">
+  <div class="kicker">Parte 1 · Infraestructura física</div>
+  <h2>Un LLM vive en miles de chips conectados</h2>
+  <p class="lede">Un modelo de lenguaje es, físicamente, una enorme tabla de números (sus parámetros) guardada en la memoria de chips aceleradores, que hacen multiplicaciones de matrices a enorme velocidad. Todo lo demás —servidores, redes, refrigeración, energía— existe para alimentar esas multiplicaciones.</p>
+
+  <div class="block">
+    <h3>Del chip al centro de datos</h3>
+    <p class="d">Haga clic en cada nivel. Cada uno agrupa al anterior. Arriba, un esquema; abajo, <b>una fotografía real</b> del objeto. Las cifras son de hardware de referencia publicado por NVIDIA (H100 y GB200) y del entrenamiento de Llama 3 de Meta.</p>
+    <div class="grid">
+      <div class="panel">
+        <div class="zoom" id="zoomBtns" role="group" aria-label="Nivel de zoom"></div>
+        <svg class="stage" id="stage" viewBox="0 0 640 360" role="img" aria-label="Ilustración del nivel seleccionado"></svg>
+        <div id="zoomPhoto"></div>
+      </div>
+      <div class="panel alt" id="zoomInfo" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>¿De dónde salen los chips?</h3>
+    <p class="d">La cadena física que termina en una GPU dentro de un centro de datos. Haga clic en cada eslabón.</p>
+    <div class="chain" id="chain"></div>
+    <div class="panel chainInfo" id="chainInfo" aria-live="polite"></div>
+  </div>
+
+  <div class="block">
+    <h3>Calculadora: ¿cuánto cuesta entrenar un modelo?</h3>
+    <p class="d">Regla práctica de la literatura (Kaplan et al., 2020): entrenar cuesta unas <span class="mono">6 × N × D</span> operaciones, donde N son los parámetros y D los tokens de entrenamiento. Mueva los controles o cargue un modelo real.</p>
+    <div class="grid">
+      <div class="panel">
+        <div class="row" style="margin-bottom:10px">
+          <button class="btn" data-preset="llama3">Llama 3 405B (Meta, 2024)</button>
+          <button class="btn" data-preset="llama8">Llama 3 8B</button>
+          <button class="btn" data-preset="class">Un modelo «de clase»</button>
+        </div>
+        <div class="field"><label for="tN">Parámetros (N)</label><input type="range" id="tN" min="8" max="12" step="0.01" value="11.607"><output id="tNv"></output></div>
+        <div class="field"><label for="tD">Tokens de entrenamiento (D)</label><input type="range" id="tD" min="9" max="13.3" step="0.01" value="13.193"><output id="tDv"></output></div>
+        <div class="field"><label for="tG">Número de GPU</label><input type="range" id="tG" min="0" max="17" step="0.1" value="14"><output id="tGv"></output></div>
+        <div class="field"><label for="tM">Aprovechamiento real (MFU)</label><input type="range" id="tM" min="10" max="60" step="1" value="40"><output id="tMv"></output></div>
+        <div class="result">
+          <div><b id="rF">—</b><span>operaciones (FLOP)</span></div>
+          <div><b id="rT">—</b><span>duración del entrenamiento</span></div>
+          <div><b id="rH">—</b><span>horas-GPU</span></div>
+          <div><b id="rE">—</b><span>energía aprox. (con refrigeración)</span></div>
+        </div>
+        <div class="gpus" id="gpuDots" aria-hidden="true"></div>
+        <p class="note">Supuestos: GPU tipo H100 con ~989 billones de operaciones por segundo en BF16 (cifra de NVIDIA, sin dispersión), 700 W por GPU y un factor de 1,3 para refrigeración y red (PUE). Cada cuadrito representa hasta 128 GPU.</p>
+      </div>
+      <div class="panel alt">
+        <h4>Cómputo de entrenamiento de modelos conocidos</h4>
+        <p style="color:var(--soft);font-size:15px">Escala logarítmica: cada línea es 10 veces más que la anterior. Calculado con 6·N·D a partir de cifras publicadas.</p>
+        <svg class="chart" id="flopChart" viewBox="0 0 460 330" role="img" aria-label="Cómputo de entrenamiento por modelo"></svg>
+        <div class="callout"><b>Dato real:</b> Meta entrenó Llama 3 405B con 16 384 GPU H100 sobre 15,6 billones de tokens (3,8 × 10<sup>25</sup> FLOP). En 54 días hubo 419 interrupciones inesperadas, la mayoría por fallas de hardware.</div >
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Calculadora: ¿cuánta memoria necesita para responder?</h3>
+    <p class="d">Para usar un modelo (inferencia) hay que cargar todos sus parámetros en memoria. Cada parámetro ocupa 2 bytes en 16 bits, 1 byte en 8 bits o medio byte en 4 bits (cuantización).</p>
+    <div class="grid">
+      <div class="panel">
+        <div class="field"><label for="mP">Parámetros</label>
+          <select id="mP"><option value="1">1 mil millones</option><option value="8" selected>8 mil millones</option><option value="70">70 mil millones</option><option value="405">405 mil millones</option><option value="671">671 mil millones (MoE)</option></select><span></span></div>
+        <div class="field"><label for="mQ">Precisión</label>
+          <select id="mQ"><option value="2">16 bits (BF16)</option><option value="1">8 bits (FP8/INT8)</option><option value="0.5">4 bits (INT4)</option></select><span></span></div>
+        <div class="field"><label for="mU">Usuarios simultáneos</label><input type="range" id="mU" min="1" max="64" value="4"><output id="mUv"></output></div>
+        <div class="field"><label for="mC">Tokens de contexto por usuario</label><input type="range" id="mC" min="1000" max="128000" step="1000" value="8000"><output id="mCv"></output></div>
+        <svg class="chart" id="memChart" viewBox="0 0 620 150" role="img" aria-label="Memoria necesaria frente a dispositivos"></svg>
+        <p class="note">La memoria de contexto (caché KV) se estima de forma simplificada como 0,1 MB por token por cada 8 mil millones de parámetros, proporcional al tamaño del modelo. Varía mucho según la arquitectura.</p>
+      </div>
+      <div class="panel alt" id="memVerdict" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Gráficas con datos reales</h3>
+    <p class="d">Cuatro gráficas construidas con cifras publicadas por los fabricantes, por Meta, por la Agencia Internacional de Energía y por Epoch AI. Pase el cursor o toque las barras para ver el detalle.</p>
+    <div class="grid2">
+      <div class="panel">
+        <h4>Cuatro generaciones de GPU de NVIDIA</h4>
+        <div class="row" id="genBtns" role="group" aria-label="Métrica"></div>
+        <svg class="chart" id="genChart" viewBox="0 0 520 300" role="img" aria-label="Comparación de generaciones de GPU"></svg>
+        <p class="note" id="genNote"></p>
+      </div>
+      <div class="panel">
+        <h4>Cómputo de entrenamiento a lo largo del tiempo</h4>
+        <svg class="chart" id="timeChart" viewBox="0 0 520 300" role="img" aria-label="Cómputo de entrenamiento por año"></svg>
+        <p class="note">Cómputo calculado con 6·N·D a partir de los artículos de cada modelo (DeepSeek-V3: parámetros activos). Escala logarítmica. Epoch AI estima que el cómputo de los modelos de frontera crece entre 4 y 5 veces por año (Sevilla y Roldán, 2024).</p>
+      </div>
+      <div class="panel">
+        <h4>¿Por qué se detuvo el entrenamiento de Llama 3?</h4>
+        <svg class="chart" id="failChart" viewBox="0 0 520 280" role="img" aria-label="Causas de interrupción en el entrenamiento de Llama 3"></svg>
+        <p class="note">419 interrupciones inesperadas en 54 días con 16 384 GPU H100: una cada 3 horas aproximadamente. Fuente: Dubey et al. (2024), tabla 5. «Otras» agrupa software, mantenimiento de servidores, CPU, discos, etc.</p>
+      </div>
+      <div class="panel">
+        <h4>¿Dónde se consume la electricidad de los centros de datos?</h4>
+        <svg class="chart" id="geoChart" viewBox="0 0 520 280" role="img" aria-label="Consumo de los centros de datos por región en 2024"></svg>
+        <p class="note">Participación en el consumo eléctrico mundial de centros de datos, 2024 (415 TWh en total). Desde 2017 crece alrededor de 12 % por año. Fuente: IEA (2025), Energy and AI, resumen ejecutivo.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PARTE 2 ======================= -->
+<section class="part" id="software">
+  <div class="kicker">Parte 2 · Infraestructura de software</div>
+  <h2>Diez capas de software entre el silicio y su aplicación</h2>
+  <p class="lede">Nadie programa una GPU a mano para entrenar un modelo. Hay una pila de programas, cada uno apoyado en el de abajo. Haga clic en una capa para ver qué hace, qué herramientas reales se usan y un ejemplo de código o comando.</p>
+  <div class="grid">
+    <div class="stack" id="stack"></div>
+    <div class="panel alt detail" id="stackInfo" aria-live="polite"></div>
+  </div>
+
+  <div class="block">
+    <h3>¿Cómo se reparte un modelo entre muchas GPU?</h3>
+    <p class="d">Un modelo grande no cabe en una sola GPU, y entrenarlo en una tardaría siglos. Se reparte de cuatro maneras, que en la práctica se combinan. Cada cuadro es una GPU; el color indica qué pedazo del trabajo tiene.</p>
+    <div class="grid">
+      <div class="panel">
+        <div class="row" id="parBtns"></div>
+        <div class="pgrid" id="pgrid" aria-hidden="true"></div>
+      </div>
+      <div class="panel alt" id="parInfo" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PARTE 3 ======================= -->
+<section class="part" id="pasos">
+  <div class="kicker">Parte 3 · Paso a paso</div>
+  <h2>Cómo se crea un LLM, de los datos crudos al modelo publicado</h2>
+  <p class="lede">Ocho etapas. Para cada una: qué entra, qué sale, en qué máquinas corre, con qué software y cuánto tarda. El ejemplo de referencia es Llama 3, porque Meta publicó el proceso con detalle.</p>
+  <div class="steps" id="steps"></div>
+  <div class="stepbox">
+    <div class="panel" id="stepInfo" aria-live="polite"></div>
+    <div class="panel alt">
+      <h4 id="stepVizTitle">Visual de la etapa</h4>
+      <div id="stepViz"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= PARTE 4 ======================= -->
+<section class="part" id="peticion">
+  <div class="kicker">Parte 4 · Una petición en vivo</div>
+  <h2>¿Qué pasa cuando presiona «Enviar»?</h2>
+  <p class="lede">Siga el viaje de un prompt desde el navegador hasta la GPU y de vuelta. Es exactamente lo que harán los backends del proyecto del seminario cuando llamen a la API de un modelo.</p>
+  <div class="grid">
+    <div class="panel">
+      <svg class="trace" id="trace" viewBox="0 0 700 300" role="img" aria-label="Recorrido de una petición"></svg>
+      <div class="row" style="margin-top:10px">
+        <button class="btn on" id="send">Enviar el prompt</button>
+        <label class="row" style="gap:6px;font-size:14px;color:var(--soft)">Largo de la respuesta
+          <select id="ansLen"><option value="20">Corta</option><option value="60" selected>Media</option><option value="200">Larga</option></select></label>
+      </div>
+      <div class="tl" id="tl" aria-hidden="true"></div>
+      <div class="streamed" id="streamed" aria-live="polite"></div>
+    </div>
+    <div class="panel alt" id="traceInfo" aria-live="polite">
+      <h4>Las etapas del viaje</h4>
+      <p style="color:var(--soft)">Presione «Enviar el prompt» para ver cada paso.</p>
+    </div>
+  </div>
+</section>
+
+<section class="refs" id="fuentes">
+  <h2>Fuentes</h2>
+  <ul>
+    <li>Dubey, A., et al. (2024). <i>The Llama 3 herd of models</i>. arXiv. https://doi.org/10.48550/arXiv.2407.21783</li>
+    <li>DeepSeek-AI. (2024). <i>DeepSeek-V3 technical report</i>. arXiv. https://doi.org/10.48550/arXiv.2412.19437</li>
+    <li>NVIDIA. (2023). <i>NVIDIA H100 Tensor Core GPU datasheet</i>. https://www.nvidia.com/en-us/data-center/h100/</li>
+    <li>NVIDIA. (2024). <i>NVIDIA GB200 NVL72</i>. https://www.nvidia.com/en-us/data-center/gb200-nvl72/</li>
+    <li>Kaplan, J., et al. (2020). <i>Scaling laws for neural language models</i>. arXiv. https://doi.org/10.48550/arXiv.2001.08361</li>
+    <li>Hoffmann, J., et al. (2022). <i>Training compute-optimal large language models</i>. arXiv. https://doi.org/10.48550/arXiv.2203.15556</li>
+    <li>Brown, T. B., et al. (2020). Language models are few-shot learners. <i>NeurIPS 33</i>. https://doi.org/10.48550/arXiv.2005.14165</li>
+    <li>Penedo, G., et al. (2024). <i>The FineWeb datasets: Decanting the web for the finest text data at scale</i>. arXiv. https://doi.org/10.48550/arXiv.2406.17557</li>
+    <li>Shoeybi, M., et al. (2019). <i>Megatron-LM: Training multi-billion parameter language models using model parallelism</i>. arXiv. https://doi.org/10.48550/arXiv.1909.08053</li>
+    <li>Rajbhandari, S., Rasley, J., Ruwase, O., &amp; He, Y. (2020). ZeRO: Memory optimizations toward training trillion parameter models. <i>SC20</i>. https://doi.org/10.48550/arXiv.1910.02054</li>
+    <li>Dao, T., Fu, D. Y., Ermon, S., Rudra, A., &amp; Ré, C. (2022). FlashAttention: Fast and memory-efficient exact attention with IO-awareness. <i>NeurIPS 35</i>. https://doi.org/10.48550/arXiv.2205.14135</li>
+    <li>Kwon, W., et al. (2023). Efficient memory management for large language model serving with PagedAttention. <i>SOSP '23</i>. https://doi.org/10.1145/3600006.3613165</li>
+    <li>International Energy Agency. (2025). <i>Energy and AI</i>. https://www.iea.org/reports/energy-and-ai</li>
+    <li>Chowdhery, A., et al. (2023). PaLM: Scaling language modeling with Pathways. <i>Journal of Machine Learning Research, 24</i>(240), 1–113. https://doi.org/10.48550/arXiv.2204.02311</li>
+    <li>Touvron, H., et al. (2023). <i>Llama 2: Open foundation and fine-tuned chat models</i>. arXiv. https://doi.org/10.48550/arXiv.2307.09288</li>
+    <li>Sevilla, J., &amp; Roldán, E. (2024). <i>Training compute of frontier AI models grows by 4-5x per year</i>. Epoch AI. https://epoch.ai/blog/training-compute-of-frontier-ai-models-grows-by-4-5x-per-year</li>
+    <li>NVIDIA. (2017–2024). Hojas técnicas de Tesla V100, A100, H100 y DGX B200. https://www.nvidia.com/en-us/data-center/</li>
+  </ul>
+  <h2 style="font-size:24px;margin-top:22px">Créditos de las fotografías</h2>
+  <p class="note" style="font-size:14px">Todas las fotografías provienen de Wikimedia Commons y tienen licencias libres (Creative Commons o dominio público). El autor y la licencia exacta de cada una están en la página del archivo, enlazada en el pie de cada foto. Las imágenes se cargan desde Wikimedia, por lo que se necesita conexión a internet para verlas.</p>
+  <ul id="photoCredits"></ul>
+  <p class="note">Las cifras de las calculadoras son aproximaciones de orden de magnitud con los supuestos indicados en cada una; sirven para razonar, no para presupuestar.</p>
+</section>
+</main>
+<footer>Material complementario de la Clase 1 · Seminario Ingeniería de Software con IA Generativa · Carrera de Software, UNIANDES · Octubre de 2026</footer>
+
+<script>
+(function(){
+"use strict";
+var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var NS='http://www.w3.org/2000/svg';
+function $(s){return document.querySelector(s)}
+function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))}
+function el(t,a,txt){var e=document.createElement(t);if(a)for(var k in a){if(k==='class')e.className=a[k];else if(k==='style')e.style.cssText=a[k];else if(k==='html')e.innerHTML=a[k];else e.setAttribute(k,a[k])}if(txt!=null)e.textContent=txt;return e}
+function sv(t,a,txt){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;return e}
+function fmt(x,d){return Number(x).toLocaleString('es-EC',{maximumFractionDigits:d==null?1:d,minimumFractionDigits:0})}
+function sci(x){if(x<1e6)return fmt(x,0);var e=Math.floor(Math.log10(x)),m=x/Math.pow(10,e);return fmt(m,1)+' × 10^'+e}
+function big(x){ // human scale in Spanish
+  if(x>=1e12)return fmt(x/1e12,1)+' billones';
+  if(x>=1e9)return fmt(x/1e9,1)+' mil millones';
+  if(x>=1e6)return fmt(x/1e6,1)+' millones';
+  if(x>=1e3)return fmt(x/1e3,1)+' mil';
+  return fmt(x,0);
+}
+
+/* ============ PHOTOS (Wikimedia Commons) ============ */
+var CREDITS={};
+function photo(file,cap){
+  var page='https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(file.replace(/ /g,'_'));
+  var src='https://commons.wikimedia.org/wiki/Special:FilePath/'+encodeURIComponent(file.replace(/ /g,'_'))+'?width=960';
+  CREDITS[file]=page;
+  var f=el('figure',{class:'photo'}),ph=el('div',{class:'ph'});
+  var img=el('img',{alt:cap,loading:'lazy',decoding:'async',referrerpolicy:'no-referrer'});
+  img.addEventListener('error',function(){f.classList.add('err')});
+  img.src=src;ph.appendChild(img);
+  var fb=el('div',{class:'fb'}),fbi=el('div');fbi.appendChild(document.createTextNode('La foto no cargó (¿sin conexión?). '));fbi.appendChild(el('br'));fbi.appendChild(el('a',{href:page,target:'_blank',rel:'noopener'},'Verla en Wikimedia Commons'));fb.appendChild(fbi);ph.appendChild(fb);
+  f.appendChild(ph);
+  var fc=el('figcaption');fc.appendChild(el('span',{class:'reallab'},'FOTO REAL'));fc.appendChild(document.createTextNode(cap+' '));fc.appendChild(el('a',{href:page,target:'_blank',rel:'noopener'},'Wikimedia Commons · autor y licencia'));f.appendChild(fc);
+  return f;
+}
+var ZP=[
+ ['AMD Fiji GPU package with GPU, HBM memory and interposer.jpg','Un chip de GPU real (al centro) rodeado de cuatro pilas de memoria HBM sobre una misma base. La H100 usa el mismo principio, con más memoria.'],
+ ['Nvidia DGX-B200-HGX.jpg','Placa NVIDIA HGX de un servidor DGX B200: ocho GPU de última generación montadas juntas y unidas por NVLink.'],
+ ['Datacenter Rack.jpg','Un rack de centro de datos: servidores apilados, cableado de red y alimentación eléctrica.'],
+ ['Frontier Supercomputer (3).jpg','Frontier (Oak Ridge, EE. UU.): una supercomputadora de más de 37 000 GPU en decenas de gabinetes conectados en red. Los clústeres de IA tienen este aspecto.'],
+ ['Datacenter Server Racks (22370909788).jpg','Pasillo de un centro de datos: filas de racks con pasillos fríos y calientes para la refrigeración.'],
+ ['Electric power transmission.jpg','Líneas de transmisión de alta tensión: la energía que alimenta los centros de datos llega por la red eléctrica.']
+];
+var CP=[
+ [['Quartz sand.jpg','Arena de cuarzo (dióxido de silicio), la materia prima del silicio.'],['Monocrystalline silicon ingot.jpg','Lingote de silicio monocristalino, del que se cortan las obleas.']],
+ [['GA100 Die Shot.jpg','Fotografía del chip GA100 (GPU NVIDIA A100) visto al microscopio: los bloques repetidos son los núcleos de cálculo.']],
+ [['Extreme ultraviolet lithography tool.jpg','Herramienta de litografía de ultravioleta extremo (EUV).']],
+ [['Clean room.jpg','Sala limpia de fabricación de semiconductores: el personal usa trajes especiales para no contaminar las obleas.'],['Silicon wafer with mirror finish.jpg','Oblea de silicio pulida a espejo, antes de recibir los circuitos.']],
+ [['AMD@14nm@GCN 5th gen@Vega10@Radeon RX Vega 64@HBM DRAM Die@ Stack-DSC08974-DSC09078 - ZS-retouched.jpg','Microfotografía de una pila de memoria HBM: varias capas de DRAM apiladas.']],
+ [['AMD Fiji GPU package with GPU, HBM memory and interposer.jpg','Empaquetado avanzado: chip de cálculo y memorias HBM montados sobre un interposer común.']],
+ [['Air Cooled Liquid Chiller.jpg','Enfriador de líquido: parte del sistema de refrigeración de un centro de datos.'],['Datacenter.jpg','Interior de un centro de datos.']]
+];
+
+/* ============ ZOOM ============ */
+var Z=[
+ {k:'Chip',s:'GPU H100',title:'El chip: una GPU',
+  txt:'Aquí ocurre el cálculo. Un acelerador como la NVIDIA H100 tiene miles de núcleos especializados en multiplicar matrices (Tensor Cores) y una memoria ultrarrápida apilada junto al chip (HBM). Los parámetros del modelo viven en esa memoria.',
+  spec:[['80 GB','memoria HBM3'],['3,35 TB/s','velocidad de memoria'],['~989 TFLOPS','cálculo en BF16'],['700 W','consumo máximo']],
+  note:'Fuente: hoja técnica de NVIDIA H100 SXM. TFLOPS = billones de operaciones por segundo.'},
+ {k:'Servidor',s:'8 GPU',title:'El servidor: 8 GPU que hablan entre sí',
+  txt:'Un servidor típico de IA tiene 8 GPU unidas por NVLink, un enlace directo mucho más rápido que la red normal, más 2 procesadores (CPU), memoria RAM y discos. Las GPU calculan; las CPU coordinan y alimentan datos.',
+  spec:[['8','GPU por servidor'],['640 GB','memoria HBM total'],['900 GB/s','NVLink por GPU'],['~10 kW','consumo del servidor']],
+  note:'Configuración de referencia tipo HGX H100. Cifras aproximadas.'},
+ {k:'Rack',s:'72 GPU',title:'El rack: un armario de 120 kW',
+  txt:'Los servidores se apilan en armarios (racks). En la generación Blackwell, NVIDIA GB200 NVL72 une 72 GPU en un solo dominio NVLink, como si fueran una GPU gigante. Consume tanto calor que necesita refrigeración líquida.',
+  spec:[['72','GPU Blackwell'],['36','CPU Grace'],['~120 kW','por rack'],['Líquida','refrigeración']],
+  note:'Fuente: NVIDIA GB200 NVL72. Cifras aproximadas del fabricante.'},
+ {k:'Clúster',s:'16 384 GPU',title:'El clúster: miles de servidores en red',
+  txt:'Para entrenar, miles de servidores se conectan con redes de altísima velocidad (InfiniBand o Ethernet RoCE) para que todas las GPU intercambien resultados en cada paso. Meta entrenó Llama 3 405B en un clúster de 16 384 GPU H100.',
+  spec:[['16 384','GPU H100 (Llama 3)'],['2 048','servidores'],['400 Gb/s','red por GPU'],['54 días','de entrenamiento']],
+  note:'Fuente: Dubey et al. (2024), The Llama 3 herd of models.'},
+ {k:'Centro de datos',s:'decenas de MW',title:'El centro de datos: una fábrica de cálculo',
+  txt:'El edificio aloja los clústeres y todo lo que necesitan: subestaciones eléctricas, sistemas de refrigeración (aire, agua o líquido directo al chip), almacenamiento masivo de datos y seguridad física. Los más nuevos se planifican en cientos de megavatios.',
+  spec:[['~16 000','GPU × 700 W ≈ 11 MW solo en GPU'],['×1,3','extra por refrigeración (PUE)'],['Petabytes','de almacenamiento'],['24/7','operación continua']],
+  note:'Cálculo propio a partir de los supuestos indicados.'},
+ {k:'Red eléctrica',s:'415 TWh (2024)',title:'La red eléctrica: el límite real',
+  txt:'Al final, todo es electricidad. La Agencia Internacional de Energía estima que los centros de datos del mundo consumieron unos 415 TWh en 2024, cerca del 1,5 % de la electricidad mundial, y proyecta que se dupliquen hacia 2030, impulsados en buena parte por la IA.',
+  spec:[['~415 TWh','centros de datos, 2024'],['~1,5 %','de la electricidad mundial'],['~945 TWh','proyección 2030'],['IA','principal motor del crecimiento']],
+  note:'Fuente: IEA (2025), Energy and AI. Proyección del escenario base.'}
+];
+var zi=0;
+var zb=$('#zoomBtns');
+Z.forEach(function(z,i){var b=el('button',{class:'btn','aria-pressed':i===0?'true':'false'});b.appendChild(el('b',null,z.k));b.appendChild(el('small',null,z.s));b.addEventListener('click',function(){zi=i;drawZoom()});zb.appendChild(b)});
+function rect(g,x,y,w,h,fill,stroke,r){g.appendChild(sv('rect',{x:x,y:y,width:w,height:h,rx:r||4,fill:fill,stroke:stroke||'none','stroke-width':1.5}))}
+function txt(g,x,y,t,o){var a={x:x,y:y};for(var k in o)a[k]=o[k];g.appendChild(sv('text',a,t))}
+function drawZoom(){
+  $$('button',zb).forEach(function(b,i){b.setAttribute('aria-pressed',i===zi?'true':'false')});
+  var s=$('#stage');s.textContent='';var g=sv('g',{class:'anim'});s.appendChild(g);
+  if(zi===0){ // chip
+    rect(g,170,40,300,280,'#1E3459','#7FB0EE',14);
+    rect(g,240,100,160,160,'#2C4470','#D9B35C',6);
+    for(var i=0;i<8;i++)for(var j=0;j<8;j++)rect(g,250+i*19,110+j*19,15,15,(i+j)%3?'#7FB0EE':'#A9CBF5',null,2);
+    [[185,90],[185,200],[415,90],[415,200]].forEach(function(p){rect(g,p[0],p[1],40,70,'#D9B35C',null,4);txt(g,p[0]+20,p[1]+40,'HBM',{'text-anchor':'middle',fill:'#1B1606','font-size':12,'font-weight':600})});
+    txt(g,320,92,'núcleos de cálculo (Tensor Cores)',{'text-anchor':'middle'});
+    txt(g,320,300,'memoria HBM apilada junto al chip',{'text-anchor':'middle',fill:'#F0D79A'});
+  } else if(zi===1){
+    rect(g,60,60,520,240,'#1E3459','#7FB0EE',12);
+    for(var k=0;k<8;k++){var x=90+(k%4)*120,y=k<4?90:190;rect(g,x,y,90,70,'#2C4470','#D9B35C',6);txt(g,x+45,y+42,'GPU '+(k+1),{'text-anchor':'middle'})}
+    g.appendChild(sv('path',{d:'M135,160 L135,190 M255,160 L255,190 M375,160 L375,190 M495,160 L495,190 M180,125 L210,125 M300,125 L330,125 M420,125 L450,125 M180,225 L210,225 M300,225 L330,225 M420,225 L450,225',stroke:'#D9B35C','stroke-width':3}));
+    txt(g,320,46,'un servidor · las líneas doradas son enlaces NVLink',{'text-anchor':'middle'});
+    txt(g,320,285,'+ 2 CPU · RAM · discos NVMe · tarjetas de red',{'text-anchor':'middle',fill:'#8D9BB4'});
+  } else if(zi===2){
+    rect(g,220,20,200,320,'#1E3459','#7FB0EE',8);
+    for(var r=0;r<18;r++)rect(g,232,30+r*17,176,13,r%2?'#2C4470':'#34507F','#7FB0EE',2);
+    g.appendChild(sv('path',{d:'M430,40 C470,40 470,320 430,320',stroke:'#7FB0EE','stroke-width':4,fill:'none','stroke-dasharray':'6 5'}));
+    txt(g,480,170,'líquido',{fill:'#7FB0EE'});txt(g,480,186,'refrigerante',{fill:'#7FB0EE'});
+    txt(g,120,170,'18 bandejas',{'text-anchor':'middle'});txt(g,120,186,'72 GPU',{'text-anchor':'middle',fill:'#F0D79A'});
+  } else if(zi===3){
+    for(var a=0;a<6;a++)for(var b=0;b<10;b++){rect(g,40+b*58,40+a*46,44,34,'#2C4470','#7FB0EE',3)}
+    for(var c=0;c<10;c++)g.appendChild(sv('line',{x1:62+c*58,y1:320,x2:62+c*58,y2:40,stroke:'#D9B35C','stroke-width':1,opacity:.5}));
+    g.appendChild(sv('line',{x1:40,y1:330,x2:600,y2:330,stroke:'#D9B35C','stroke-width':3}));
+    txt(g,320,350,'red de alta velocidad que une todos los racks',{'text-anchor':'middle',fill:'#F0D79A'});
+  } else if(zi===4){
+    rect(g,60,80,520,220,'#1E3459','#7FB0EE',8);
+    for(var h=0;h<4;h++)rect(g,90+h*120,110,100,120,'#2C4470','#7FB0EE',4);
+    txt(g,320,262,'salas de servidores',{'text-anchor':'middle'});
+    rect(g,90,30,90,40,'#D9B35C',null,4);txt(g,135,55,'subestación',{'text-anchor':'middle',fill:'#1B1606','font-size':12});
+    rect(g,460,30,90,40,'#7FB0EE',null,4);txt(g,505,55,'enfriadores',{'text-anchor':'middle',fill:'#10192C','font-size':12});
+    rect(g,250,310,140,36,'#7FD1B2',null,4);txt(g,320,333,'almacenamiento',{'text-anchor':'middle',fill:'#10192C','font-size':12});
+  } else {
+    var bars=[['2024',415],['2030 (proy.)',945]];
+    var max=1000;bars.forEach(function(bb,i){var w=bb[1]/max*440;rect(g,150,110+i*90,w,50,i===1?'#D9B35C':'#7FB0EE',null,6);txt(g,140,141+i*90,bb[0],{'text-anchor':'end'});txt(g,160+w,141+i*90,'~'+bb[1]+' TWh',{fill:'#F0D79A'})});
+    txt(g,320,40,'Consumo eléctrico de los centros de datos del mundo',{'text-anchor':'middle'});
+    txt(g,320,340,'Fuente: IEA (2025), Energy and AI · escenario base',{'text-anchor':'middle',class:'sm',fill:'#8D9BB4','font-size':11});
+  }
+  var z=Z[zi],box=$('#zoomInfo');box.textContent='';
+  box.appendChild(el('div',{class:'kicker'},'Nivel '+(zi+1)+' de '+Z.length));
+  box.appendChild(el('h4',null,z.title));box.appendChild(el('p',{style:'color:var(--soft)'},z.txt));
+  var sp=el('div',{class:'spec'});z.spec.forEach(function(x){var d=el('div');d.appendChild(el('b',null,x[0]));d.appendChild(el('span',null,x[1]));sp.appendChild(d)});box.appendChild(sp);
+  box.appendChild(el('p',{class:'note'},z.note));
+  var zp=$('#zoomPhoto');zp.textContent='';zp.appendChild(photo(ZP[zi][0],ZP[zi][1]));
+}
+drawZoom();
+
+/* ============ SUPPLY CHAIN ============ */
+var CH=[
+ ['Arena','Silicio','La arena de cuarzo se refina hasta obtener silicio con una pureza de más del 99,9999999 %. Se funde y se estira en lingotes cilíndricos que se cortan en obleas finas.'],
+ ['Diseño','Arquitectura','Empresas como NVIDIA, AMD o Google (TPU) diseñan el chip: miles de millones de transistores organizados en núcleos de cálculo. El diseño es software (lenguajes de descripción de hardware) y se verifica con simulación.'],
+ ['Litografía','Máquinas EUV','Para «imprimir» transistores de pocos nanómetros se usa luz ultravioleta extrema. Las máquinas de litografía EUV las fabrica casi exclusivamente la empresa neerlandesa ASML.'],
+ ['Fábrica','Fundición','Fundiciones como TSMC (Taiwán) fabrican los chips en salas limpias, capa por capa, durante semanas. La H100 se fabrica en un proceso de TSMC de clase 4 nanómetros.'],
+ ['Memoria','HBM','La memoria de alto ancho de banda (HBM) se apila en capas y la producen SK hynix, Samsung y Micron. Es uno de los cuellos de botella de la industria.'],
+ ['Empaquetado','CoWoS','El chip de cálculo y las pilas HBM se montan juntos sobre una base común (empaquetado avanzado tipo CoWoS) para que la memoria esté a milímetros del cálculo.'],
+ ['Centro de datos','Servidores','Los chips se montan en servidores, racks y clústeres, se conectan a la red eléctrica y a la refrigeración, y empiezan a entrenar o a servir modelos.']
+];
+var ci=0, chainBox=$('#chain');
+CH.forEach(function(c,i){var b=el('button');b.appendChild(el('i',null,'0'+(i+1)));b.appendChild(el('b',null,c[0]));b.appendChild(el('span',null,c[1]));b.addEventListener('click',function(){ci=i;drawChain()});chainBox.appendChild(b)});
+function drawChain(){$$('button',chainBox).forEach(function(b,i){b.classList.toggle('on',i===ci)});var c=CH[ci],box=$('#chainInfo');box.textContent='';var body=el('div',{class:'chainBody'}),t=el('div');t.appendChild(el('div',{class:'kicker'},'Eslabón '+(ci+1)+' de 7'));t.appendChild(el('h4',null,c[0]+' · '+c[1]));t.appendChild(el('p',{style:'color:var(--soft);margin:0'},c[2]));body.appendChild(t);var pics=el('div',{class:'pics'});CP[ci].forEach(function(x){var f=photo(x[0],x[1]);f.style.marginTop='0';pics.appendChild(f)});body.appendChild(pics);box.appendChild(body)}
+drawChain();
+
+/* ============ TRAINING CALCULATOR ============ */
+var PEAK=989e12, WATT=700, PUE=1.3;
+var PRE={llama3:[Math.log10(405e9),Math.log10(15.6e12),Math.log10(16384),40],
+         llama8:[Math.log10(8e9),Math.log10(15e12),Math.log10(16384),40],
+         class:[Math.log10(125e6),Math.log10(2.5e9),0,30]};
+function calc(){
+  var N=Math.pow(10,+$('#tN').value),D=Math.pow(10,+$('#tD').value),G=Math.max(1,Math.round(Math.pow(2,+$('#tG').value))),M=+$('#tM').value/100;
+  $('#tNv').textContent=big(N);$('#tDv').textContent=big(D);$('#tGv').textContent=fmt(G,0);$('#tMv').textContent=M*100+' %';
+  var F=6*N*D, secs=F/(G*PEAK*M), days=secs/86400, gh=G*secs/3600, gwh=G*WATT*PUE*secs/3600/1e9;
+  $('#rF').textContent=sci(F);
+  $('#rT').textContent=days<1?fmt(days*24,1)+' h':(days>730?fmt(days/365,1)+' años':fmt(days,days<10?1:0)+' días');
+  $('#rH').textContent=big(gh);
+  $('#rE').textContent=gwh<0.001?fmt(gwh*1e6,1)+' kWh':(gwh<1?fmt(gwh*1000,1)+' MWh':fmt(gwh,1)+' GWh');
+  var dots=$('#gpuDots');dots.textContent='';var n=Math.min(130,Math.ceil(G/128));for(var i=0;i<n;i++)dots.appendChild(el('i',{class:'used'}));
+  drawFlop(F);
+}
+['tN','tD','tG','tM'].forEach(function(id){$('#'+id).addEventListener('input',calc)});
+$$('[data-preset]').forEach(function(b){b.addEventListener('click',function(){var p=PRE[b.getAttribute('data-preset')];$('#tN').value=p[0];$('#tD').value=p[1];$('#tG').value=Math.log2(Math.pow(10,p[2]));$('#tM').value=p[3];calc()})});
+var MODELS=[['GPT-3 (2020)',175e9,300e9],['Chinchilla (2022)',70e9,1.4e12],['PaLM (2022)',540e9,780e9],['Llama 2 70B (2023)',70e9,2e12],['DeepSeek-V3 (2024)*',37e9,14.8e12],['Llama 3 405B (2024)',405e9,15.6e12]];
+function drawFlop(cur){
+  var c=$('#flopChart');c.textContent='';var x0=150,x1=440,lo=20,hi=26;
+  var X=function(v){return x0+(Math.log10(v)-lo)/(hi-lo)*(x1-x0)};
+  for(var e=lo;e<=hi;e++){c.appendChild(sv('line',{x1:X(Math.pow(10,e)),x2:X(Math.pow(10,e)),y1:14,y2:270,stroke:'#22385E'}));c.appendChild(sv('text',{x:X(Math.pow(10,e)),y:288,'text-anchor':'middle'},'10^'+e))}
+  var rows=MODELS.map(function(m){return [m[0],6*m[1]*m[2]]});rows.push(['Su cálculo',cur]);
+  rows.forEach(function(r,i){var y=22+i*42,w=Math.max(2,X(Math.max(r[1],1e20))-x0);
+    c.appendChild(sv('rect',{x:x0,y:y,width:w,height:26,rx:4,fill:i===rows.length-1?'#D9B35C':'#7FB0EE'}));
+    c.appendChild(sv('text',{x:x0-8,y:y+18,'text-anchor':'end'},r[0]));
+    var inside=x0+w+70>x1+20;c.appendChild(sv('text',{x:inside?x0+w-6:x0+w+6,y:y+18,'text-anchor':inside?'end':'start',fill:inside?'#10192C':'#F0D79A','font-weight':inside?600:400},sci(r[1])))});
+  c.appendChild(sv('text',{x:x0,y:316,fill:'#8D9BB4','font-size':11},'* MoE: solo sus 37 mil millones de parámetros activos.'));
+}
+calc();
+
+/* ============ MEMORY ============ */
+function mem(){
+  var P=+$('#mP').value,Q=+$('#mQ').value,U=+$('#mU').value,C=+$('#mC').value;
+  $('#mUv').textContent=U;$('#mCv').textContent=big(C);
+  var w=P*Q, kv=U*C*0.1/1000*(P/8), total=w+kv;
+  var devs=[['Laptop',8],['GPU de gaming',24],['1 × H100',80],['8 × H100',640]];
+  var c=$('#memChart');c.textContent='';var lo=0,hi=Math.log10(Math.max(total,640)*1.6),X=function(v){return 120+(Math.log10(Math.max(v,1))-lo)/(hi-lo)*470};
+  c.appendChild(sv('rect',{x:120,y:20,width:X(w)-120,height:30,fill:'#7FB0EE',rx:4}));
+  c.appendChild(sv('rect',{x:X(w),y:20,width:Math.max(0,X(total)-X(w)),height:30,fill:'#B9A6F0',rx:4}));
+  c.appendChild(sv('text',{x:112,y:40,'text-anchor':'end'},'Necesita'));
+  c.appendChild(sv('text',{x:Math.min(X(total)+6,560),y:40,fill:'#F0D79A'},fmt(total,0)+' GB'));
+  devs.forEach(function(d,i){var x=X(d[1]),ok=total<=d[1];c.appendChild(sv('line',{x1:x,x2:x,y1:56,y2:120,stroke:ok?'#7FD1B2':'#EE8B73','stroke-width':2,'stroke-dasharray':'4 3'}));c.appendChild(sv('text',{x:x+4,y:72+i*14,fill:ok?'#7FD1B2':'#EE8B73','font-size':11},d[0]+' · '+d[1]+' GB'))});
+  c.appendChild(sv('text',{x:120,y:142,fill:'#8D9BB4','font-size':11},'Azul: parámetros · Lila: contexto (caché KV) · escala logarítmica'));
+  var fit=devs.filter(function(d){return total<=d[1]})[0];
+  var box=$('#memVerdict');box.textContent='';
+  box.appendChild(el('h4',null,fit?'Cabe en: '+fit[0]:'No cabe ni en 8 H100'));
+  box.appendChild(el('p',{style:'color:var(--soft)'},'Pesos: '+fmt(w,1)+' GB · contexto: '+fmt(kv,1)+' GB · total ≈ '+fmt(total,0)+' GB.'));
+  var msg = !fit ? 'Habría que repartir el modelo entre varios servidores (paralelismo de tensor y de tubería). Así sirven los proveedores sus modelos más grandes.'
+    : fit[0]==='Laptop' ? 'Un modelo así corre en una computadora personal con herramientas como Ollama o llama.cpp, sin enviar datos a terceros. Útil con datos sensibles.'
+    : fit[0]==='GPU de gaming' ? 'Cabe en una tarjeta de video de gama alta. Muchos laboratorios universitarios trabajan en este rango.'
+    : fit[0]==='1 × H100' ? 'Necesita una GPU de centro de datos. En la nube se alquila por hora.'
+    : 'Necesita un servidor completo de 8 GPU. Por eso los modelos de frontera solo se usan por API.';
+  box.appendChild(el('p',null,msg));
+  box.appendChild(el('div',{class:'callout',html:'<b>Por qué importa la cuantización:</b> pasar de 16 a 4 bits divide la memoria entre cuatro, a cambio de una pequeña pérdida de calidad. Pruebe 70 mil millones en 16 y en 4 bits.'}));
+}
+['mP','mQ','mU','mC'].forEach(function(id){$('#'+id).addEventListener('input',mem);$('#'+id).addEventListener('change',mem)});
+mem();
+
+/* ============ SOFTWARE STACK ============ */
+var ST=[
+ {n:'10',t:'Su aplicación',s:'Lo que construyen en el seminario',tags:['FastAPI','Streamlit','React'],
+  d:'La capa que usted programa: el backend que arma el prompt, llama a la API, valida la salida y la muestra al usuario. Todo lo de abajo lo pone el proveedor del modelo o la nube.',
+  code:'from google import genai\nclient = genai.Client()  # clave en variable de entorno\nr = client.models.generate_content(\n    model="gemini-flash", contents="Hola")\nprint(r.text)'},
+ {n:'09',t:'API y puerta de enlace',s:'Autenticación, cuotas, facturación',tags:['REST','HTTPS','API keys'],
+  d:'El servicio público del proveedor: recibe la petición por HTTPS, verifica la clave, aplica límites de uso (por eso existe el error 429), registra el consumo de tokens y envía la petición a un servidor de inferencia libre.',
+  code:'POST /v1/chat/completions\nAuthorization: Bearer ****\n{"model": "...", "messages": [...]}\n→ 200 OK  |  429 Too Many Requests'},
+ {n:'08',t:'Motor de inferencia',s:'Servir el modelo a miles de usuarios',tags:['vLLM','TensorRT-LLM','SGLang','llama.cpp'],
+  d:'Programas especializados en ejecutar el modelo ya entrenado de forma eficiente. Agrupan peticiones de muchos usuarios (batching continuo), administran la memoria de contexto por páginas (PagedAttention, Kwon et al., 2023) y aplican cuantización.',
+  code:'vllm serve meta-llama/Llama-3.1-8B-Instruct \\\n  --max-model-len 8192 --tensor-parallel-size 1'},
+ {n:'07',t:'Evaluación y alineación',s:'SFT, RLHF, pruebas de seguridad',tags:['TRL','OpenRLHF','evals'],
+  d:'Herramientas para el post-entrenamiento (ajuste por instrucciones, RLHF, refuerzo para razonamiento) y para medir el modelo con conjuntos de prueba y ejercicios de red teaming antes de publicarlo.',
+  code:'from trl import SFTTrainer\ntrainer = SFTTrainer(model=model,\n    train_dataset=instrucciones)\ntrainer.train()'},
+ {n:'06',t:'Entrenamiento distribuido',s:'Repartir el modelo en miles de GPU',tags:['Megatron-LM','DeepSpeed','FSDP'],
+  d:'Bibliotecas que dividen el modelo y los datos entre miles de GPU y sincronizan los resultados. Megatron-LM (Shoeybi et al., 2019) reparte las matrices; DeepSpeed ZeRO (Rajbhandari et al., 2020) reparte la memoria del optimizador.',
+  code:'torchrun --nnodes=256 --nproc_per_node=8 \\\n  train.py --tensor-parallel 8 \\\n  --pipeline-parallel 16 --zero-stage 1'},
+ {n:'05',t:'Framework de aprendizaje',s:'Definir la red y entrenarla',tags:['PyTorch','JAX'],
+  d:'El lenguaje en que se escribe el Transformer: capas, atención, función de pérdida y retropropagación automática. PyTorch domina en la industria y la academia; JAX se usa mucho en Google.',
+  code:'logits = model(tokens[:, :-1])\nloss = F.cross_entropy(logits.flatten(0,1),\n                       tokens[:, 1:].flatten())\nloss.backward(); optimizer.step()'},
+ {n:'04',t:'Núcleos optimizados',s:'Las operaciones críticas, a mano',tags:['FlashAttention','Triton','CUTLASS'],
+  d:'Las operaciones más costosas, como la atención, se reescriben a bajo nivel para aprovechar la memoria del chip. FlashAttention (Dao et al., 2022) hizo la atención varias veces más rápida reorganizando los accesos a memoria.',
+  code:'from flash_attn import flash_attn_func\nout = flash_attn_func(q, k, v, causal=True)'},
+ {n:'03',t:'Bibliotecas de cómputo y comunicación',s:'Matrices y mensajes entre GPU',tags:['cuBLAS','cuDNN','NCCL','RCCL'],
+  d:'cuBLAS multiplica matrices, cuDNN acelera operaciones de redes neuronales y NCCL comunica GPU entre sí (por ejemplo, para sumar los gradientes de todas). Son las piezas que el framework llama sin que usted lo vea.',
+  code:'# NCCL all-reduce: cada GPU termina con la\n# suma de los gradientes de todas\ndist.all_reduce(grad, op=dist.ReduceOp.SUM)'},
+ {n:'02',t:'Controlador y CUDA',s:'Hablar con la GPU',tags:['CUDA','ROCm','driver'],
+  d:'El controlador del sistema operativo y la plataforma CUDA (NVIDIA) o ROCm (AMD) permiten que un programa envíe trabajo a la GPU. Gran parte del dominio de NVIDIA se explica por el ecosistema CUDA, no solo por el chip.',
+  code:'$ nvidia-smi\n| GPU  Name   Memory-Usage   GPU-Util |\n|  0   H100   61234MiB/81559MiB   98% |'},
+ {n:'01',t:'Sistema operativo y orquestación',s:'Linux, contenedores, colas de trabajo',tags:['Linux','Docker','Kubernetes','Slurm'],
+  d:'Casi todos los clústeres de IA corren Linux. Los trabajos se empaquetan en contenedores y un gestor (Slurm en entrenamiento, Kubernetes en producción) decide en qué servidores corren, reinicia los que fallan y guarda puntos de control.',
+  code:'#SBATCH --nodes=256 --gpus-per-node=8\n#SBATCH --time=14-00:00:00\nsrun python train.py --resume latest.ckpt'}
+];
+var si=2, stk=$('#stack');
+ST.forEach(function(l,i){var b=el('button',{class:'layer'});b.appendChild(el('span',{class:'n'},l.n));var m=el('span');m.appendChild(el('b',null,l.t));m.appendChild(el('small',null,l.s));b.appendChild(m);var tg=el('span',{class:'tags'});l.tags.forEach(function(t){tg.appendChild(el('span',{class:'tag'},t))});b.appendChild(tg);b.addEventListener('click',function(){si=i;drawStack()});stk.appendChild(b)});
+stk.appendChild(el('div',{style:'text-align:center;color:var(--mute);font-size:13px;padding:6px'},'▼ debajo de todo: el hardware de la Parte 1'));
+function drawStack(){
+  $$('.layer',stk).forEach(function(b,i){b.classList.toggle('on',i===si)});
+  var l=ST[si],box=$('#stackInfo');box.textContent='';
+  box.appendChild(el('div',{class:'kicker'},'Capa '+l.n));box.appendChild(el('h4',null,l.t));
+  var w=el('div',{class:'who'});l.tags.forEach(function(t){w.appendChild(el('span',{class:'tag'},t))});box.appendChild(w);
+  box.appendChild(el('p',{style:'color:var(--soft)'},l.d));box.appendChild(el('div',{class:'code'},l.code));
+}
+drawStack();
+
+/* ============ PARALLELISM ============ */
+var COLS=['#7FB0EE','#F0D79A','#7FD1B2','#F5B8A6','#B9A6F0','#A9CBF5','#E8C27A','#9ED9C4'];
+var PAR=[
+ {k:'Datos',t:'Paralelismo de datos',d:'Cada GPU tiene una copia completa del modelo y procesa un lote distinto de textos. Al final de cada paso, todas suman sus gradientes (NCCL) y quedan iguales. Simple, pero exige que el modelo quepa en una GPU.',
+  f:function(i){return {c:COLS[i%8],l:'lote '+(i+1)}}},
+ {k:'Tensor',t:'Paralelismo de tensor',d:'Cada matriz grande se corta en pedazos y cada GPU de un servidor calcula su pedazo; luego se juntan. Requiere comunicación constante, por eso se usa dentro de un servidor con NVLink (Megatron-LM).',
+  f:function(i){return {c:COLS[i%8],l:'1/8 capa'}}},
+ {k:'Tubería',t:'Paralelismo de tubería',d:'Las capas del modelo se reparten en etapas: unas GPU tienen las primeras capas y otras las últimas, como una línea de ensamblaje. Los datos pasan de una etapa a otra.',
+  f:function(i){var s=Math.floor(i/8);return {c:COLS[s*2%8],l:'capas '+(s*20+1)+'–'+(s*20+20)}}},
+ {k:'Expertos',t:'Mezcla de expertos (MoE)',d:'En modelos MoE, como DeepSeek-V3, cada capa tiene muchos «expertos» y cada token usa solo unos pocos. Los expertos se reparten entre GPU. Por eso DeepSeek-V3 tiene 671 mil millones de parámetros pero activa solo 37 mil millones por token.',
+  f:function(i){return {c:i%5===0?'#D9B35C':'#34507F',l:'experto '+(i+1)}}}
+];
+var pi=0,pb=$('#parBtns');
+PAR.forEach(function(p,i){var b=el('button',{class:'btn','aria-pressed':i===0?'true':'false'},p.k);b.addEventListener('click',function(){pi=i;drawPar()});pb.appendChild(b)});
+var pg=$('#pgrid');for(var q=0;q<32;q++)pg.appendChild(el('div'));
+function drawPar(){
+  $$('button',pb).forEach(function(b,i){b.setAttribute('aria-pressed',i===pi?'true':'false')});
+  $$('div',pg).forEach(function(d,i){var r=PAR[pi].f(i);d.style.background=r.c;d.style.color=r.c==='#34507F'?'#8D9BB4':'#10192C';d.textContent=r.l});
+  var box=$('#parInfo');box.textContent='';box.appendChild(el('h4',null,PAR[pi].t));box.appendChild(el('p',{style:'color:var(--soft)'},PAR[pi].d));
+  box.appendChild(el('div',{class:'callout',html:'<b>En la práctica se combinan:</b> Llama 3 405B usó paralelismo de tensor, de tubería, de contexto y de datos a la vez («4D») sobre 16 384 GPU (Dubey et al., 2024).'}));
+}
+drawPar();
+
+/* ============ PIPELINE STEPS ============ */
+var SP=[
+ {t:'Recolectar datos',in:'La web pública (Common Crawl), libros, código, artículos, datos licenciados',out:'Petabytes de texto crudo',hw:'Servidores de CPU y almacenamiento masivo',sw:'Rastreadores web, Apache Spark, almacenamiento de objetos (S3)',time:'Meses',
+  d:'Se reúne todo el texto posible. Common Crawl publica copias periódicas de miles de millones de páginas web. A esto se suman código abierto, libros, artículos científicos y datos con licencia.',viz:'funnel'},
+ {t:'Limpiar y filtrar',in:'Texto crudo',out:'Texto limpio y deduplicado',hw:'Miles de CPU',sw:'Spark, Ray, datatrove, clasificadores de calidad',time:'Semanas',
+  d:'Se eliminan duplicados, spam, contenido tóxico, datos personales y páginas de baja calidad. Se filtra por idioma. Es la etapa que más influye en la calidad final; FineWeb (Penedo et al., 2024) obtuvo 15 billones de tokens de 96 copias de Common Crawl.',viz:'funnel'},
+ {t:'Tokenizar',in:'Texto limpio',out:'Secuencias de números (tokens)',hw:'CPU',sw:'SentencePiece, tiktoken (BPE)',time:'Días',
+  d:'Se entrena un tokenizador (como el de la Demostración 1) y se convierte todo el corpus en números. Llama 3 usa un vocabulario de 128 000 tokens.',viz:'tok'},
+ {t:'Diseñar la arquitectura',in:'Presupuesto de cómputo y objetivos',out:'Configuración del modelo: capas, dimensión, cabezas de atención',hw:'Pequeños experimentos en GPU',sw:'PyTorch o JAX',time:'Semanas a meses',
+  d:'Se decide el tamaño del modelo con leyes de escalado: cuántos parámetros conviene entrenar con el cómputo disponible. Se prueban modelos pequeños y se extrapola.',viz:'arch'},
+ {t:'Preentrenar',in:'Billones de tokens',out:'Modelo base (completa texto, no obedece)',hw:'Miles de GPU durante semanas',sw:'PyTorch + Megatron-LM / DeepSpeed + NCCL + Slurm',time:'Semanas a meses',
+  d:'La etapa más cara: el modelo predice el siguiente token billones de veces y ajusta sus parámetros. Se guardan puntos de control periódicos porque el hardware falla: Llama 3 tuvo 419 interrupciones en 54 días.',viz:'gantt'},
+ {t:'Post-entrenar',in:'Modelo base + ejemplos y preferencias humanas',out:'Modelo asistente (sigue instrucciones)',hw:'Cientos a miles de GPU',sw:'TRL, OpenRLHF, frameworks propios',time:'Semanas',
+  d:'Ajuste por instrucciones (SFT), refuerzo con preferencias (RLHF o DPO) y, en modelos de razonamiento, refuerzo sobre problemas verificables. Es lo que vimos en la diapositiva 13.',viz:'post'},
+ {t:'Evaluar y probar seguridad',in:'Modelo asistente',out:'Informe de capacidades y riesgos',hw:'GPU para inferencia',sw:'Conjuntos de evaluación, red teaming',time:'Semanas',
+  d:'Se mide el modelo en cientos de pruebas (matemáticas, código, idiomas, seguridad) y equipos humanos intentan hacerle decir o hacer cosas dañinas. Se corrigen los problemas antes de publicar.',viz:'eval'},
+ {t:'Desplegar y servir',in:'Modelo final',out:'API y aplicaciones que usted usa',hw:'Miles de GPU repartidas por el mundo',sw:'vLLM, TensorRT-LLM, Kubernetes, API gateway',time:'Continuo',
+  d:'El modelo se cuantiza, se distribuye en servidores de inferencia y se publica por API. Desde aquí empieza la Parte 4: cada prompt que usted envía recorre este sistema.',viz:'serve'}
+];
+var sti=0, stepsBox=$('#steps');
+SP.forEach(function(s,i){var b=el('button',{class:'step'});b.appendChild(el('i',null,i+1));b.appendChild(el('b',null,s.t));b.addEventListener('click',function(){sti=i;drawStep()});stepsBox.appendChild(b)});
+function drawStep(){
+  $$('.step',stepsBox).forEach(function(b,i){b.classList.toggle('on',i===sti)});
+  var s=SP[sti],box=$('#stepInfo');box.textContent='';
+  box.appendChild(el('div',{class:'kicker'},'Etapa '+(sti+1)+' de 8'));box.appendChild(el('h4',null,s.t));
+  box.appendChild(el('p',{style:'color:var(--soft)'},s.d));
+  var io=el('div',{class:'io'});[['Entra',s.in],['Sale',s.out],['Hardware',s.hw],['Software',s.sw],['Duración típica',s.time]].forEach(function(x){var d=el('div');d.appendChild(el('b',null,x[0]));d.appendChild(document.createTextNode(x[1]));io.appendChild(d)});box.appendChild(io);
+  var v=$('#stepViz');v.textContent='';var vt=$('#stepVizTitle');
+  if(s.viz==='funnel'){vt.textContent='Embudo de datos (ilustrativo)';
+    var f=el('div',{class:'funnel'});[['Web cruda: miles de millones de páginas',100,'#34507F','#C3CDDD'],['Sin duplicados',62,'#4A6A9E','#F4F1E8'],['Idioma y calidad',38,'#7FB0EE','#10192C'],['Sin datos personales ni tóxicos',30,'#A9CBF5','#10192C'],['Corpus final: billones de tokens',22,'#D9B35C','#1B1606']].forEach(function(r,i){var d=el('div',{style:'width:'+r[1]+'%;background:'+r[2]+';color:'+r[3]},r[0]);if(sti===0&&i>0)d.style.opacity='.35';f.appendChild(d)});v.appendChild(f);
+    v.appendChild(el('p',{class:'note'},'Las proporciones son ilustrativas; cada laboratorio aplica filtros distintos.'));}
+  else if(s.viz==='tok'){vt.textContent='De texto a números';
+    v.appendChild(el('div',{class:'code'},'"El modelo predice"\n   ↓ tokenizador BPE\n["El", " modelo", " pred", "ice"]\n   ↓ vocabulario de 128 000 entradas\n[6719, 1646, 4255, 560]'));
+    v.appendChild(el('p',{class:'note'},'Números ilustrativos.'));}
+  else if(s.viz==='arch'){vt.textContent='Perillas de la arquitectura (Llama 3 405B)';
+    var t=el('div',{class:'spec'});[['126','capas'],['16 384','dimensión del modelo'],['128','cabezas de atención'],['128 000','tokens de vocabulario']].forEach(function(x){var d=el('div');d.appendChild(el('b',null,x[0]));d.appendChild(el('span',null,x[1]));t.appendChild(d)});v.appendChild(t);
+    v.appendChild(el('p',{class:'note'},'Fuente: Dubey et al. (2024).'));}
+  else if(s.viz==='gantt'){vt.textContent='Un entrenamiento real se interrumpe';
+    var g=el('div',{class:'gantt'});var segs=[[0,9],[9.4,21],[21.3,33],[33.2,46],[46.5,54]];
+    [['Entrenamiento',segs,false],['Puntos de control',[[8.8,9.2],[20.8,21.2],[32.8,33.2],[45.8,46.4]],true]].forEach(function(r){var row=el('div',{class:'gr'});row.appendChild(el('span',null,r[0]));var bar=el('div',{class:'gb'});r[1].forEach(function(s2){bar.appendChild(el('i',{class:r[2]?'cur':'',style:'left:'+(s2[0]/54*100)+'%;width:'+((s2[1]-s2[0])/54*100)+'%'}))});row.appendChild(bar);g.appendChild(row)});
+    v.appendChild(g);v.appendChild(el('p',{style:'color:var(--soft);font-size:15px;margin-top:10px'},'Cada vez que falla una GPU, el trabajo se reanuda desde el último punto de control. Llama 3: 419 interrupciones inesperadas en 54 días; aun así, más del 90 % del tiempo fue entrenamiento efectivo (Dubey et al., 2024).'));
+    v.appendChild(el('p',{class:'note'},'Diagrama esquemático; las interrupciones reales fueron muchas más que las dibujadas.'));}
+  else if(s.viz==='post'){vt.textContent='Del modelo base al asistente';
+    v.appendChild(el('div',{class:'code'},'Usuario: ¿Capital del Ecuador?\n\nModelo base:      ¿Capital del Perú? ¿Capital de…\nTras SFT:          La capital del Ecuador es Quito.\nTras RLHF:         La capital del Ecuador es Quito,\n                   ubicada a 2 850 m de altura.'));}
+  else if(s.viz==='eval'){vt.textContent='Qué se evalúa';
+    var sp2=el('div',{class:'spec'});[['Conocimiento','preguntas de examen'],['Código','SWE-bench, pruebas unitarias'],['Razonamiento','matemáticas, lógica'],['Seguridad','red teaming, abusos']].forEach(function(x){var d=el('div');d.appendChild(el('b',{style:'font-size:20px'},x[0]));d.appendChild(el('span',null,x[1]));sp2.appendChild(d)});v.appendChild(sp2);}
+  else {vt.textContent='Lo que ve el usuario';
+    v.appendChild(el('p',{style:'color:var(--soft)'},'Una caja de texto. Detrás, la Parte 4.'));
+    var b=el('button',{class:'btn on'},'Ir a «Una petición en vivo»');b.addEventListener('click',function(){location.hash='#peticion'});v.appendChild(b);}
+}
+drawStep();
+
+/* ============ REQUEST TRACE ============ */
+var NODES=[['Navegador',20,'Usted escribe el prompt y presiona Enviar.',60],
+ ['Su backend',150,'FastAPI arma el prompt, agrega instrucciones y la clave (desde .env) y llama a la API.',30],
+ ['API del proveedor',285,'HTTPS, verificación de la clave, límites de uso (429) y registro de tokens.',40],
+ ['Balanceador',420,'Elige un servidor de inferencia con capacidad libre, quizá en otro continente.',20],
+ ['Servidor de inferencia',555,'vLLM o similar: tokeniza, agrupa su petición con las de otros usuarios y la envía a las GPU.',30]];
+var trace=$('#trace');
+function drawTraceBase(active){
+  trace.textContent='';
+  for(var i=0;i<NODES.length-1;i++)trace.appendChild(sv('line',{x1:NODES[i][1]+110,y1:110,x2:NODES[i+1][1],y2:110,stroke:i<active?'#D9B35C':'#2C4470','stroke-width':3}));
+  NODES.forEach(function(n,i){var on=i<=active;trace.appendChild(sv('rect',{x:n[1],y:80,width:110,height:60,rx:10,fill:on?'#2C4470':'#182B4D',stroke:on?'#D9B35C':'#2C4470','stroke-width':2}));
+    var words=n[0].split(' ');words.forEach(function(w,k){trace.appendChild(sv('text',{x:n[1]+55,y:106+k*16-(words.length-1)*8,'text-anchor':'middle'},w))})});
+  var gx=555,gy=190;trace.appendChild(sv('rect',{x:gx-20,y:gy,width:150,height:80,rx:10,fill:active>=5?'#2C4470':'#182B4D',stroke:active>=5?'#D9B35C':'#2C4470','stroke-width':2}));
+  for(var g=0;g<8;g++)trace.appendChild(sv('rect',{x:gx-8+(g%4)*33,y:gy+12+Math.floor(g/4)*30,width:26,height:22,rx:3,fill:active>=5?'#D9B35C':'#34507F'}));
+  trace.appendChild(sv('text',{x:gx+55,y:gy+100,'text-anchor':'middle',class:'sm'},'8 GPU con el modelo en memoria'));
+  trace.appendChild(sv('line',{x1:610,y1:140,x2:610,y2:gy,stroke:active>=5?'#D9B35C':'#2C4470','stroke-width':3}));
+  if(active>=6){trace.appendChild(sv('path',{d:'M535,240 C300,280 120,240 75,140',fill:'none',stroke:'#7FD1B2','stroke-width':3,'stroke-dasharray':'6 6'}));trace.appendChild(sv('text',{x:300,y:285,'text-anchor':'middle',fill:'#7FD1B2'},'tokens de vuelta, uno a uno (streaming)'))}
+}
+drawTraceBase(-1);
+var traceTimers=[];
+$('#send').addEventListener('click',function(){
+  traceTimers.forEach(clearTimeout);traceTimers=[];
+  var info=$('#traceInfo');info.textContent='';info.appendChild(el('h4',null,'Las etapas del viaje'));
+  var ol=el('ol',{style:'padding-left:1.2em;color:var(--soft)'});info.appendChild(ol);
+  $('#streamed').textContent='';
+  var ans=+$('#ansLen').value, ttft=60+30+40+20+30+180, tps=70, gen=Math.round(ans/tps*1000);
+  var tl=$('#tl');tl.textContent='';
+  [['Red y API',150,'#7FB0EE'],['Cola y prefill',180,'#B9A6F0'],['Generación de '+ans+' tokens',gen,'#D9B35C']].forEach(function(s){tl.appendChild(el('div',{title:s[0],style:'flex:'+Math.max(s[1],gen*0.28)+';background:'+s[2]},s[0]+' · '+(s[1]>=1000?fmt(s[1]/1000,1)+' s':s[1]+' ms')))});
+  var step=reduce?0:650,i;
+  for(i=0;i<NODES.length;i++)(function(k){traceTimers.push(setTimeout(function(){drawTraceBase(k);ol.appendChild(el('li',null,NODES[k][0]+': '+NODES[k][2]))},k*step))})(i);
+  traceTimers.push(setTimeout(function(){drawTraceBase(5);ol.appendChild(el('li',null,'GPU: primero procesan todo su prompt de una vez (prefill) y luego generan un token por paso, como en la estación de Generación del laboratorio.'))},5*step));
+  var words='La capital de la provincia de Tungurahua es Ambato , conocida como la ciudad de las flores y las frutas , ubicada en el centro de la Sierra ecuatoriana .'.split(' ');
+  traceTimers.push(setTimeout(function(){drawTraceBase(6);ol.appendChild(el('li',null,'Respuesta: cada token viaja de vuelta en cuanto se genera; por eso el texto aparece poco a poco.'));
+    var n=Math.min(words.length,Math.max(8,Math.round(ans/7)));
+    for(var w=0;w<n;w++)(function(j){traceTimers.push(setTimeout(function(){var s=el('span',null,words[j]);$('#streamed').appendChild(s);$('#streamed').appendChild(document.createTextNode(' '))},reduce?0:j*90))})(w);
+  },6*step));
+});
+/* ============ REAL-DATA CHARTS ============ */
+function tip(node,t){node.appendChild(sv('title',{},t));node.style.cursor='pointer';}
+var GEN=[['V100',2017,125,32,0.9,300],['A100',2020,312,80,2.0,400],['H100',2022,989,80,3.35,700],['B200',2024,2250,180,8,1000]];
+var GM=[['Cálculo',2,'TFLOPS','Billones de operaciones por segundo en 16 bits con Tensor Cores (sin dispersión).'],['Memoria',3,'GB','Memoria HBM por GPU: limita el tamaño del modelo que cabe.'],['Ancho de banda',4,'TB/s','Velocidad a la que la memoria entrega datos al chip; en inferencia suele ser el cuello de botella.'],['Consumo',5,'W','Potencia máxima por GPU. Más cálculo trae más calor: por eso la refrigeración líquida.']];
+var gmi=0,gb=$('#genBtns');
+GM.forEach(function(m,i){var b=el('button',{class:'btn','aria-pressed':i===0?'true':'false'},m[0]);b.addEventListener('click',function(){gmi=i;drawGen()});gb.appendChild(b)});
+function drawGen(){
+  $$('button',gb).forEach(function(b,i){b.setAttribute('aria-pressed',i===gmi?'true':'false')});
+  var m=GM[gmi],c=$('#genChart');c.textContent='';var max=Math.max.apply(null,GEN.map(function(g){return g[m[1]]}))*1.15;
+  c.appendChild(sv('line',{x1:40,x2:500,y1:250,y2:250,stroke:'#2C4470'}));
+  GEN.forEach(function(g,i){var v=g[m[1]],h=v/max*210,x=60+i*112;
+    var r=sv('rect',{x:x,y:250-h,width:72,height:h,rx:6,fill:i===2?'#D9B35C':'#7FB0EE'});tip(r,g[0]+' ('+g[1]+'): '+fmt(v,2)+' '+m[2]);c.appendChild(r);
+    c.appendChild(sv('text',{x:x+36,y:244-h,'text-anchor':'middle',fill:'#F0D79A','font-size':14},fmt(v,2)+' '+m[2]));
+    c.appendChild(sv('text',{x:x+36,y:270,'text-anchor':'middle','font-size':14,fill:'#F4F1E8'},g[0]));
+    c.appendChild(sv('text',{x:x+36,y:287,'text-anchor':'middle'},String(g[1])))});
+  var first=GEN[0][m[1]],last=GEN[3][m[1]];
+  c.appendChild(sv('text',{x:40,y:20,fill:'#C3CDDD'},'De V100 a B200: '+fmt(last/first,1)+' veces más · dorado = H100'));
+  $('#genNote').textContent=m[3]+' Fuente: hojas técnicas de NVIDIA (B200 según la ficha DGX B200; cifras aproximadas).';
+}
+drawGen();
+
+(function(){var c=$('#timeChart');var pts=[['GPT-3',2020.4,6*175e9*300e9],['Chinchilla',2022.25,6*70e9*1.4e12],['PaLM',2022.3,6*540e9*780e9],['Llama 2 70B',2023.55,6*70e9*2e12],['Llama 3 405B',2024.55,6*405e9*15.6e12],['DeepSeek-V3',2024.98,6*37e9*14.8e12]];
+  var X=function(y){return 60+(y-2019.8)/(5.6)*430},Y=function(v){return 250-(Math.log10(v)-23)/(3)*220};
+  for(var e=23;e<=26;e++){c.appendChild(sv('line',{x1:60,x2:500,y1:Y(Math.pow(10,e)),y2:Y(Math.pow(10,e)),stroke:'#22385E'}));c.appendChild(sv('text',{x:52,y:Y(Math.pow(10,e))+4,'text-anchor':'end'},'10^'+e))}
+  for(var y=2020;y<=2025;y++)c.appendChild(sv('text',{x:X(y),y:272,'text-anchor':'middle'},String(y)));
+  c.appendChild(sv('text',{x:60,y:292,fill:'#8D9BB4','font-size':11},'operaciones de entrenamiento (FLOP) · año de publicación'));
+  var off={'Chinchilla':[-8,16,'end'],'PaLM':[8,-8,'start'],'DeepSeek-V3':[-8,18,'end'],'Llama 3 405B':[-8,-10,'end'],'GPT-3':[8,-8,'start'],'Llama 2 70B':[8,16,'start']};
+  pts.forEach(function(p){var cx=X(p[1]),cy=Y(p[2]);var d=sv('circle',{cx:cx,cy:cy,r:7,fill:p[0]==='Llama 3 405B'?'#D9B35C':'#7FB0EE',stroke:'#0E1A30','stroke-width':2});tip(d,p[0]+': '+sci(p[2])+' FLOP');c.appendChild(d);var o=off[p[0]];c.appendChild(sv('text',{x:cx+o[0],y:cy+o[1],'text-anchor':o[2],fill:'#F4F1E8'},p[0]))});
+  c.appendChild(sv('text',{x:60,y:20,fill:'#C3CDDD'},'De GPT-3 a Llama 3 405B: unas 120 veces más cómputo en 4 años'));
+})();
+
+(function(){var c=$('#failChart');var rows=[['GPU defectuosa',148,'#EE8B73'],['Memoria HBM3 de la GPU',72,'#EE8B73'],['Red: switches y cables',35,'#7FB0EE'],['Memoria SRAM de la GPU',19,'#EE8B73'],['Procesador de sistema de la GPU',17,'#EE8B73'],['Otras causas',128,'#4A6A9E']];
+  var max=150;rows.forEach(function(r,i){var y=30+i*38,w=r[1]/max*250;var b=sv('rect',{x:220,y:y,width:w,height:26,rx:4,fill:r[2]});tip(b,r[0]+': '+r[1]+' de 419 ('+fmt(r[1]/419*100,1)+' %)');c.appendChild(b);c.appendChild(sv('text',{x:212,y:y+18,'text-anchor':'end'},r[0]));c.appendChild(sv('text',{x:226+w,y:y+18,fill:'#F0D79A'},String(r[1])))});
+  c.appendChild(sv('text',{x:20,y:16,fill:'#C3CDDD'},'Coral = fallas de la propia GPU o su memoria: más de la mitad'));
+  c.appendChild(sv('text',{x:220,y:268,fill:'#8D9BB4','font-size':11},'número de interrupciones (total 419)'));
+})();
+
+(function(){var c=$('#geoChart');var rows=[['Estados Unidos',45,'#D9B35C'],['China',25,'#7FB0EE'],['Europa',15,'#7FD1B2'],['Resto del mundo',15,'#B9A6F0']];
+  var x=30;rows.forEach(function(r){var w=r[1]/100*460;var b=sv('rect',{x:x,y:40,width:w-3,height:70,rx:6,fill:r[2]});tip(b,r[0]+': '+r[1]+' % ≈ '+Math.round(415*r[1]/100)+' TWh');c.appendChild(b);c.appendChild(sv('text',{x:x+8,y:82,fill:'#10192C','font-size':18,'font-weight':700},r[1]+' %'));x+=w});
+  rows.forEach(function(r,i){var y=150+i*28;c.appendChild(sv('rect',{x:30,y:y-11,width:13,height:13,rx:3,fill:r[2]}));c.appendChild(sv('text',{x:52,y:y,fill:'#F4F1E8','font-size':14},r[0]));c.appendChild(sv('text',{x:260,y:y,fill:'#F0D79A','font-size':14},'≈ '+Math.round(415*r[1]/100)+' TWh'))});
+  c.appendChild(sv('text',{x:30,y:24,fill:'#C3CDDD'},'415 TWh en 2024 ≈ 1,5 % de la electricidad del mundo'));
+})();
+
+/* credits list */
+(function(){var ul=$('#photoCredits');var all=ZP.map(function(z){return z[0]});CP.forEach(function(g){g.forEach(function(x){all.push(x[0])})});
+  all.filter(function(v,i){return all.indexOf(v)===i}).forEach(function(f){var li=el('li');li.appendChild(el('a',{href:'https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(f.replace(/ /g,'_')),target:'_blank',rel:'noopener',style:'color:var(--sky)'},f.replace(/\.(jpg|JPG|png)$/,'')));li.appendChild(document.createTextNode(' — Wikimedia Commons'));ul.appendChild(li)})})();
+})();
+</script>
+</body>
+</html>
