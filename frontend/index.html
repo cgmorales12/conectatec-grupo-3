@@ -260,7 +260,9 @@
             background: #EBEEF2;
             border-radius: 12px;
             padding: 14px;
-            min-height: 600px;
+            min-height: 480px;
+            display: flex;
+            flex-direction: column;
         }
 
         .kanban-col-header {
@@ -272,12 +274,127 @@
             font-weight: 700;
         }
 
+        .header-pag-mini {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mini-pag-btn {
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #475569;
+            border-radius: 4px;
+            width: 22px;
+            height: 22px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0;
+            transition: all 0.15s ease;
+        }
+
+        .mini-pag-btn:hover:not(:disabled) {
+            background: var(--brand);
+            color: #FFFFFF;
+            border-color: var(--brand);
+        }
+
+        .mini-pag-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            background: #F1F5F9;
+            color: #94A3B8;
+        }
+
         .col-badge {
             background: #FFF;
             padding: 2px 8px;
             border-radius: 12px;
             font-size: 12px;
             color: var(--muted);
+            font-family: var(--font-mono);
+            font-weight: 600;
+        }
+
+        .cards-container {
+            flex: 1 1 auto;
+            min-height: 100px;
+        }
+
+        /* Barra de Paginación de Columna */
+        .col-paginacion {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-top: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid #E2E8F0;
+        }
+
+        .pag-btn {
+            background: #F8FAFC;
+            border: 1px solid #CBD5E1;
+            color: #1E293B;
+            border-radius: 6px;
+            width: 32px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .pag-btn:hover:not(:disabled) {
+            background: var(--brand);
+            border-color: var(--brand);
+            color: #FFFFFF;
+            transform: scale(1.05);
+        }
+
+        .pag-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            background: #F1F5F9;
+            border-color: #E2E8F0;
+            color: #94A3B8;
+        }
+
+        .pag-centro {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .pag-rango {
+            font-size: 11px;
+            font-weight: 700;
+            color: #1E293B;
+            font-family: var(--font-mono);
+        }
+
+        .pag-sub {
+            font-size: 10px;
+            color: #64748B;
+        }
+
+        .empty-col-msg {
+            text-align: center;
+            color: #94A3B8;
+            font-size: 12.5px;
+            padding: 30px 10px;
+            font-style: italic;
         }
 
         /* Tarjeta de Ticket */
@@ -619,38 +736,86 @@
             </div>
         </aside>
 
-        <!-- Tablero Kanban de 4 columnas -->
+        <!-- Tablero Kanban de 4 columnas con paginación de 5 tickets -->
         <main class="kanban-board">
             <div class="kanban-col" id="col-nuevo">
                 <div class="kanban-col-header">
                     <span>🆕 Nuevos</span>
-                    <span class="col-badge" id="count-nuevo">0</span>
+                    <div class="header-pag-mini">
+                        <button type="button" class="mini-pag-btn" id="mini-prev-nuevo" onclick="cambiarPagina('nuevo', -1)" title="Página anterior">◀</button>
+                        <span class="col-badge" id="count-nuevo">0</span>
+                        <button type="button" class="mini-pag-btn" id="mini-next-nuevo" onclick="cambiarPagina('nuevo', 1)" title="Página siguiente">▶</button>
+                    </div>
                 </div>
                 <div class="cards-container" id="cards-nuevo"></div>
+                <div class="col-paginacion" id="pag-nuevo">
+                    <button type="button" class="pag-btn" id="btn-prev-nuevo" onclick="cambiarPagina('nuevo', -1)" title="Ver tickets anteriores">◀</button>
+                    <div class="pag-centro">
+                        <span class="pag-rango" id="rango-nuevo">0 tickets</span>
+                        <span class="pag-sub" id="sub-nuevo">Pág. 1 / 1</span>
+                    </div>
+                    <button type="button" class="pag-btn" id="btn-next-nuevo" onclick="cambiarPagina('nuevo', 1)" title="Ver tickets siguientes">▶</button>
+                </div>
             </div>
 
             <div class="kanban-col" id="col-en_atencion">
                 <div class="kanban-col-header">
                     <span>⚙️ En Atención</span>
-                    <span class="col-badge" id="count-en_atencion">0</span>
+                    <div class="header-pag-mini">
+                        <button type="button" class="mini-pag-btn" id="mini-prev-en_atencion" onclick="cambiarPagina('en_atencion', -1)" title="Página anterior">◀</button>
+                        <span class="col-badge" id="count-en_atencion">0</span>
+                        <button type="button" class="mini-pag-btn" id="mini-next-en_atencion" onclick="cambiarPagina('en_atencion', 1)" title="Página siguiente">▶</button>
+                    </div>
                 </div>
                 <div class="cards-container" id="cards-en_atencion"></div>
+                <div class="col-paginacion" id="pag-en_atencion">
+                    <button type="button" class="pag-btn" id="btn-prev-en_atencion" onclick="cambiarPagina('en_atencion', -1)" title="Ver tickets anteriores">◀</button>
+                    <div class="pag-centro">
+                        <span class="pag-rango" id="rango-en_atencion">0 tickets</span>
+                        <span class="pag-sub" id="sub-en_atencion">Pág. 1 / 1</span>
+                    </div>
+                    <button type="button" class="pag-btn" id="btn-next-en_atencion" onclick="cambiarPagina('en_atencion', 1)" title="Ver tickets siguientes">▶</button>
+                </div>
             </div>
 
             <div class="kanban-col" id="col-escalado_cuadrilla">
                 <div class="kanban-col-header">
                     <span>🚚 Escalado a Cuadrilla</span>
-                    <span class="col-badge" id="count-escalado_cuadrilla">0</span>
+                    <div class="header-pag-mini">
+                        <button type="button" class="mini-pag-btn" id="mini-prev-escalado_cuadrilla" onclick="cambiarPagina('escalado_cuadrilla', -1)" title="Página anterior">◀</button>
+                        <span class="col-badge" id="count-escalado_cuadrilla">0</span>
+                        <button type="button" class="mini-pag-btn" id="mini-next-escalado_cuadrilla" onclick="cambiarPagina('escalado_cuadrilla', 1)" title="Página siguiente">▶</button>
+                    </div>
                 </div>
                 <div class="cards-container" id="cards-escalado_cuadrilla"></div>
+                <div class="col-paginacion" id="pag-escalado_cuadrilla">
+                    <button type="button" class="pag-btn" id="btn-prev-escalado_cuadrilla" onclick="cambiarPagina('escalado_cuadrilla', -1)" title="Ver tickets anteriores">◀</button>
+                    <div class="pag-centro">
+                        <span class="pag-rango" id="rango-escalado_cuadrilla">0 tickets</span>
+                        <span class="pag-sub" id="sub-escalado_cuadrilla">Pág. 1 / 1</span>
+                    </div>
+                    <button type="button" class="pag-btn" id="btn-next-escalado_cuadrilla" onclick="cambiarPagina('escalado_cuadrilla', 1)" title="Ver tickets siguientes">▶</button>
+                </div>
             </div>
 
             <div class="kanban-col" id="col-resuelto">
                 <div class="kanban-col-header">
                     <span>✅ Resueltos</span>
-                    <span class="col-badge" id="count-resuelto">0</span>
+                    <div class="header-pag-mini">
+                        <button type="button" class="mini-pag-btn" id="mini-prev-resuelto" onclick="cambiarPagina('resuelto', -1)" title="Página anterior">◀</button>
+                        <span class="col-badge" id="count-resuelto">0</span>
+                        <button type="button" class="mini-pag-btn" id="mini-next-resuelto" onclick="cambiarPagina('resuelto', 1)" title="Página siguiente">▶</button>
+                    </div>
                 </div>
                 <div class="cards-container" id="cards-resuelto"></div>
+                <div class="col-paginacion" id="pag-resuelto">
+                    <button type="button" class="pag-btn" id="btn-prev-resuelto" onclick="cambiarPagina('resuelto', -1)" title="Ver tickets anteriores">◀</button>
+                    <div class="pag-centro">
+                        <span class="pag-rango" id="rango-resuelto">0 tickets</span>
+                        <span class="pag-sub" id="sub-resuelto">Pág. 1 / 1</span>
+                    </div>
+                    <button type="button" class="pag-btn" id="btn-next-resuelto" onclick="cambiarPagina('resuelto', 1)" title="Ver tickets siguientes">▶</button>
+                </div>
             </div>
         </main>
     </div>
@@ -745,102 +910,177 @@
             }
         }
 
+        const LIMITE_POR_COLUMNA = 5;
+        const paginacionColumnas = {
+            nuevo: 1,
+            en_atencion: 1,
+            escalado_cuadrilla: 1,
+            resuelto: 1
+        };
+
+        function cambiarPagina(estado, delta) {
+            if (!paginacionColumnas[estado]) paginacionColumnas[estado] = 1;
+            paginacionColumnas[estado] += delta;
+            if (window._ticketsCargados) {
+                renderizarTablero(window._ticketsCargados);
+            }
+        }
+
         function renderizarTablero(tickets) {
             window._ticketsCargados = tickets;
-            const cols = {
-                nuevo: document.getElementById('cards-nuevo'),
-                en_atencion: document.getElementById('cards-en_atencion'),
-                escalado_cuadrilla: document.getElementById('cards-escalado_cuadrilla'),
-                resuelto: document.getElementById('cards-resuelto')
+            const columnasIds = ['nuevo', 'en_atencion', 'escalado_cuadrilla', 'resuelto'];
+
+            // 1. Agrupar tickets por columna/estado
+            const ticketsPorColumna = {
+                nuevo: [],
+                en_atencion: [],
+                escalado_cuadrilla: [],
+                resuelto: []
             };
 
-            const counts = { nuevo: 0, en_atencion: 0, escalado_cuadrilla: 0, resuelto: 0 };
-            Object.values(cols).forEach(c => c.innerHTML = '');
-
             tickets.forEach(t => {
-                const estado = t.estado in cols ? t.estado : 'nuevo';
-                counts[estado]++;
+                const estado = t.estado in ticketsPorColumna ? t.estado : 'nuevo';
+                ticketsPorColumna[estado].push(t);
+            });
 
-                const card = document.createElement('div');
-                const prioClass = t.prioridad === 'Alta' ? 'p-alta' : (t.prioridad === 'Media' ? 'p-media' : 'p-baja');
-                card.className = `ticket-card ${prioClass}`;
+            // 2. Renderizar cada columna con paginación de 5 tickets
+            columnasIds.forEach(estado => {
+                const container = document.getElementById(`cards-${estado}`);
+                const countBadge = document.getElementById(`count-${estado}`);
+                const btnPrev = document.getElementById(`btn-prev-${estado}`);
+                const btnNext = document.getElementById(`btn-next-${estado}`);
+                const miniPrev = document.getElementById(`mini-prev-${estado}`);
+                const miniNext = document.getElementById(`mini-next-${estado}`);
+                const rangoLbl = document.getElementById(`rango-${estado}`);
+                const subLbl = document.getElementById(`sub-${estado}`);
 
-                // Determinación explícita del Nivel de Soporte ITIL
-                let nivelTexto = 'Nivel 1 · Autoatención Guiada';
-                let nivelClase = 'nivel-1';
-                let nivelIcono = 'ℹ️';
+                const colTickets = ticketsPorColumna[estado];
+                const total = colTickets.length;
+                countBadge.textContent = total;
 
-                if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
-                    nivelTexto = 'Nivel 0 · Fuera de Alcance';
-                    nivelClase = 'nivel-0';
-                    nivelIcono = '⚪';
-                } else if (estado === 'escalado_cuadrilla' || t.prioridad === 'Alta' || t.categoria.includes('Fibra')) {
-                    nivelTexto = 'Nivel 3 · Cuadrilla de Campo';
-                    nivelClase = 'nivel-3';
-                    nivelIcono = '🚚';
-                } else if (t.prioridad === 'Media' || t.categoria.includes('Velocidad') || t.categoria.includes('Calidad') || t.categoria.includes('Atención General')) {
-                    nivelTexto = 'Nivel 2 · Soporte Remoto / NOC';
-                    nivelClase = 'nivel-2';
-                    nivelIcono = '💻';
+                const totalPaginas = Math.ceil(total / LIMITE_POR_COLUMNA) || 1;
+                if (!paginacionColumnas[estado] || paginacionColumnas[estado] < 1) {
+                    paginacionColumnas[estado] = 1;
                 }
-
-                // Cita del manual técnico RAG
-                let citaTxt = '📖 Guía operativa de mesa de ayuda';
-                if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
-                    citaTxt = '⚠️ Solicitud No Técnica / Fuera de Alcance (Sin avería)';
-                } else if (t.citas && t.citas.length > 0) {
-                    citaTxt = `📖 <b>${t.citas[0].documento_id}:</b> ${t.citas[0].paso_exacto}`;
-                } else if (t.requiere_revision_humana) {
-                    citaTxt = '⚠️ <span class="badge-failover badge-norag">RAG Desconectado · Escalado Nivel 2</span>';
+                if (paginacionColumnas[estado] > totalPaginas) {
+                    paginacionColumnas[estado] = totalPaginas;
                 }
+                const pagActual = paginacionColumnas[estado];
 
-                // IA y badge de failover / resiliencia
-                let iaTxt = `${t.metadatos_ia.proveedor} (${t.metadatos_ia.modelo.slice(0, 15)}...)`;
-                if (t.metadatos_ia.conmutado) {
-                    if (t.metadatos_ia.proveedor === 'groq') {
-                        iaTxt += ` <span class="badge-failover badge-groq">🟠 Respaldo Groq</span>`;
+                // Actualizar estado de botones (inferiores y superiores)
+                const disabledPrev = (pagActual <= 1);
+                const disabledNext = (pagActual >= totalPaginas);
+
+                if (btnPrev) btnPrev.disabled = disabledPrev;
+                if (btnNext) btnNext.disabled = disabledNext;
+                if (miniPrev) miniPrev.disabled = disabledPrev;
+                if (miniNext) miniNext.disabled = disabledNext;
+
+                // Actualizar texto de rango y páginas
+                if (rangoLbl && subLbl) {
+                    if (total === 0) {
+                        rangoLbl.textContent = '0 tickets';
+                        subLbl.textContent = 'Pág. 1 / 1';
                     } else {
-                        iaTxt += ` <span class="badge-failover badge-local">🔵 Motor Local Offline</span>`;
+                        const inicio = (pagActual - 1) * LIMITE_POR_COLUMNA;
+                        const fin = Math.min(inicio + LIMITE_POR_COLUMNA, total);
+                        rangoLbl.textContent = `${inicio + 1}-${fin} de ${total}`;
+                        subLbl.textContent = `Pág. ${pagActual} / ${totalPaginas}`;
                     }
                 }
 
-                // Tokens consumidos
-                let tokensTxt = '🪙 0 tokens (Modo Local)';
-                if (t.metadatos_ia.tokens_total) {
-                    tokensTxt = `🪙 <b>${t.metadatos_ia.tokens_total}</b> tokens <small style="color:#64748B;">(${t.metadatos_ia.tokens_prompt || 0} in / ${t.metadatos_ia.tokens_completado || 0} out)</small>`;
-                } else if (t.metadatos_ia.proveedor === 'conmutador-local-offline') {
-                    tokensTxt = '🪙 0 tokens (Costo $0 · Procesamiento Offline)';
+                container.innerHTML = '';
+
+                if (total === 0) {
+                    container.innerHTML = '<div class="empty-col-msg">📭 Sin tickets en esta columna</div>';
+                    return;
                 }
 
-                card.innerHTML = `
-                    <div class="ticket-header">
-                        <span class="ticket-code">${t.ticket_codigo}</span>
-                        <span class="ticket-prio">${t.prioridad} · SLA ${t.sla_minutos}m</span>
-                    </div>
-                    <div class="ticket-client">${t.nombre_cliente}</div>
-                    <div class="ticket-desc">${t.descripcion_problema}</div>
-                    <div class="ticket-meta">
-                        <div class="meta-row"><span class="meta-lbl">Nivel ITIL:</span> <span class="badge-nivel ${nivelClase}">${nivelIcono} ${nivelTexto}</span></div>
-                        <div class="meta-row"><span class="meta-lbl">Categoría:</span> <b>${t.categoria}</b></div>
-                        <div class="meta-row"><span class="meta-lbl">Impacto x Urg.:</span> ${t.impacto} x ${t.urgencia}</div>
-                        <div class="meta-row"><span class="meta-lbl">IA:</span> ${iaTxt}</div>
-                        <div class="meta-row"><span class="meta-lbl">Consumo:</span> <span>${tokensTxt}</span></div>
-                    </div>
-                    <div class="ticket-cita">${citaTxt}</div>
-                    <button type="button" class="exp-btn" onclick="abrirModalExplicabilidad(${t.id})">💡 ¿Por qué esta clasificación?</button>
-                    <div class="ticket-actions">
-                        ${estado !== 'en_atencion' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'en_atencion')">⚙️ Atender</button>` : ''}
-                        ${estado !== 'escalado_cuadrilla' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'escalado_cuadrilla')">🚚 Escalar</button>` : ''}
-                        ${estado !== 'resuelto' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'resuelto')">✅ Resolver</button>` : ''}
-                    </div>
-                `;
-                cols[estado].appendChild(card);
-            });
+                const inicio = (pagActual - 1) * LIMITE_POR_COLUMNA;
+                const visibles = colTickets.slice(inicio, inicio + LIMITE_POR_COLUMNA);
 
-            document.getElementById('count-nuevo').textContent = counts.nuevo;
-            document.getElementById('count-en_atencion').textContent = counts.en_atencion;
-            document.getElementById('count-escalado_cuadrilla').textContent = counts.escalado_cuadrilla;
-            document.getElementById('count-resuelto').textContent = counts.resuelto;
+                visibles.forEach(t => {
+                    const card = crearTarjetaTicketHtml(t, estado);
+                    container.appendChild(card);
+                });
+            });
+        }
+
+        function crearTarjetaTicketHtml(t, estado) {
+            const card = document.createElement('div');
+            const prioClass = t.prioridad === 'Alta' ? 'p-alta' : (t.prioridad === 'Media' ? 'p-media' : 'p-baja');
+            card.className = `ticket-card ${prioClass}`;
+
+            // Determinación explícita del Nivel de Soporte ITIL
+            let nivelTexto = 'Nivel 1 · Autoatención Guiada';
+            let nivelClase = 'nivel-1';
+            let nivelIcono = 'ℹ️';
+
+            if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
+                nivelTexto = 'Nivel 0 · Fuera de Alcance';
+                nivelClase = 'nivel-0';
+                nivelIcono = '⚪';
+            } else if (estado === 'escalado_cuadrilla' || t.prioridad === 'Alta' || t.categoria.includes('Fibra')) {
+                nivelTexto = 'Nivel 3 · Cuadrilla de Campo';
+                nivelClase = 'nivel-3';
+                nivelIcono = '🚚';
+            } else if (t.prioridad === 'Media' || t.categoria.includes('Velocidad') || t.categoria.includes('Calidad') || t.categoria.includes('Atención General')) {
+                nivelTexto = 'Nivel 2 · Soporte Remoto / NOC';
+                nivelClase = 'nivel-2';
+                nivelIcono = '💻';
+            }
+
+            // Cita del manual técnico RAG
+            let citaTxt = '📖 Guía operativa de mesa de ayuda';
+            if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
+                citaTxt = '⚠️ Solicitud No Técnica / Fuera de Alcance (Sin avería)';
+            } else if (t.citas && t.citas.length > 0) {
+                citaTxt = `📖 <b>${t.citas[0].documento_id}:</b> ${t.citas[0].paso_exacto}`;
+            } else if (t.requiere_revision_humana) {
+                citaTxt = '⚠️ <span class="badge-failover badge-norag">RAG Desconectado · Escalado Nivel 2</span>';
+            }
+
+            // IA y badge de failover / resiliencia
+            let iaTxt = `${t.metadatos_ia.proveedor} (${t.metadatos_ia.modelo.slice(0, 15)}...)`;
+            if (t.metadatos_ia.conmutado) {
+                if (t.metadatos_ia.proveedor === 'groq') {
+                    iaTxt += ` <span class="badge-failover badge-groq">🟠 Respaldo Groq</span>`;
+                } else {
+                    iaTxt += ` <span class="badge-failover badge-local">🔵 Motor Local Offline</span>`;
+                }
+            }
+
+            // Tokens consumidos
+            let tokensTxt = '🪙 0 tokens (Modo Local)';
+            if (t.metadatos_ia.tokens_total) {
+                tokensTxt = `🪙 <b>${t.metadatos_ia.tokens_total}</b> tokens <small style="color:#64748B;">(${t.metadatos_ia.tokens_prompt || 0} in / ${t.metadatos_ia.tokens_completado || 0} out)</small>`;
+            } else if (t.metadatos_ia.proveedor === 'conmutador-local-offline') {
+                tokensTxt = '🪙 0 tokens (Costo $0 · Procesamiento Offline)';
+            }
+
+            card.innerHTML = `
+                <div class="ticket-header">
+                    <span class="ticket-code">${t.ticket_codigo}</span>
+                    <span class="ticket-prio">${t.prioridad} · SLA ${t.sla_minutos}m</span>
+                </div>
+                <div class="ticket-client">${t.nombre_cliente}</div>
+                <div class="ticket-desc">${t.descripcion_problema}</div>
+                <div class="ticket-meta">
+                    <div class="meta-row"><span class="meta-lbl">Nivel ITIL:</span> <span class="badge-nivel ${nivelClase}">${nivelIcono} ${nivelTexto}</span></div>
+                    <div class="meta-row"><span class="meta-lbl">Categoría:</span> <b>${t.categoria}</b></div>
+                    <div class="meta-row"><span class="meta-lbl">Impacto x Urg.:</span> ${t.impacto} x ${t.urgencia}</div>
+                    <div class="meta-row"><span class="meta-lbl">IA:</span> ${iaTxt}</div>
+                    <div class="meta-row"><span class="meta-lbl">Consumo:</span> <span>${tokensTxt}</span></div>
+                </div>
+                <div class="ticket-cita">${citaTxt}</div>
+                <button type="button" class="exp-btn" onclick="abrirModalExplicabilidad(${t.id})">💡 ¿Por qué esta clasificación?</button>
+                <div class="ticket-actions">
+                    ${estado !== 'en_atencion' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'en_atencion')">⚙️ Atender</button>` : ''}
+                    ${estado !== 'escalado_cuadrilla' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'escalado_cuadrilla')">🚚 Escalar</button>` : ''}
+                    ${estado !== 'resuelto' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'resuelto')">✅ Resolver</button>` : ''}
+                </div>
+            `;
+            return card;
         }
 
         async function cambiarEstado(ticketId, nuevoEstado) {
@@ -948,6 +1188,8 @@
                     mostrarToast(`⚡ Ticket ${ticketCreado.ticket_codigo} clasificado con ${ticketCreado.metadatos_ia.proveedor}`, 'exito');
 
                     document.getElementById('ticketForm').reset();
+                    // Asegurar que la columna del ticket creado muestre la primera página con el nuevo ticket
+                    paginacionColumnas[ticketCreado.estado] = 1;
                     cargarTickets();
                 } else {
                     const err = await res.json();
