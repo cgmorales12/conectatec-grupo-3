@@ -13,7 +13,8 @@ from app.schemas import (
     TicketOut,
     ListaTicketsOut,
     ActualizarEstadoIn,
-    CitaRAG
+    CitaRAG,
+    MetadatosIA
 )
 from app.services.llm import clasificar_solicitud
 from app.tools.priorizar import calcular_prioridad_itil
@@ -92,8 +93,10 @@ def obtener_todos_los_tickets():
     
     for t in tickets_db:
         citas_obj = [CitaRAG(**c) for c in t["citas"]]
+        metadatos_obj = MetadatosIA(**t["metadatos_ia"])
         t_dict = dict(t)
         t_dict["citas"] = citas_obj
+        t_dict["metadatos_ia"] = metadatos_obj
         tickets_out.append(TicketOut(**t_dict))
         
     return ListaTicketsOut(

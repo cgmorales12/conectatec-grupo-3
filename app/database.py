@@ -97,7 +97,7 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
     return nuevo_id
 
 def listar_tickets() -> List[Dict[str, Any]]:
-    """Recupera todos los tickets registrados en la base de datos."""
+    """Recupera todos los tickets registrados en la base de datos excluyendo campos internos."""
     conn = _obtener_conexion()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM tickets ORDER BY id DESC")
@@ -106,17 +106,34 @@ def listar_tickets() -> List[Dict[str, Any]]:
     
     tickets = []
     for r in rows:
-        t = dict(r)
-        t["citas"] = json.loads(t["citas_json"])
-        t["requiere_revision_humana"] = bool(t["requiere_revision_humana"])
-        t["metadatos_ia"] = {
-            "proveedor": t["proveedor_ia"],
-            "modelo": t["modelo_ia"],
-            "conmutado": bool(t["conmutado"]),
-            "motivo_conmutacion": t["motivo_conmutacion"],
-            "latencia_ms": t["latencia_ms"]
+        t_raw = dict(r)
+        citas_data = json.loads(t_raw["citas_json"]) if t_raw.get("citas_json") else []
+        ticket_limpio = {
+            "id": t_raw["id"],
+            "ticket_codigo": t_raw["ticket_codigo"],
+            "fecha_creacion": t_raw["fecha_creacion"],
+            "nombre_cliente": t_raw["nombre_cliente"],
+            "email_cliente": t_raw["email_cliente"],
+            "descripcion_problema": t_raw["descripcion_problema"],
+            "categoria": t_raw["categoria"],
+            "impacto": t_raw["impacto"],
+            "urgencia": t_raw["urgencia"],
+            "prioridad": t_raw["prioridad"],
+            "sla_minutos": t_raw["sla_minutos"],
+            "descripcion_sla": t_raw["descripcion_sla"],
+            "solucion_propuesta": t_raw["solucion_propuesta"],
+            "citas": citas_data,
+            "estado": t_raw["estado"],
+            "requiere_revision_humana": bool(t_raw["requiere_revision_humana"]),
+            "metadatos_ia": {
+                "proveedor": t_raw["proveedor_ia"],
+                "modelo": t_raw["modelo_ia"],
+                "conmutado": bool(t_raw["conmutado"]),
+                "motivo_conmutacion": t_raw["motivo_conmutacion"],
+                "latencia_ms": t_raw["latencia_ms"]
+            }
         }
-        tickets.append(t)
+        tickets.append(ticket_limpio)
     return tickets
 
 def actualizar_estado_ticket(ticket_id: int, nuevo_estado: str) -> bool:

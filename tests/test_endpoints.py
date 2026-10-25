@@ -150,3 +150,20 @@ def test_transparencia_conmutacion_failover(monkeypatch):
     assert ticket["metadatos_ia"]["conmutado"] is True
     assert ticket["metadatos_ia"]["proveedor"] == "groq"
     assert "Gemini 1.5 Flash HTTP 429" in ticket["metadatos_ia"]["motivo_conmutacion"]
+
+
+def test_listar_tickets_tablero():
+    """Verifica que GET /v1/tickets retorne la lista de tickets sin violar los esquemas estrictos de Pydantic."""
+    response = client.get("/v1/tickets")
+    assert response.status_code == 200
+    data = response.json()
+    assert "total_tickets" in data
+    assert "tickets" in data
+    assert isinstance(data["tickets"], list)
+    if data["total_tickets"] > 0:
+        primer_ticket = data["tickets"][0]
+        assert "ticket_codigo" in primer_ticket
+        assert "citas" in primer_ticket
+        assert "metadatos_ia" in primer_ticket
+        assert "proveedor" in primer_ticket["metadatos_ia"]
+
