@@ -13,25 +13,28 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from contextlib import asynccontextmanager
 from app.routers import tickets_router, salud_router
 from app.database import inicializar_bd
 
 # ============================================================================
-# Inicialización de la Aplicación FastAPI
+# Inicialización de la Aplicación FastAPI con Lifespan Moderno
 # ============================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Inicializar tablas de SQLite al arrancar el backend
+    inicializar_bd()
+    yield
 
 app = FastAPI(
     title="ConectaTec API · Triaje Inteligente ISP",
     description="Sistema de triaje automático, priorización determinista ITIL y resolución con RAG sobre 15 manuales técnicos oficiales.",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
-
-# Inicializar tablas de SQLite al arrancar el backend
-@app.on_event("startup")
-def al_iniciar():
-    inicializar_bd()
 
 # Configuración de CORS
 app.add_middleware(
@@ -120,7 +123,7 @@ async def manejador_error_validacion_422(request: Request, exc: RequestValidatio
         detalle = f"Error en campo '{campo}': {primer_error.get('msg', 'Entrada no válida')}."
     
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422),
         media_type="application/problem+json",
         content={
             "type": "/errores/entrada-invalida",
