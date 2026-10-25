@@ -517,6 +517,50 @@
             box-shadow: 0 2px 4px rgba(22, 101, 52, 0.1);
         }
 
+        /* Pie de Página Institucional */
+        .app-footer {
+            background: var(--header);
+            color: #94A3B8;
+            border-top: 3px solid var(--brand);
+            padding: 24px 20px;
+            margin-top: 40px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .footer-creadores {
+            color: #FFFFFF;
+            font-size: 14.5px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .footer-creadores .footer-label {
+            color: #A7F3D0;
+            font-weight: 700;
+            margin-right: 4px;
+        }
+
+        .footer-creadores span.sep {
+            color: #2EB8A6;
+            font-weight: 700;
+            margin: 0 6px;
+        }
+
+        .footer-meta {
+            font-size: 12px;
+            color: #64748B;
+        }
+
         /* Modal de Explicabilidad XAI */
         .modal-backdrop {
             position: fixed;
@@ -1046,6 +1090,16 @@
             </div>
         </main>
     </div>
+
+    <!-- Pie de Página Institucional -->
+    <footer class="app-footer">
+        <div class="footer-creadores">
+            <span class="footer-label">Creado por :</span> Amalia <span class="sep">//</span> Ribera <span class="sep">//</span> Christian
+        </div>
+        <div class="footer-meta">
+            ConectaTec · Seminario de Titulación en Ingeniería de Software con IA Generativa — UNIANDES 2026 (Caso N.º 03 · Grupo 3)
+        </div>
+    </footer>
 
     <script>
         const API_URL = '/v1/tickets';
