@@ -9,6 +9,7 @@ import os
 router = APIRouter(tags=["Salud y Monitoreo"])
 
 @router.get("/v1/salud", summary="Chequeo de salud del sistema")
+@router.get("/salud", summary="Endpoint de salud en español")
 @router.get("/health", summary="Endpoint alternativo de salud")
 def health_check():
     """
@@ -21,14 +22,13 @@ def health_check():
         "status": "ok",
         "servicio": "conectatec-api",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-
         "base_datos": {
             "motor": "sqlite",
             "conectada": db_activa
         },
         "arquitectura": {
-            "modelo_primario": "gemini-1.5-flash",
-            "modelo_respaldo": "llama-3.3-70b-versatile (Groq)",
+            "modelo_primario": "gemini-3.5-flash-lite",
+            "modelo_respaldo": "openai/gpt-oss-120b (Groq Cloud)",
             "rag": "ChromaDB / 15 Manuales ISP",
             "matriz_itil": "determinista (config/matriz_prioridad.json)"
         }

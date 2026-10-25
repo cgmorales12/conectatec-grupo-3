@@ -63,7 +63,7 @@ _cubetas_clientes = defaultdict(lambda: {"fichas": CUBETA_CAPACIDAD, "ultimo_tie
 @app.middleware("http")
 async def limitador_tasa_token_bucket(request: Request, call_next):
     # Excluir rutas de interfaz gráfica, salud y documentación de límites de consumo
-    rutas_excluidas = ["/", "/health", "/v1/salud", "/docs", "/redoc", "/openapi.json", "/tablero", "/favicon.ico"]
+    rutas_excluidas = ["/", "/health", "/salud", "/v1/salud", "/docs", "/redoc", "/openapi.json", "/tablero", "/favicon.ico"]
     if request.url.path in rutas_excluidas or request.url.path.startswith("/docs"):
         return await call_next(request)
         
