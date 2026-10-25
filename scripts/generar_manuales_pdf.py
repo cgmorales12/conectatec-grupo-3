@@ -364,8 +364,10 @@ MANUALES = [
 ]
 
 def generar_archivos():
-    output_dir = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
-    os.makedirs(output_dir, exist_ok=True)
+    raw_md_dir = os.path.join(os.path.dirname(__file__), "..", "data", "raw")
+    pdf_dir = os.path.join(os.path.dirname(__file__), "..", "data", "pdf")
+    os.makedirs(raw_md_dir, exist_ok=True)
+    os.makedirs(pdf_dir, exist_ok=True)
     
     styles = getSampleStyleSheet()
     
@@ -442,7 +444,7 @@ def generar_archivos():
     for doc in MANUALES:
         # 1. Generar archivo Markdown (.md)
         md_filename = f"{doc['archivo']}.md"
-        md_path = os.path.join(output_dir, md_filename)
+        md_path = os.path.join(raw_md_dir, md_filename)
         with open(md_path, 'w', encoding='utf-8') as f:
             f.write(f"# {doc['id']}: {doc['titulo']}\n\n")
             f.write(f"**Categoría:** {doc['categoria']}  \n")
@@ -460,9 +462,9 @@ def generar_archivos():
                 f.write("| " + " | ".join(row) + " |\n")
             f.write("\n---\n*ConectaTec ISP · Base de Conocimiento Oficial RAG · UNIANDES 2026*\n")
             
-        # 2. Generar archivo PDF (.pdf)
+        # 2. Generar archivo PDF (.pdf) en su subcarpeta dedicada
         pdf_filename = f"{doc['archivo']}.pdf"
-        pdf_path = os.path.join(output_dir, pdf_filename)
+        pdf_path = os.path.join(pdf_dir, pdf_filename)
         pdf = SimpleDocTemplate(
             pdf_path,
             pagesize=letter,
