@@ -421,6 +421,53 @@ def test_prompts_versionados_y_regla_abstencion():
     assert any(k in ticket["justificacion"].lower() for k in ["no describe", "no corresponde", "fuera de alcance", "abstiene", "aclaración"])
 
 
+def test_frontend_interfaz_propia_y_elementos_reactivos():
+    """
+    Valida los requerimientos del rubro:
+    «Frontend funcional: Interfaz propia del producto; deshabilita el botón mientras espera y muestra errores comprensibles.»
+    """
+    # 1. Verificar que el endpoint de tablero sirve la interfaz web institucional propia
+    resp_tablero = client.get("/tablero")
+    assert resp_tablero.status_code == 200
+    html = resp_tablero.text
+
+    # 2. Verificar identidad propia del producto (ConectaTec / TecnoAula)
+    assert "ConectaTec" in html or "TecnoAula" in html
+    assert "Triaje Inteligente" in html
+
+    # 3. Verificar que existen los elementos para deshabilitar botón y mostrar estado de espera
+    assert 'id="btnSubmit"' in html
+    assert 'id="btnSubmitIcon"' in html
+    assert 'id="btnSubmitText"' in html
+    assert 'spinner-mini' in html
+    assert '.btn-submit:disabled' in html
+
+    # 4. Verificar que existe el contenedor accesible para errores comprensibles
+    assert 'id="formErrorContainer"' in html
+    assert 'form-error-banner' in html
+    assert 'role="alert"' in html
+    assert 'limpiarErrorFormulario' in html
+    assert 'mostrarErrorFormulario' in html
+
+    # 5. Verificar que una entrada errónea emite RFC 9457 con detalle comprensible para el frontend
+    from app.main import _cubetas_clientes
+    _cubetas_clientes.clear()
+
+    payload_invalido = {
+        "nombre_cliente": "Juan",
+        "email_cliente": "correo-invalido",
+        "descripcion_problema": "Corta"  # Menos de 10 caracteres
+    }
+    resp_err = client.post("/clasificar", json=payload_invalido)
+    assert resp_err.status_code == 422
+    assert resp_err.headers.get("content-type") == "application/problem+json"
+    err_body = resp_err.json()
+    assert err_body["status"] == 422
+    assert "detail" in err_body
+    assert "Descripción del problema" in err_body["detail"] or "caracteres" in err_body["detail"]
+
+
+
 
 
 

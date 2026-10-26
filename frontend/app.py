@@ -49,7 +49,7 @@ with col_izq:
 
     if enviado:
         if len(descripcion.strip()) < 10:
-            st.error("La descripción debe tener al menos 10 caracteres.")
+            st.error("⚠️ **Descripción Demasiado Corta:** La descripción de la incidencia debe contener al menos 10 caracteres para que la IA realice el triaje.")
         else:
             payload = {
                 "nombre_cliente": nombre,
@@ -58,17 +58,44 @@ with col_izq:
                 "descripcion_problema": descripcion
             }
             try:
-                res = requests.post(f"{API_BASE_URL}/v1/tickets/clasificar", json=payload, timeout=20)
+                # Indicador visual de espera mientras el backend procesa el triaje
+                with st.spinner("⏳ Analizando incidencia con IA y consultando manuales técnicos (RAG)... Por favor espere..."):
+                    res = requests.post(f"{API_BASE_URL}/v1/tickets/clasificar", json=payload, timeout=20)
+                
                 if res.status_code == 201:
                     t = res.json()
-                    st.success(f"Ticket creado: **{t['ticket_codigo']}** | Prioridad: **{t['prioridad']}**")
-                    if t["metadatos_ia"]["conmutado"]:
-                        st.warning("🟠 Atendido por Respaldo Groq (Gemini no disponible).")
+                    st.success(f"⚡ **Ticket Creado Exitosamente:** Código `{t['ticket_codigo']}` | Prioridad: **{t['prioridad']}** | SLA: **{t['sla_minutos']} min**")
+                    if t.get("metadatos_ia", {}).get("conmutado"):
+                        proveedor_respaldo = t["metadatos_ia"]["proveedor"]
+                        st.warning(f"🟠 **Respaldo Activo:** Atendido mediante contingencia ({proveedor_respaldo}) por indisponibilidad del modelo primario.")
                     st.rerun()
                 else:
-                    st.error(f"Error ({res.status_code}): {res.text}")
+                    # Deserializar y presentar errores comprensibles según RFC 9457
+                    try:
+                        err_data = res.json()
+                        detalle = err_data.get("detail", res.text)
+                        titulo = err_data.get("title", "Error en la Solicitud")
+                    except Exception:
+                        detalle = res.text
+                        titulo = "Error en la Solicitud"
+
+                    if res.status_code == 422:
+                        st.error(f"⚠️ **Datos de Entrada Inválidos (RFC 9457 · 422):** {detalle}")
+                        st.info("💡 **Acción Sugerida:** Revise los campos del formulario y asegúrese de detallar los síntomas técnicos.")
+                    elif res.status_code == 429:
+                        st.warning(f"⏳ **Límite de Consultas Alcanzado (RFC 6585 · 429):** {detalle}")
+                        st.info("💡 **Acción Sugerida:** Espere unos segundos para que se recarguen las fichas de su sesión de trabajo.")
+                    elif res.status_code in [500, 503]:
+                        st.error(f"🚨 **Servicio Temporalmente No Disponible ({res.status_code}):** {detalle}")
+                        st.info("💡 **Acción Sugerida:** El sistema activará el conmutador offline en el siguiente reintento.")
+                    else:
+                        st.error(f"⚠️ **{titulo} ({res.status_code}):** {detalle}")
+
+            except requests.exceptions.ConnectionError:
+                st.error(f"🔌 **Error de Conexión:** No fue posible establecer comunicación con el backend FastAPI en `{API_BASE_URL}`.")
+                st.info("💡 **Acción Sugerida:** Verifique que el servidor backend esté iniciado ejecutando: `uvicorn app.main:app --reload --port 8000`.")
             except Exception as e:
-                st.error(f"Error de comunicación con API: {e}")
+                st.error(f"⚠️ **Error Inesperado:** {str(e)}")
 
 with col_der:
     st.subheader("📋 Tablero Kanban de Incidentes (ITIL 4)")
