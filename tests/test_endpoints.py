@@ -600,6 +600,64 @@ def test_manejo_error_proveedor_respuesta_vacia():
     assert ticket["prioridad"] in ["Alta", "Media", "Baja"]
 
 
+def test_log_por_solicitud_metricas_tokens_y_latencia():
+    """
+    Valida el requerimiento del rubro:
+    «Log por solicitud: Tokens consumidos y tiempo de respuesta».
+    Verifica:
+    1. Headers HTTP estándar de observabilidad: X-Response-Time-Ms y X-Request-ID.
+    2. Transparencia de tokens (prompt, completado, total) y latencia en metadatos_ia.
+    3. Endpoint GET /v1/metricas/solicitudes registra y totaliza peticiones y consumo.
+    """
+    from app.main import _cubetas_clientes
+    _cubetas_clientes.clear()
+
+    payload = {
+        "nombre_cliente": "Docente Auditor",
+        "email_cliente": "auditor@uniandes.edu.ec",
+        "descripcion_problema": "Corte de fibra óptica en el edificio de laboratorios de cómputo.",
+        "simular_caida_gemini": True,
+        "simular_caida_groq": True
+    }
+
+    res = client.post("/clasificar", json=payload)
+    assert res.status_code == 201
+
+    # 1. Cabeceras HTTP de observabilidad
+    assert "X-Response-Time-Ms" in res.headers
+    assert "X-Request-ID" in res.headers
+    duracion = float(res.headers["X-Response-Time-Ms"])
+    assert duracion >= 0.0
+    assert res.headers["X-Request-ID"].startswith("req-")
+
+    # 2. Metadatos de IA retornados en el contrato Pydantic
+    datos = res.json()
+    assert "metadatos_ia" in datos
+    meta = datos["metadatos_ia"]
+    assert "tokens_total" in meta
+    assert "latencia_ms" in meta
+    assert meta["latencia_ms"] is not None
+    assert meta["tokens_total"] is not None
+
+    # 3. Endpoint de Métricas y Registro de Solicitudes
+    res_metricas = client.get("/v1/metricas/solicitudes")
+    assert res_metricas.status_code == 200
+    metricas = res_metricas.json()
+
+    assert metricas["total_solicitudes"] >= 1
+    assert metricas["tiempo_promedio_ms"] >= 0.0
+    assert "total_tokens_consumidos" in metricas
+    assert "total_tokens_prompt" in metricas
+    assert "total_tokens_completado" in metricas
+    assert len(metricas["solicitudes_recientes"]) >= 1
+
+    ultima = metricas["solicitudes_recientes"][0]
+    assert "tiempo_respuesta_ms" in ultima
+    assert "tokens_total" in ultima
+    assert "req_id" in ultima
+
+
+
 
 
 

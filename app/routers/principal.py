@@ -6,7 +6,7 @@ Cumple con la rúbrica del Seminario de Titulación:
 - POST /analizar: Diagnóstico técnico estructurado con contrato de entrada y salida Pydantic V2.
 """
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Request
 from fastapi.responses import StreamingResponse
 
 from app.schemas import (
@@ -27,7 +27,17 @@ router = APIRouter(tags=["Endpoints Principales"])
 
 
 @router.get(
+    "/metricas/solicitudes",
+    summary="Métricas de observabilidad y registro de logs por solicitud",
+    description="Retorna el volumen de solicitudes, latencia promedio, desglose de tokens y últimas peticiones."
+)
+def consultar_metricas_solicitudes():
+    """Retorna métricas agregadas y registros de log estructurado por solicitud."""
+    from app.main import obtener_metricas_solicitudes
+    return obtener_metricas_solicitudes()
 
+
+@router.get(
     "/v1/llm/proveedor",
     summary="Consulta el proveedor LLM activo encapsulado",
     description="Demuestra que el cliente está encapsulado: cambiar de proveedor no toca los endpoints."
@@ -43,7 +53,6 @@ def consultar_proveedor_activo():
 
 @router.get(
     "/v1/prompts/versiones",
-
     summary="Consulta las 3 versiones de system prompts probadas (system_v1, v2, v3)",
     description="Retorna el estado de los prompts versionados app/prompts/system_v1.md, v2.md y v3.md con rol, tono, restricciones y abstención."
 )
@@ -100,12 +109,15 @@ def chat_conversacional_stream(solicitud: SolicitudChatIn):
     summary="Clasificación y triaje determinista con esquema Pydantic",
     description="Recibe un reporte de incidencia, extrae impacto/urgencia con IA y retorna JSON estrictamente validado por Pydantic."
 )
-def clasificar_directo(solicitud: SolicitudTicketIn):
+def clasificar_directo(solicitud: SolicitudTicketIn, request: Request = None):
     """
     Endpoint no conversacional de clasificación.
     Garantiza entrada y salida estrictas bajo contratos Pydantic V2.
     """
-    return clasificar_y_crear_ticket(solicitud)
+    resultado = clasificar_y_crear_ticket(solicitud, request=request)
+    if request and hasattr(resultado, "metadatos_ia"):
+        request.state.metadatos_ia = resultado.metadatos_ia
+    return resultado
 
 
 @router.post(
@@ -115,9 +127,12 @@ def clasificar_directo(solicitud: SolicitudTicketIn):
     summary="Análisis técnico estructurado de fallas con esquema Pydantic",
     description="Analiza los síntomas y avería reportada retornando diagnóstico, causa y severidad en formato JSON estructurado."
 )
-def analizar_problema_tecnico(solicitud: SolicitudAnalizarIn):
+def analizar_problema_tecnico(solicitud: SolicitudAnalizarIn, request: Request = None):
     """
     Endpoint no conversacional de análisis técnico.
     Retorna JSON con esquema estricto Pydantic V2 (ResultadoAnalizarOut).
     """
-    return analizar_incidencia_tecnica(solicitud)
+    resultado = analizar_incidencia_tecnica(solicitud)
+    if request and getattr(resultado, "metadatos_ia", None):
+        request.state.metadatos_ia = resultado.metadatos_ia
+    return resultado
