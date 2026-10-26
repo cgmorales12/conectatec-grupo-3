@@ -17,12 +17,28 @@ from app.schemas import (
     ResultadoAnalizarOut
 )
 from app.services.llm import (
+    cliente_llm,
     generar_flujo_chat_streaming,
     analizar_incidencia_tecnica
 )
 from app.routers.tickets import clasificar_y_crear_ticket
 
 router = APIRouter(tags=["Endpoints Principales"])
+
+
+@router.get(
+    "/v1/llm/proveedor",
+    summary="Consulta el proveedor LLM activo encapsulado",
+    description="Demuestra que el cliente está encapsulado: cambiar de proveedor no toca los endpoints."
+)
+def consultar_proveedor_activo():
+    """Retorna el proveedor configurado en el cliente encapsulado ClienteLLM."""
+    return {
+        "proveedor_activo": cliente_llm.obtener_proveedor_activo(),
+        "encapsulado": True,
+        "mensaje": "El cliente del modelo está encapsulado: cambiar de proveedor no toca los endpoints."
+    }
+
 
 
 @router.post(
