@@ -332,6 +332,49 @@ def test_rechazo_extra_forbid_en_nuevos_endpoints():
     assert response.headers["content-type"] == "application/problem+json"
 
 
+def test_encapsulamiento_cliente_llm_cambio_dinamico_proveedor():
+    """
+    Valida el principio de arquitectura:
+    «El cliente del modelo está encapsulado: cambiar de proveedor no toca los endpoints.»
+    """
+    from app.services.llm import cliente_llm
+
+    # 1. Verificar endpoint de consulta del proveedor encapsulado
+    resp_estado = client.get("/v1/llm/proveedor")
+    assert resp_estado.status_code == 200
+    assert resp_estado.json()["encapsulado"] is True
+
+    # 2. Conmutar dinámicamente a Groq sin tocar endpoints
+    cliente_llm.cambiar_proveedor("groq")
+    assert cliente_llm.obtener_proveedor_activo() == "groq"
+
+    # Endpoint POST /clasificar sigue respondiendo exactamente con el mismo contrato Pydantic
+    payload = {
+        "nombre_cliente": "Abonado Prueba Encapsulamiento",
+        "email_cliente": "abonado@isp.com",
+        "descripcion_problema": "Corte de fibra con luz roja en el router ONT Huawei.",
+        "simular_caida_gemini": True,
+        "simular_caida_groq": True
+    }
+    resp_groq = client.post("/clasificar", json=payload)
+    assert resp_groq.status_code == 201
+    assert "ticket_codigo" in resp_groq.json()
+
+    # 3. Conmutar a modo local offline sin tocar endpoints
+    cliente_llm.cambiar_proveedor("conmutador-local-offline")
+    assert cliente_llm.obtener_proveedor_activo() == "conmutador-local-offline"
+
+    resp_offline = client.post("/clasificar", json=payload)
+    assert resp_offline.status_code == 201
+    ticket = resp_offline.json()
+    assert ticket["metadatos_ia"]["proveedor"] == "conmutador-local-offline"
+
+    # Restaurar a proveedor predeterminado Gemini
+    cliente_llm.cambiar_proveedor("gemini")
+    assert cliente_llm.obtener_proveedor_activo() == "gemini"
+
+
+
 
 
 

@@ -113,3 +113,18 @@ sequenceDiagram
 **Conmutación por falla (Fallback):** Si la API responde con límite de tasa (HTTP 429) o falla de servicio (HTTP 5xx), el cliente conmuta de inmediato a Groq con el modelo `llama-3.3-70b-versatile`.
 
 **Degradación elegante:** Si ambos proveedores fallan, el ticket se registra automáticamente en estado `Nuevo` con prioridad por defecto `Media` para revisión manual, garantizando que el usuario nunca pierda su reporte.
+
+## 6. Encapsulamiento del Cliente LLM (`app/services/llm.py`)
+
+### Principio Rector
+> ***«El cliente del modelo está encapsulado: cambiar de proveedor no toca los endpoints.»***
+
+1. **Aislamiento de la Capa de Inferencia (Patrón Gateway / Strategy):**
+   * Toda la comunicación con SDKs externos de inteligencia artificial (Google Gemini API, Groq Cloud, modelos locales) se encuentra confinada exclusivamente en la clase `ClienteLLM` dentro de `app/services/llm.py`.
+   * Los enrutadores de FastAPI (`app/routers/principal.py` y `app/routers/tickets.py`) interactúan con la interfaz unificada del cliente: `cliente_llm.clasificar()`, `cliente_llm.chat_stream()` y `cliente_llm.analizar()`.
+
+2. **Conmutación sin Modificar Endpoints:**
+   * **Por Variable de Entorno:** Configurando `PROVEEDOR_LLM_ACTIVO=groq` o `PROVEEDOR_LLM_ACTIVO=gemini` en `.env`.
+   * **En Tiempo de Ejecución:** Mediante `cliente_llm.cambiar_proveedor("groq")`.
+   * **Invarianza de Contratos:** Los endpoints continúan recibiendo y emitiendo los mismos esquemas estrictos Pydantic V2 (`SolicitudTicketIn`, `TicketOut`, `SolicitudChatIn`, `ResultadoAnalizarOut`). Ninguna línea de los controladores HTTP necesita modificarse al cambiar de proveedor de LLM.
+
