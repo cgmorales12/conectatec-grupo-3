@@ -13,7 +13,7 @@ from typing import Tuple, Optional
 from datetime import datetime
 from dotenv import load_dotenv
 
-from app.schemas import ClasificacionIA, MetadatosIA
+from app.schemas import ClasificacionIA, MetadatosIA, SolicitudAnalizarIn, ResultadoAnalizarOut
 
 # Cargar automáticamente credenciales del archivo .env local
 load_dotenv(override=True)
@@ -295,3 +295,201 @@ def _clasificar_heuristicamente(texto: str) -> ClasificacionIA:
             sintomas_detectados=["Consulta técnica general"],
             justificacion="Clasificación estándar para seguimiento de mesa de ayuda técnica."
         )
+
+
+# ============================================================================
+# Streaming Conversacional (POST /chat) y Análisis Técnico Estructurado (POST /analizar)
+# ============================================================================
+
+def _stream_gemini(prompt: str, key_gemini: str):
+    """Generador streaming que consume Server-Sent Events desde Google Gemini API."""
+    import httpx
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key={key_gemini}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2}
+    }
+    with httpx.stream("POST", url, json=payload, timeout=20.0) as response:
+        if response.status_code != 200:
+            raise RuntimeError(f"HTTP {response.status_code}")
+        for line in response.iter_lines():
+            if line.startswith("data: "):
+                data_str = line[6:].strip()
+                if data_str:
+                    try:
+                        data_json = json.loads(data_str)
+                        cands = data_json.get("candidates", [])
+                        if cands:
+                            parts = cands[0].get("content", {}).get("parts", [])
+                            for p in parts:
+                                txt = p.get("text", "")
+                                if txt:
+                                    yield txt
+                    except Exception:
+                        pass
+
+
+def _stream_groq(messages: list, key_groq: str):
+    """Generador streaming que consume tokens en tiempo real desde Groq Cloud."""
+    from groq import Groq
+    client = Groq(api_key=key_groq)
+    modelos = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
+    for mod in modelos:
+        try:
+            stream = client.chat.completions.create(
+                model=mod,
+                messages=messages,
+                stream=True,
+                temperature=0.2
+            )
+            for chunk in stream:
+                delta = getattr(chunk.choices[0], "delta", None)
+                if delta and delta.content:
+                    yield delta.content
+            return
+        except Exception:
+            continue
+    raise RuntimeError("No se pudo conectar a ningún modelo de Groq en streaming")
+
+
+def _stream_offline_fallback(mensaje: str):
+    """Generador streaming determinista local que asegura servicio ininterrumpido en modo offline."""
+    msg_low = mensaje.lower()
+    if any(k in msg_low for k in ["los", "roja", "luz roja", "fibra", "corte"]):
+        texto_base = (
+            "Diagnóstico de Soporte Técnico ConectaTec (Nivel 1):\n\n"
+            "Se ha detectado una alarma crítica de pérdida de señal óptica (LED LOS en rojo). "
+            "Esto indica una desconexión física de la acometida exterior o una atenuación severa (-28 dBm o superior).\n\n"
+            "Procedimiento recomendado:\n"
+            "1. No manipule bruscamente el cable amarillo monomodo ni curve en ángulos menores a 90° (DOC-01).\n"
+            "2. Nunca mire directamente al conector óptico SC/APC debido al riesgo de emisión láser invisible.\n"
+            "3. Se genera orden prioritaria para verificación de potencia y continuidad por cuadrilla de planta externa."
+        )
+    elif any(k in msg_low for k in ["lento", "lentitud", "velocidad", "ping", "latencia"]):
+        texto_base = (
+            "Diagnóstico de Velocidad y Tráfico ConectaTec:\n\n"
+            "Para aislar saturación local o congestión en el enlace:\n"
+            "1. Conecte su computadora con cable de red Cat 5e/6 directo al puerto Gigabit GE1 de la ONT (DOC-06).\n"
+            "2. Suspenda descargas activas, streaming de alta definición y desconecte redes VPN de teletrabajo.\n"
+            "3. Realice una medición hacia el nodo local de ConectaTec para comprobar el ancho de banda contratado."
+        )
+    elif any(k in msg_low for k in ["wifi", "wi-fi", "clave", "contraseña", "ssid", "cobertura"]):
+        texto_base = (
+            "Procedimiento Oficial de Configuración Wi-Fi (DOC-04):\n\n"
+            "Para modificar el nombre (SSID) o la contraseña de su red inalámbrica:\n"
+            "1. Abra su navegador web e ingrese a la dirección: http://192.168.1.1\n"
+            "2. Autentíquese con el usuario y contraseña de administración doméstica.\n"
+            "3. Acceda a la pestaña WLAN > Configuración Básica, elija cifrado WPA2-PSK/WPA3 y guarde los cambios."
+        )
+    else:
+        texto_base = (
+            "Asistente Virtual de Triaje ConectaTec:\n\n"
+            "He recibido su solicitud técnica. Para asistirle de la forma más rápida y precisa, "
+            "indíquenos el estado de las luces de su ONT (POWER, PON, LOS, LAN) o detalle los síntomas observados."
+        )
+    
+    palabras = texto_base.split(" ")
+    for i, p in enumerate(palabras):
+        sep = " " if i < len(palabras) - 1 else ""
+        yield p + sep
+
+
+def generar_flujo_chat_streaming(
+    mensaje: str,
+    historial: Optional[list] = None,
+    simular_caida_gemini: bool = False,
+    simular_caida_groq: bool = False
+):
+    """
+    Generador de streaming token a token para el endpoint conversacional POST /chat.
+    Aplica sanitización LOPDP de claves y failover inteligente Gemini -> Groq -> Local.
+    """
+    mensaje_seguro = anonimizar_datos_sensibles(mensaje)
+    
+    if not simular_caida_gemini:
+        key_gemini = os.environ.get("GEMINI_API_KEY")
+        if key_gemini and key_gemini != "tu_clave_de_gemini_aqui":
+            try:
+                system_context = (
+                    "Eres el asistente virtual interactivo de soporte técnico de ConectaTec ISP. "
+                    "Responde con precisión técnica, empatía y basándote en buenas prácticas de telecomunicaciones."
+                )
+                prompt = f"{system_context}\n\nConsulta del usuario: {mensaje_seguro}"
+                yielded_any = False
+                for chunk in _stream_gemini(prompt, key_gemini):
+                    yield chunk
+                    yielded_any = True
+                if yielded_any:
+                    return
+            except Exception as e:
+                print(f"[STREAMING GEMINI FALLO]: {e}")
+                
+    if not simular_caida_groq:
+        key_groq = os.environ.get("GROQ_API_KEY")
+        if key_groq and key_groq != "tu_clave_de_groq_aqui":
+            try:
+                messages = [
+                    {"role": "system", "content": "Eres el asistente interactivo de soporte técnico de ConectaTec ISP."},
+                    {"role": "user", "content": mensaje_seguro}
+                ]
+                yielded_any = False
+                for chunk in _stream_groq(messages, key_groq):
+                    yield chunk
+                    yielded_any = True
+                if yielded_any:
+                    return
+            except Exception as e:
+                print(f"[STREAMING GROQ FALLO]: {e}")
+
+    # Fallback Determinista Local para pruebas y modo offline
+    for chunk in _stream_offline_fallback(mensaje_seguro):
+        yield chunk
+
+
+def analizar_incidencia_tecnica(solicitud: SolicitudAnalizarIn) -> ResultadoAnalizarOut:
+    """
+    Analiza una incidencia técnica retornando un esquema Pydantic estructurado.
+    Cumple con el requisito de JSON con esquema en endpoints de análisis no conversacionales.
+    """
+    texto = f"{solicitud.descripcion_problema} {' '.join(solicitud.sintomas or [])}".lower()
+    
+    if any(k in texto for k in ["los", "roja", "luz roja", "fibra", "corte"]):
+        return ResultadoAnalizarOut(
+            diagnostico="Interrupción física del enlace de fibra óptica (Falla de Capa 1)",
+            causa_probable="Acometida de fibra desconectada, atenuada críticamente o con rotura en tramo exterior.",
+            nivel_severidad="Crítica",
+            acciones_recomendadas=[
+                "Verificar que el conector SC/APC azul esté firmemente acoplado en el puerto óptico de la ONT.",
+                "Evitar doblar el cable monomodo con radio inferior a 30 mm.",
+                "Despachar cuadrilla técnica de planta externa para medición con reflectómetro óptico (OTDR)."
+            ],
+            requiere_visita_campo=True,
+            documentos_sugeridos=["DOC-01_luces_led_ont_huawei.md", "DOC-03_atenuacion_potencia_optica.md"]
+        )
+    elif any(k in texto for k in ["lento", "lentitud", "velocidad", "ping", "latencia"]):
+        return ResultadoAnalizarOut(
+            diagnostico="Degradación de rendimiento o congestión de canal inalámbrico",
+            causa_probable="Saturación en banda 2.4 GHz, interferencia electromagnética o procesos de alto consumo simultáneos.",
+            nivel_severidad="Media",
+            acciones_recomendadas=[
+                "Realizar test de velocidad cableado mediante puerto Ethernet GE1 eliminando cargas concurrentes.",
+                "Migrar dispositivos compatibles a la red de 5 GHz.",
+                "Cambiar canal Wi-Fi a uno menos congestionado (canales 1, 6 u 11 en 2.4 GHz)."
+            ],
+            requiere_visita_campo=False,
+            documentos_sugeridos=["DOC-05_cobertura_y_canales_wifi.md", "DOC-06_test_velocidad_cableado.md"]
+        )
+    else:
+        return ResultadoAnalizarOut(
+            diagnostico="Incidencia estándar de configuración o soporte de primer nivel",
+            causa_probable="Desconfiguración de parámetros locales o consulta general de servicio.",
+            nivel_severidad="Baja",
+            acciones_recomendadas=[
+                "Reiniciar el equipo ONT manteniéndolo apagado durante 30 segundos.",
+                "Comprobar el estado de las conexiones físicas de red LAN.",
+                "Validar que no existan avisos de mantenimiento programado en el sector."
+            ],
+            requiere_visita_campo=False,
+            documentos_sugeridos=["DOC-02_reinicio_seguro_ont.md", "DOC-04_cambio_clave_wifi.md"]
+        )
+
