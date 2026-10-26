@@ -104,15 +104,27 @@ sequenceDiagram
     FE-->>C: Muestra diagnóstico guiado y código de ticket
 ```
 
-## 5. Estrategia de tolerancia a fallos
+## 5. Estrategia de tolerancia a fallos y manejo de errores del proveedor
 
-**Llamada principal:** Toda solicitud de inferencia se dirige inicialmente a Google Gemini 1.5 Flash con un tiempo límite (`timeout`) de 3 segundos.
+El cliente encapsulado `ClienteLLM` implementa un perímetro determinista de resiliencia ante contingencias de los proveedores externos de IA:
 
-**Reintentos:** Se aplica reintento con retroceso exponencial (*exponential backoff*) ante errores transitorios de red.
+1. **Error HTTP 429 (Cuota / Límite de Tasa) con Espera Exponencial:**
+   - Si la API del proveedor responde con código `429 Too Many Requests` o `ResourceExhausted`, el cliente no falla de inmediato.
+   - Aplica un ciclo de hasta **3 reintentos automáticos** gobernados por la fórmula de retroceso exponencial (*Exponential Backoff*):
+     $$\text{Espera} = \text{base} \times 2^{\text{intento}} \quad (\text{con } \text{base} = 0.5\text{s})$$
+   - Intervalos de espera sucesivos: 0.5s, 1.0s, 2.0s. Si la cuota continúa agotada tras agotar los reintentos, se levanta `ErrorCuotaExcedidaLLM` y se conmuta de inmediato al proveedor secundario.
 
-**Conmutación por falla (Fallback):** Si la API responde con límite de tasa (HTTP 429) o falla de servicio (HTTP 5xx), el cliente conmuta de inmediato a Groq con el modelo `llama-3.3-70b-versatile`.
+2. **Control de Tiempo Agotado (Timeout):**
+   - Cada llamada HTTP a los SDKs de LLM está limitada por un umbral estricto (`timeout = 12.0s`).
+   - Si la conexión se estanca o el proveedor no responde en el tiempo fijado, se interceptan excepciones de tipo `httpx.TimeoutException` y `socket.timeout`, levantando `ErrorTiempoAgotadoLLM` para conmutar sin congelar el hilo de ejecución ni bloquear el backend.
 
-**Degradación elegante:** Si ambos proveedores fallan, el ticket se registra automáticamente en estado `Nuevo` con prioridad por defecto `Media` para revisión manual, garantizando que el usuario nunca pierda su reporte.
+3. **Detección y Contención de Respuesta Vacía:**
+   - Si el proveedor devuelve un payload JSON sin candidatos (`candidates: []`), opciones vacías (`choices: []`), texto en blanco (`""`) o contenido suprimido por filtros de moderación (*Safety Blocks*), el sistema lo intercepta con `ErrorRespuestaVaciaLLM`.
+   - Se evita que un `None` o cadena vacía rompa la validación estricta de esquemas Pydantic V2, activando el siguiente proveedor en la cadena de contingencia.
+
+4. **Cadena de Conmutación Transparente y Auditoría:**
+   - **Orden de Cascada:** $\text{Google Gemini 1.5 Flash} \longrightarrow \text{Groq Cloud Llama 3.3 70B} \longrightarrow \text{Motor Local Heurístico Offline}$.
+   - **Trazabilidad:** Cada conmutación registra el motivo exacto en `metadatos_ia.conmutado = True` y `metadatos_ia.motivo_conmutacion`, informando al operador en la API y en el frontend.
 
 ## 6. Encapsulamiento del Cliente LLM (`app/services/llm.py`)
 

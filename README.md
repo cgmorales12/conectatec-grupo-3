@@ -124,7 +124,7 @@ La clase `ClienteLLM` centraliza toda la interacción con modelos de lenguaje ex
 ---
 
 ## 🧪 5. Ejecución de Pruebas Automatizadas
-El proyecto cuenta con una suite de **20 pruebas unitarias automatizadas con Mocks** que validan la priorización ITIL, la sanitización LOPDP, la conmutación por error, el streaming conversacional, el encapsulamiento del cliente LLM y la política de cero secretos sin requerir conexión a internet ni gastar saldo de API:
+El proyecto cuenta con una suite de **23 pruebas unitarias automatizadas con Mocks** que validan la priorización ITIL, la sanitización LOPDP, la conmutación por error, el streaming conversacional, el encapsulamiento del cliente LLM, la política de cero secretos y el **manejo determinista de errores del proveedor (429 con reintentos exponenciales, timeouts y respuestas vacías)** sin requerir conexión a internet ni gastar saldo de API:
 
 ```bash
 python -m pytest tests/ -v
@@ -134,6 +134,7 @@ python -m pytest tests/ -v
 
 ## 🛡️ 6. Ciberseguridad y Privacidad (OWASP LLM 2025 y LOPDP)
 - **Cero Secretos en Git (OWASP LLM06 / LOPDP Art. 23):** Las claves de API existen únicamente en variables de entorno locales. El archivo `.env` está blindado en `.gitignore` y verificado formalmente mediante pruebas automatizadas y `scripts/auditar_cero_secretos.py`: **nunca ha aparecido en ningún commit de la historia del repositorio**. Se distribuye únicamente la plantilla pública `.env.example` con marcadores vacíos.
+- **Manejo de Errores del Proveedor:** Reintentos automáticos con retroceso exponencial (*Exponential Backoff*) ante errores HTTP 429, captura de tiempos agotados (*Timeouts* a 12s) y detección de respuestas vacías (*Empty/Blocked Outputs*) con failover transparente.
 - **Anonimización previa de contraseñas (Art. 23 LOPDP):** Detección automática por Regex y reemplazo por `[CONFIDENCIAL_REMOVIDO]`.
 - **Aislamiento semántico (OWASP LLM01):** Delimitación estricta de la entrada del usuario mediante etiquetas `<solicitud>...</solicitud>`.
 - **Contratos Pydantic V2 cerrados (OWASP LLM05):** Parámetro `extra="forbid"` para neutralizar salidas maliciosas o inyecciones de campos.
@@ -156,9 +157,10 @@ python -m pytest tests/ -v
 | **Semana 2** | Endpoint Principal POST /chat y /clasificar | `POST /chat` (Streaming) y `POST /clasificar` (Pydantic) | ✅ Completo |
 | **Semana 2** | Cliente del Modelo Encapsulado | `app/services/llm.py` (ClienteLLM desacoplado) | ✅ Completo |
 | **Semana 2** | Módulo de Servicio LLM con Failover | `app/services/llm.py` | ✅ Completo |
+| **Semana 2** | Manejo de Errores de Proveedor (429, Timeout, Vacía) | `app/services/llm.py` (Backoff exponencial + Timeouts) | ✅ Completo |
 | **Semana 2** | Catálogo de Prompts (Método R.E.C.E.T.A.) | `docs/05-prompts.md` | ✅ Completo |
 | **Semana 2** | Frontend Funcional (Tablero Kanban de Tickets) | `frontend/index.html` | ✅ Completo |
 | **Semana 2** | Cero Secretos en Git (`.env` en `.gitignore`) | `.gitignore`, `.env.example`, `scripts/auditar_cero_secretos.py` | ✅ Completo |
-| **Semana 2** | Pruebas Unitarias Automatizadas con Mocks | `tests/test_endpoints.py` (20 tests pasando) | ✅ Completo |
+| **Semana 2** | Pruebas Unitarias Automatizadas con Mocks | `tests/test_endpoints.py` (23 tests pasando) | ✅ Completo |
 | **Semana 2** | Evidencias Técnicas de la Semana 2 | `docs/evidencias/semana-2/README.md` | ✅ Completo |
 
