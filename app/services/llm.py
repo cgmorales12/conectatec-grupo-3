@@ -59,6 +59,25 @@ Reglas de negocio:
 """
 
 
+def cargar_prompt_sistema(version: str = "v3") -> str:
+    """
+    Carga dinámicamente el prompt de sistema desde el catálogo versionado en app/prompts/.
+    Soporta: system_v1.md, system_v2.md y system_v3.md.
+    """
+    ruta_dir = os.path.join(os.path.dirname(__file__), "..", "prompts")
+    nombre = f"system_{version}.md" if not version.endswith(".md") else version
+    ruta_archivo = os.path.normpath(os.path.join(ruta_dir, nombre))
+    if os.path.exists(ruta_archivo):
+        try:
+            with open(ruta_archivo, "r", encoding="utf-8") as f:
+                contenido = f.read().strip()
+                if contenido:
+                    return contenido
+        except Exception:
+            pass
+    return SYSTEM_PROMPT
+
+
 def anonimizar_datos_sensibles(texto: str) -> str:
     """
     Sustituye contraseñas accidentales por [CONFIDENCIAL_REMOVIDO] antes de persistir o invocar al LLM.
@@ -78,15 +97,27 @@ class ClienteLLM:
         self,
         proveedor_activo: Optional[str] = None,
         gemini_api_key: Optional[str] = None,
-        groq_api_key: Optional[str] = None
+        groq_api_key: Optional[str] = None,
+        version_prompt: str = "v3"
     ):
         self.proveedor_activo = (
             proveedor_activo or os.environ.get("PROVEEDOR_LLM_ACTIVO", "gemini")
         ).lower()
         self.gemini_api_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
         self.groq_api_key = groq_api_key or os.environ.get("GROQ_API_KEY")
+        self.version_prompt = version_prompt
+
+    def cambiar_version_prompt(self, nueva_version: str) -> str:
+        """Permite alternar dinámicamente entre las versiones de prompt probadas (v1, v2, v3)."""
+        self.version_prompt = nueva_version.lower().strip()
+        return self.version_prompt
+
+    def obtener_prompt_sistema(self) -> str:
+        """Carga y retorna el texto del system prompt activo."""
+        return cargar_prompt_sistema(self.version_prompt)
 
     def cambiar_proveedor(self, nuevo_proveedor: str) -> str:
+
         """
         Permite cambiar dinámicamente el proveedor de inferencia activo (ej. 'gemini', 'groq', 'conmutador-local-offline').
         Cambiar de proveedor NO toca ni modifica ningún endpoint ni contrato de la API.
@@ -142,10 +173,12 @@ class ClienteLLM:
         # Capa 1: Sanitización LOPDP
         texto_seguro = anonimizar_datos_sensibles(texto_usuario)
 
-        # Capa 2: Delimitación semántica anti-inyección
-        prompt_usuario = f"{SYSTEM_PROMPT}\n\n<solicitud>\n{texto_seguro}\n</solicitud>"
+        # Capa 2: Delimitación semántica anti-inyección con System Prompt versionado
+        prompt_sistema = self.obtener_prompt_sistema()
+        prompt_usuario = f"{prompt_sistema}\n\n<solicitud>\n{texto_seguro}\n</solicitud>"
 
         motivo_fallo = None
+
 
         # Orden de ejecución determinado por el proveedor activo encapsulado
         proveedores_a_intentar = (
@@ -242,9 +275,10 @@ class ClienteLLM:
             try:
                 completion = client.chat.completions.create(
                     messages=[
-                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": self.obtener_prompt_sistema()},
                         {"role": "user", "content": f"<solicitud>\n{texto_seguro}\n</solicitud>"}
                     ],
+
                     model=mod,
                     temperature=0.1,
                     response_format={"type": "json_object"}

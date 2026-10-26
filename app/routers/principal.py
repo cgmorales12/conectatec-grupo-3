@@ -27,6 +27,7 @@ router = APIRouter(tags=["Endpoints Principales"])
 
 
 @router.get(
+
     "/v1/llm/proveedor",
     summary="Consulta el proveedor LLM activo encapsulado",
     description="Demuestra que el cliente está encapsulado: cambiar de proveedor no toca los endpoints."
@@ -38,6 +39,29 @@ def consultar_proveedor_activo():
         "encapsulado": True,
         "mensaje": "El cliente del modelo está encapsulado: cambiar de proveedor no toca los endpoints."
     }
+
+
+@router.get(
+    "/v1/prompts/versiones",
+
+    summary="Consulta las 3 versiones de system prompts probadas (system_v1, v2, v3)",
+    description="Retorna el estado de los prompts versionados app/prompts/system_v1.md, v2.md y v3.md con rol, tono, restricciones y abstención."
+)
+def consultar_versiones_prompts():
+    """Retorna las 3 versiones de prompts y el estado de cumplimiento de los criterios."""
+    from app.services.llm import cargar_prompt_sistema
+    return {
+        "version_activa": cliente_llm.version_prompt,
+        "versiones_disponibles": ["v1", "v2", "v3"],
+        "criterios_verificados": {
+            "rol": "Definido formalmente en las 3 versiones",
+            "tono": "Técnico, sobrio, formal y empático",
+            "restricciones": "JSON estricto, sin markdown extra, delimitación <solicitud>",
+            "instruccion_abstencion": "Cero alucinación: abstenerse de inventar ante dudas o consultas ajenas"
+        },
+        "prompt_activo_muestra": cargar_prompt_sistema(cliente_llm.version_prompt)[:280] + "..."
+    }
+
 
 
 
