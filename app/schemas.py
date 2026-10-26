@@ -4,13 +4,26 @@ Contratos estrictos de entrada y salida con extra='forbid'
 """
 
 from typing import List, Optional
+from enum import Enum
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime
 
 
 # ============================================================================
+# Enumeraciones y Contratos de Proveedor
+# ============================================================================
+
+class ProveedorLLMEnum(str, Enum):
+    """Proveedores de Modelos de Lenguaje admitidos por el cliente encapsulado."""
+    GEMINI = "gemini"
+    GROQ = "groq"
+    LOCAL_OFFLINE = "conmutador-local-offline"
+
+
+# ============================================================================
 # Esquemas de Entrada (Request DTOs)
 # ============================================================================
+
 
 class SolicitudTicketIn(BaseModel):
     """Payload de entrada para ingresar un reporte de incidente técnico."""
