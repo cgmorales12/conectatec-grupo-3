@@ -111,6 +111,7 @@ Acceso a servicios en el navegador:
 - `POST /clasificar`: Inferencia técnica y triaje determinista retornando JSON validado con esquemas estrictos Pydantic V2.
 - `POST /analizar`: Diagnóstico de averías y severidad estructurado con Pydantic V2 (`extra="forbid"`).
 - `GET /v1/llm/proveedor`: Introspección del proveedor activo en el **Cliente LLM Encapsulado** (cambiar de proveedor no toca los endpoints).
+- `GET /v1/metricas/solicitudes`: Métricas de **Observabilidad y Log por Solicitud** (latencia promedio, tokens consumidos y registros recientes).
 
 ---
 
@@ -124,7 +125,7 @@ La clase `ClienteLLM` centraliza toda la interacción con modelos de lenguaje ex
 ---
 
 ## 🧪 5. Ejecución de Pruebas Automatizadas
-El proyecto cuenta con una suite de **23 pruebas unitarias automatizadas con Mocks** que validan la priorización ITIL, la sanitización LOPDP, la conmutación por error, el streaming conversacional, el encapsulamiento del cliente LLM, la política de cero secretos y el **manejo determinista de errores del proveedor (429 con reintentos exponenciales, timeouts y respuestas vacías)** sin requerir conexión a internet ni gastar saldo de API:
+El proyecto cuenta con una suite de **24 pruebas unitarias automatizadas con Mocks** que validan la priorización ITIL, la sanitización LOPDP, la conmutación por error, el streaming conversacional, el encapsulamiento del cliente LLM, la política de cero secretos, el **manejo determinista de errores del proveedor (429 con reintentos exponenciales, timeouts y respuestas vacías)** y el **log por solicitud con medición de tokens y tiempo de respuesta**, sin requerir conexión a internet ni gastar saldo de API:
 
 ```bash
 python -m pytest tests/ -v
@@ -158,9 +159,10 @@ python -m pytest tests/ -v
 | **Semana 2** | Cliente del Modelo Encapsulado | `app/services/llm.py` (ClienteLLM desacoplado) | ✅ Completo |
 | **Semana 2** | Módulo de Servicio LLM con Failover | `app/services/llm.py` | ✅ Completo |
 | **Semana 2** | Manejo de Errores de Proveedor (429, Timeout, Vacía) | `app/services/llm.py` (Backoff exponencial + Timeouts) | ✅ Completo |
+| **Semana 2** | Log por Solicitud (Tokens y Tiempo Respuesta) | `app/main.py`, `app/services/llm.py`, `GET /v1/metricas/solicitudes` | ✅ Completo |
 | **Semana 2** | Catálogo de Prompts (Método R.E.C.E.T.A.) | `docs/05-prompts.md` | ✅ Completo |
 | **Semana 2** | Frontend Funcional (Tablero Kanban de Tickets) | `frontend/index.html` | ✅ Completo |
 | **Semana 2** | Cero Secretos en Git (`.env` en `.gitignore`) | `.gitignore`, `.env.example`, `scripts/auditar_cero_secretos.py` | ✅ Completo |
-| **Semana 2** | Pruebas Unitarias Automatizadas con Mocks | `tests/test_endpoints.py` (23 tests pasando) | ✅ Completo |
+| **Semana 2** | Pruebas Unitarias Automatizadas con Mocks | `tests/test_endpoints.py` (24 tests pasando) | ✅ Completo |
 | **Semana 2** | Evidencias Técnicas de la Semana 2 | `docs/evidencias/semana-2/README.md` | ✅ Completo |
 

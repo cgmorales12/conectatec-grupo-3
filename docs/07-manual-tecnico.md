@@ -127,3 +127,64 @@ En estricto cumplimiento con las directivas de ciberseguridad, OWASP LLM 2025 (L
    ```bash
    python scripts/auditar_cero_secretos.py
    ```
+
+---
+
+## 7. Observabilidad y Log por Solicitud (Tokens Consumidos y Tiempo de Respuesta)
+
+Para cumplir con los estándares de trazabilidad, auditoría técnica y la rúbrica del Seminario de Titulación (*«Log por solicitud: Tokens consumidos y tiempo de respuesta»*):
+
+### 7.1. Middleware de Observabilidad HTTP (`app/main.py`)
+Todas las solicitudes entrantes y salientes son interceptadas por `middleware_observabilidad_solicitudes`:
+1. **Medición de Latencia con Precisión:** Calcula el tiempo total de ciclo de vida de la petición con `time.perf_counter()`, inyectando la cabecera HTTP estándar:
+   ```http
+   X-Response-Time-Ms: 42.18
+   X-Request-ID: req-b4a1c0d2
+   ```
+2. **Buffer Circular en Memoria:** Mantiene en cola de longitud fija (`deque(maxlen=300)`) las métricas agregadas de solicitudes para consulta en tiempo real.
+3. **Registro Estructurado en Consola:**
+   - Para solicitudes generales:
+     `📊 [SOLICITUD HTTP] GET /tablero -> 200 | Tiempo: 2.15ms | ReqID: req-3c5f2a1b`
+   - Para solicitudes con inferencia IA:
+     `📊 [SOLICITUD HTTP] POST /clasificar -> 201 | Tiempo: 18.5ms | ReqID: req-7e8d9c1a | IA: gemini:gemini-1.5-flash | Tokens: in=142, out=58, total=200`
+
+### 7.2. Log de Inferencia en el Cliente Encapsulado (`app/services/llm.py`)
+Cada invocación a los proveedores externos registra el desglose específico de consumo de tokens:
+```text
+🪙 [INFERENCIA LLM] Proveedor: gemini | Modelo: gemini-1.5-flash | Latencia: 420.5ms | Tokens: in=152, out=64, total=216
+🪙 [INFERENCIA LLM] Proveedor: groq | Modelo: llama-3.3-70b-versatile | Latencia: 280.1ms | Tokens: in=165, out=59, total=224
+🪙 [INFERENCIA LLM] Proveedor: conmutador-local-offline | Modelo: analizador-itil-heuristico | Latencia: 1.2ms | Tokens: in=0, out=0, total=0 (Motor Heurístico Determinista)
+```
+
+### 7.3. Endpoint de Telemetría: `GET /v1/metricas/solicitudes`
+Expone en formato JSON el resumen consolidado de operaciones y consumo acumulado:
+```json
+{
+  "total_solicitudes": 48,
+  "tiempo_promedio_ms": 35.42,
+  "total_tokens_consumidos": 3840,
+  "total_tokens_prompt": 2720,
+  "total_tokens_completado": 1120,
+  "solicitudes_recientes": [
+    {
+      "req_id": "req-9f2d1e0a",
+      "timestamp": "2026-10-25T20:55:00.000000Z",
+      "metodo": "POST",
+      "ruta": "/clasificar",
+      "status_code": 201,
+      "tiempo_respuesta_ms": 19.3,
+      "proveedor": "gemini",
+      "modelo": "gemini-1.5-flash",
+      "tokens_prompt": 145,
+      "tokens_completado": 55,
+      "tokens_total": 200
+    }
+  ]
+}
+```
+
+### 7.4. Visualización en Interfaz de Usuario (`frontend/index.html`)
+El badge superior de estado y el modal de explicabilidad XAI reflejan en vivo la latencia y los tokens consumidos:
+- **Badge superior:** `🟢 Proveedor: Google Gemini (gemini-1.5-flash) · ⏱️ 42ms · 🪙 200 tokens`
+- **Modal de Explicabilidad (XAI):** Muestra el desglose de tokens de entrada (prompt), salida (JSON estructurado) y total.
+

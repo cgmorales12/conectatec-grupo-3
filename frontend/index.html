@@ -1570,12 +1570,17 @@
 
         function actualizarHeaderBadge(metadatos) {
             const badge = document.getElementById('iaStatusBadge');
+            const latenciaTxt = (metadatos.latencia_ms !== null && metadatos.latencia_ms !== undefined) ? ` · ⏱️ ${metadatos.latencia_ms}ms` : '';
+            const tokensTxt = (metadatos.tokens_total !== null && metadatos.tokens_total !== undefined) 
+                ? ` · 🪙 ${metadatos.tokens_total} tokens` 
+                : '';
+
             if (metadatos.proveedor === 'gemini') {
-                badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Google Gemini (${metadatos.modelo})</span>`;
+                badge.innerHTML = `<span class="dot-green"></span><span>🟢 Proveedor: Google Gemini (${metadatos.modelo})${latenciaTxt}${tokensTxt}</span>`;
             } else if (metadatos.proveedor === 'groq') {
-                badge.innerHTML = `<span class="dot-orange"></span><span>🟠 Respaldo Activo: Groq Cloud (${metadatos.modelo})</span>`;
+                badge.innerHTML = `<span class="dot-orange"></span><span>🟠 Respaldo Activo: Groq Cloud (${metadatos.modelo})${latenciaTxt}${tokensTxt}</span>`;
             } else {
-                badge.innerHTML = `<span class="dot-blue"></span><span>🔵 Modo Autónomo Local Offline (${metadatos.modelo})</span>`;
+                badge.innerHTML = `<span class="dot-blue"></span><span>🔵 Modo Autónomo Local Offline (${metadatos.modelo})${latenciaTxt}${tokensTxt}</span>`;
             }
         }
 
