@@ -91,3 +91,39 @@ El proyecto incluye pruebas que validan los contratos, la matriz ITIL, la anonim
 ```bash
 pytest -v tests/test_endpoints.py
 ```
+
+---
+
+## 6. Verificación de Ciberseguridad: Cero Secretos en Git
+En estricto cumplimiento con las directivas de ciberseguridad, OWASP LLM 2025 (LLM06: Divulgación de Información Sensible) y el Art. 23 de la Ley Orgánica de Protección de Datos Personales (LOPDP Ecuador):
+
+1. **Claves Exclusivamente en Variables de Entorno:**
+   Ninguna credencial (`GEMINI_API_KEY`, `GROQ_API_KEY`) reside en el código fuente o en base de datos. El cliente `ClienteLLM` las extrae dinámicamente en tiempo de ejecución a través de `os.environ` mediante `python-dotenv`.
+
+2. **Blindaje en `.gitignore`:**
+   El archivo `.gitignore` excluye taxativamente:
+   ```gitignore
+   .env
+   .env.*
+   *.env
+   .env.local
+   !.env.example
+   ```
+
+3. **Verificación en Todo el Historial de Git:**
+   Se comprobó que el archivo `.env` **nunca ha aparecido en ningún commit ni árbol de la historia de Git**:
+   ```bash
+   git log --all --full-history --oneline -- ".env"
+   # Salida esperada: (vacío / 0 commits)
+   git ls-files .env
+   # Salida esperada: (vacío / no rastreado)
+   ```
+
+4. **Plantilla Pública Segura (`.env.example`):**
+   El repositorio únicamente distribuye `.env.example` con variables vacías o marcadores de posición (`tu_clave_de_gemini_aqui`), garantizando cero fuga de secretos.
+
+5. **Script Determinista de Auditoría:**
+   Se incluye una herramienta CLI para que cualquier evaluador valide el perímetro de seguridad en 1 segundo:
+   ```bash
+   python scripts/auditar_cero_secretos.py
+   ```
