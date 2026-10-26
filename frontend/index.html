@@ -1243,6 +1243,7 @@
         };
 
         function cargarPreset(tipo) {
+            limpiarErrorFormulario();
             const p = PRESETS[tipo];
             document.getElementById('nombreCliente').value = p.nombre;
             document.getElementById('emailCliente').value = p.email;
@@ -1578,11 +1579,89 @@
             }
         }
 
+        // ====================================================================
+        // Control de Errores Comprensibles y Estado Reactivo (RFC 9457)
+        // ====================================================================
+        function escaparTextoHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function limpiarErrorFormulario() {
+            const errorContainer = document.getElementById('formErrorContainer');
+            if (errorContainer) {
+                errorContainer.style.display = 'none';
+                errorContainer.innerHTML = '';
+            }
+            ['nombreCliente', 'emailCliente', 'codigoAbonado', 'descripcionProblema'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('input-error');
+            });
+        }
+
+        function mostrarErrorFormulario(titulo, mensaje, accion, campoId = null, icono = '⚠️') {
+            const errorContainer = document.getElementById('formErrorContainer');
+            if (!errorContainer) return;
+
+            errorContainer.innerHTML = `
+                <div class="error-banner-header">
+                    <span class="error-banner-titulo"><span>${icono}</span> <span>${escaparTextoHtml(titulo)}</span></span>
+                    <button type="button" class="error-banner-close" onclick="limpiarErrorFormulario()" title="Cerrar aviso">&times;</button>
+                </div>
+                <p class="error-banner-mensaje">${escaparTextoHtml(mensaje)}</p>
+                ${accion ? `<div class="error-banner-accion">💡 ${escaparTextoHtml(accion)}</div>` : ''}
+            `;
+            errorContainer.style.display = 'block';
+
+            if (campoId) {
+                const el = document.getElementById(campoId);
+                if (el) {
+                    el.classList.add('input-error');
+                    el.focus();
+                }
+            }
+
+            errorContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Listener de interacción en los campos para limpiar errores en tiempo real al escribir
+        ['nombreCliente', 'emailCliente', 'codigoAbonado', 'descripcionProblema'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', () => {
+                    if (el.classList.contains('input-error')) {
+                        el.classList.remove('input-error');
+                    }
+                    const errorContainer = document.getElementById('formErrorContainer');
+                    if (errorContainer && errorContainer.style.display !== 'none') {
+                        const hayErroresPendientes = document.querySelectorAll('.form-control.input-error').length > 0;
+                        if (!hayErroresPendientes) {
+                            limpiarErrorFormulario();
+                        }
+                    }
+                });
+            }
+        });
+
         document.getElementById('ticketForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            limpiarErrorFormulario();
+
             const btn = document.getElementById('btnSubmit');
+            const btnIcon = document.getElementById('btnSubmitIcon');
+            const btnText = document.getElementById('btnSubmitText');
+            const presetBtns = document.querySelectorAll('.preset-btn');
+
+            // 1. Deshabilitar botón principal y botones secundarios mientras se procesa la solicitud
             btn.disabled = true;
-            btn.textContent = '⏳ Analizando con IA y RAG...';
+            if (btnIcon) btnIcon.innerHTML = '<span class="spinner-mini"></span>';
+            if (btnText) btnText.textContent = 'Analizando con IA y RAG...';
+            presetBtns.forEach(b => b.disabled = true);
 
             const payload = {
                 nombre_cliente: document.getElementById('nombreCliente').value,
@@ -1605,6 +1684,7 @@
                 if (res.ok) {
                     const ticketCreado = await res.json();
                     
+                    limpiarErrorFormulario();
                     actualizarHeaderBadge(ticketCreado.metadatos_ia);
                     mostrarToast(`⚡ Ticket ${ticketCreado.ticket_codigo} clasificado con ${ticketCreado.metadatos_ia.proveedor}`, 'exito');
 
@@ -1613,14 +1693,96 @@
                     paginacionColumnas[ticketCreado.estado] = 1;
                     cargarTickets();
                 } else {
-                    const err = await res.json();
-                    mostrarToast(`⚠️ ${err.detail || 'Fallo en la validación de la solicitud.'}`, 'alerta');
+                    let err = {};
+                    try {
+                        err = await res.json();
+                    } catch (_) {
+                        err = { detail: 'Respuesta con formato no JSON del servidor.' };
+                    }
+
+                    if (res.status === 422) {
+                        // Extracción estructurada RFC 9457 de campos faltantes o no válidos
+                        let detalleMsg = '';
+                        let campoErrId = null;
+
+                        if (typeof err.detail === 'string') {
+                            detalleMsg = err.detail;
+                        } else if (Array.isArray(err.detail)) {
+                            detalleMsg = err.detail.map(d => {
+                                const loc = (d.loc || []).join(' -> ');
+                                return `${loc}: ${d.msg}`;
+                            }).join('; ');
+                        } else {
+                            detalleMsg = 'Los datos ingresados no superaron la validación de esquema Pydantic.';
+                        }
+
+                        const lower = detalleMsg.toLowerCase();
+                        if (lower.includes('descripci') || lower.includes('caracteres')) {
+                            campoErrId = 'descripcionProblema';
+                        } else if (lower.includes('correo') || lower.includes('email')) {
+                            campoErrId = 'emailCliente';
+                        } else if (lower.includes('nombre')) {
+                            campoErrId = 'nombreCliente';
+                        }
+
+                        mostrarErrorFormulario(
+                            'Datos de Entrada Incompletos o Inválidos (RFC 9457)',
+                            detalleMsg,
+                            'Por favor complete o corrija el campo resaltado en rojo para continuar.',
+                            campoErrId,
+                            '⚠️'
+                        );
+                        mostrarToast('⚠️ Verifique los campos requeridos del formulario.', 'alerta');
+
+                    } else if (res.status === 429) {
+                        const detalle429 = typeof err.detail === 'string' ? err.detail : 'Se ha superado la cuota de peticiones por minuto permitida.';
+                        mostrarErrorFormulario(
+                            'Límite de Consultas Alcanzado (RFC 6585 - 429)',
+                            detalle429,
+                            'Por favor espere unos momentos antes de presionar el botón de clasificar nuevamente.',
+                            null,
+                            '⏳'
+                        );
+                        mostrarToast('⏳ Límite de tasa alcanzado. Espere unos momentos.', 'alerta');
+
+                    } else if (res.status === 503 || res.status === 500) {
+                        const detalle500 = typeof err.detail === 'string' ? err.detail : (err.title || 'Error interno del motor de triaje.');
+                        mostrarErrorFormulario(
+                            `Servicio Temporalmente No Disponible (${res.status})`,
+                            detalle500,
+                            'El backend intentará conmutar a los motores de contingencia offline.',
+                            null,
+                            '🚨'
+                        );
+                        mostrarToast('🚨 Error del servicio. Revise la consola del servidor.', 'alerta');
+
+                    } else {
+                        const detalleOtro = typeof err.detail === 'string' ? err.detail : 'No se pudo procesar la solicitud de clasificación.';
+                        mostrarErrorFormulario(
+                            err.title || 'No se pudo crear el ticket',
+                            detalleOtro,
+                            'Verifique los valores ingresados o intente nuevamente.',
+                            null,
+                            '⚠️'
+                        );
+                        mostrarToast(`⚠️ Error: ${detalleOtro}`, 'alerta');
+                    }
                 }
             } catch (err) {
-                mostrarToast("⚠️ Error de conexión con el backend FastAPI.", 'alerta');
+                mostrarErrorFormulario(
+                    'Error de Conexión con el Backend',
+                    `No fue posible establecer comunicación con la API ConectaTec en ${API_URL}.`,
+                    'Asegúrese de que el backend FastAPI esté ejecutándose en http://127.0.0.1:8000 (uvicorn app.main:app --reload).',
+                    null,
+                    '🔌'
+                );
+                mostrarToast('🔌 Sin conexión con el servidor backend FastAPI.', 'alerta');
             } finally {
+                // 2. Restaurar invariablemente el estado del botón y presets al terminar
                 btn.disabled = false;
-                btn.textContent = '⚡ Clasificar con IA y Crear Ticket';
+                if (btnIcon) btnIcon.textContent = '⚡';
+                if (btnText) btnText.textContent = 'Clasificar con IA y Crear Ticket';
+                presetBtns.forEach(b => b.disabled = false);
             }
         });
 
