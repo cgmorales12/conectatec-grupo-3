@@ -42,6 +42,9 @@ class SolicitudTicketIn(BaseModel):
     simular_caida_gemini: bool = Field(False, description="Simula fallo HTTP 503 o cuota 429 en Google Gemini")
     simular_caida_groq: bool = Field(False, description="Simula indisponibilidad en el respaldo Groq Cloud")
     simular_caida_rag: bool = Field(False, description="Simula corte o desconexión del corpus de 15 manuales RAG")
+    simular_error_429: bool = Field(False, description="Simula error HTTP 429 de proveedor para probar reintentos con espera exponencial")
+    simular_timeout: bool = Field(False, description="Simula tiempo de espera agotado (timeout) en la llamada al modelo LLM")
+    simular_respuesta_vacia: bool = Field(False, description="Simula respuesta vacía o incompleta devuelta por el modelo LLM")
     modo_vulnerable: bool = Field(False, description="Desactiva defensas Pydantic y matriz determinista para simular alucinación e inyección libre (OWASP LLM01)")
 
 

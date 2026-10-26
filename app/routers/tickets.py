@@ -42,6 +42,9 @@ def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn):
         solicitud.descripcion_problema,
         simular_caida_gemini=solicitud.simular_caida_gemini,
         simular_caida_groq=solicitud.simular_caida_groq,
+        simular_error_429=solicitud.simular_error_429,
+        simular_timeout=solicitud.simular_timeout,
+        simular_respuesta_vacia=solicitud.simular_respuesta_vacia,
         modo_vulnerable=solicitud.modo_vulnerable
     )
     

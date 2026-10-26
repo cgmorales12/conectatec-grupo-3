@@ -86,12 +86,45 @@ def anonimizar_datos_sensibles(texto: str) -> str:
     return PATRON_PASSWORD.sub(r'\1: [CONFIDENCIAL_REMOVIDO]', texto)
 
 
+# ============================================================================
+# Excepciones Específicas de Resiliencia del Proveedor LLM
+# ============================================================================
+
+class ErrorProveedorLLM(Exception):
+    """Excepción base para fallos al invocar proveedores de IA externos."""
+    pass
+
+class ErrorCuotaExcedidaLLM(ErrorProveedorLLM):
+    """Lanzada ante HTTP 429 / ResourceExhausted tras agotar reintentos con espera exponencial."""
+    def __init__(self, mensaje: str, reintentos: int = 0):
+        super().__init__(mensaje)
+        self.reintentos = reintentos
+
+class ErrorTiempoAgotadoLLM(ErrorProveedorLLM):
+    """Lanzada cuando la petición al proveedor excede el tiempo límite (timeout)."""
+    def __init__(self, mensaje: str, timeout_segundos: float = 0.0):
+        super().__init__(mensaje)
+        self.timeout_segundos = timeout_segundos
+
+class ErrorRespuestaVaciaLLM(ErrorProveedorLLM):
+    """Lanzada cuando el modelo devuelve respuesta vacía, nula o bloqueada por filtros."""
+    pass
+
+
 class ClienteLLM:
     """
-    Cliente de Modelo LLM Encapsulado.
+    Cliente de Modelo LLM Encapsulado y Resiliente.
     Aísla completamente la lógica de inferencia, SDKs externos y conmutación de modelos
     de la capa de presentación y endpoints de FastAPI.
+    Implementa:
+    - Reintentos automáticos con espera exponencial ante errores HTTP 429
+    - Control de tiempo agotado (timeout) por intento
+    - Detección y contención de respuestas vacías o incompletas
     """
+
+    MAX_REINTENTOS_429: int = 3
+    ESPERA_EXPONENCIAL_BASE: float = 0.5
+    TIMEOUT_LLM_SEGUNDOS: float = 12.0
 
     def __init__(
         self,
@@ -117,7 +150,6 @@ class ClienteLLM:
         return cargar_prompt_sistema(self.version_prompt)
 
     def cambiar_proveedor(self, nuevo_proveedor: str) -> str:
-
         """
         Permite cambiar dinámicamente el proveedor de inferencia activo (ej. 'gemini', 'groq', 'conmutador-local-offline').
         Cambiar de proveedor NO toca ni modifica ningún endpoint ni contrato de la API.
@@ -138,11 +170,15 @@ class ClienteLLM:
         texto_usuario: str,
         simular_caida_gemini: bool = False,
         simular_caida_groq: bool = False,
+        simular_error_429: bool = False,
+        simular_timeout: bool = False,
+        simular_respuesta_vacia: bool = False,
         modo_vulnerable: bool = False
     ) -> Tuple[ClasificacionIA, MetadatosIA]:
         """
         Ejecuta la clasificación inteligente estructurada bajo Pydantic.
-        Gestiona internamente el orden de llamada según el proveedor activo configurado.
+        Gestiona internamente reintentos con espera exponencial ante 429, tiempos agotados,
+        respuestas vacías y conmutación transparente a proveedores de contingencia.
         """
         t_inicio = time.time()
 
@@ -179,7 +215,6 @@ class ClienteLLM:
 
         motivo_fallo = None
 
-
         # Orden de ejecución determinado por el proveedor activo encapsulado
         proveedores_a_intentar = (
             ["groq", "gemini"] if self.proveedor_activo == "groq" else ["gemini", "groq"]
@@ -192,16 +227,29 @@ class ClienteLLM:
                 if simular_caida_gemini:
                     motivo_fallo = "Simulación de caída inducida en Google Gemini (HTTP 503 / Cuota 429 agotada). Conmutando a respaldo Groq."
                     continue
+
                 key_gemini = os.environ.get("GEMINI_API_KEY") or self.gemini_api_key
                 if key_gemini and key_gemini != "tu_clave_de_gemini_aqui":
                     try:
-                        clasif, meta = self._invocar_gemini_clasificar(prompt_usuario, t_inicio)
+                        clasif, meta = self._invocar_gemini_clasificar(
+                            prompt_usuario,
+                            t_inicio,
+                            simular_error_429=simular_error_429,
+                            simular_timeout=simular_timeout,
+                            simular_respuesta_vacia=simular_respuesta_vacia
+                        )
                         if motivo_fallo:
                             meta.conmutado = True
                             meta.motivo_conmutacion = motivo_fallo
                         return clasif, meta
+                    except ErrorCuotaExcedidaLLM as e_429:
+                        motivo_fallo = f"Error HTTP 429 tras {e_429.reintentos} reintentos con espera exponencial: Cuota agotada en Google Gemini. Conmutando a respaldo."
+                    except ErrorTiempoAgotadoLLM as e_timeout:
+                        motivo_fallo = f"Tiempo de espera agotado ({e_timeout.timeout_segundos}s) en Google Gemini. Conmutando a respaldo."
+                    except ErrorRespuestaVaciaLLM as e_vacia:
+                        motivo_fallo = f"Respuesta vacía o bloqueada por filtros devuelta por Google Gemini: {e_vacia}. Conmutando a respaldo."
                     except Exception as e:
-                        motivo_fallo = f"Fallo en Gemini ({type(e).__name__}): {str(e)[:100]}. Activando respaldo."
+                        motivo_fallo = f"Fallo en Gemini ({type(e).__name__}): {str(e)[:120]}. Activando respaldo."
                 else:
                     motivo_fallo = "GEMINI_API_KEY no configurada o en modo demostración."
 
@@ -210,11 +258,25 @@ class ClienteLLM:
                     motivo_groq = "Simulación de indisponibilidad inducida en Groq Cloud. Activando motor determinista local."
                     motivo_fallo = f"{motivo_fallo} | {motivo_groq}" if motivo_fallo else motivo_groq
                     continue
+
                 key_groq = os.environ.get("GROQ_API_KEY") or self.groq_api_key
                 if key_groq and key_groq != "tu_clave_de_groq_aqui":
                     try:
-                        clasif, meta = self._invocar_groq_clasificar(texto_seguro, motivo_fallo, t_inicio)
+                        clasif, meta = self._invocar_groq_clasificar(
+                            texto_seguro,
+                            motivo_fallo,
+                            t_inicio,
+                            simular_error_429=simular_error_429,
+                            simular_timeout=simular_timeout,
+                            simular_respuesta_vacia=simular_respuesta_vacia
+                        )
                         return clasif, meta
+                    except ErrorCuotaExcedidaLLM as e_groq_429:
+                        motivo_fallo = f"{motivo_fallo} | Groq HTTP 429 tras reintentos exponenciales: {e_groq_429}."
+                    except ErrorTiempoAgotadoLLM as e_groq_timeout:
+                        motivo_fallo = f"{motivo_fallo} | Groq tiempo agotado ({e_groq_timeout.timeout_segundos}s)."
+                    except ErrorRespuestaVaciaLLM as e_groq_vacia:
+                        motivo_fallo = f"{motivo_fallo} | Groq respuesta vacía devuelta: {e_groq_vacia}."
                     except Exception as e_groq:
                         motivo_fallo = f"{motivo_fallo} | Fallo en Groq ({type(e_groq).__name__}): {str(e_groq)[:100]}"
                 else:
@@ -235,7 +297,44 @@ class ClienteLLM:
         )
         return clasificacion, metadatos
 
-    def _invocar_gemini_clasificar(self, prompt_usuario: str, t_inicio: float) -> Tuple[ClasificacionIA, MetadatosIA]:
+    def _invocar_gemini_clasificar(
+        self,
+        prompt_usuario: str,
+        t_inicio: float,
+        simular_error_429: bool = False,
+        simular_timeout: bool = False,
+        simular_respuesta_vacia: bool = False,
+        max_reintentos: int = 3,
+        espera_base: float = 0.25,
+        timeout_segundos: float = 12.0
+    ) -> Tuple[ClasificacionIA, MetadatosIA]:
+        """
+        Invoca la API de Google Gemini con gestión determinista de:
+        - Reintentos con espera exponencial ante error HTTP 429
+        - Captura de tiempo agotado (timeout)
+        - Detección de respuestas vacías o nulas
+        """
+        # 1. Simulación Evaluativa de Errores para pruebas automatizadas
+        if simular_timeout:
+            raise ErrorTiempoAgotadoLLM(
+                f"Tiempo de espera agotado ({timeout_segundos}s) al consultar Google Gemini.",
+                timeout_segundos=timeout_segundos
+            )
+
+        if simular_respuesta_vacia:
+            raise ErrorRespuestaVaciaLLM(
+                "Google Gemini devolvió una respuesta vacía (0 candidatos generados o bloqueado por filtro)."
+            )
+
+        if simular_error_429:
+            # Simular ciclo real de reintentos con espera exponencial
+            for i in range(max_reintentos):
+                time.sleep(0.01 * (2 ** i))
+            raise ErrorCuotaExcedidaLLM(
+                f"Google Gemini HTTP 429: Cuota de peticiones agotada tras {max_reintentos} reintentos con espera exponencial.",
+                reintentos=max_reintentos
+            )
+
         import httpx
         key_gemini = os.environ.get("GEMINI_API_KEY") or self.gemini_api_key
         url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key_gemini}"
@@ -246,60 +345,180 @@ class ClienteLLM:
                 "responseMimeType": "application/json"
             }
         }
-        with httpx.Client(timeout=15.0) as client:
-            res = client.post(url_gemini, json=payload)
-        if res.status_code == 200:
-            res_data = res.json()
-            contenido_json = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-            latencia = round((time.time() - t_inicio) * 1000, 2)
-            clasificacion = ClasificacionIA.model_validate_json(contenido_json)
-            usage = res_data.get("usageMetadata", {})
-            return clasificacion, MetadatosIA(
-                proveedor="gemini",
-                modelo="gemini-1.5-flash",
-                conmutado=False,
-                motivo_conmutacion=None,
-                latencia_ms=latencia,
-                tokens_prompt=usage.get("promptTokenCount"),
-                tokens_completado=usage.get("candidatesTokenCount"),
-                tokens_total=usage.get("totalTokenCount")
-            )
-        raise RuntimeError(f"HTTP {res.status_code}: {res.text[:120]}")
 
-    def _invocar_groq_clasificar(self, texto_seguro: str, motivo_fallo: Optional[str], t_inicio: float) -> Tuple[ClasificacionIA, MetadatosIA]:
+        reintentos_efectuados = 0
+        ultimo_error = None
+
+        for intento in range(max_reintentos + 1):
+            try:
+                with httpx.Client(timeout=timeout_segundos) as client:
+                    res = client.post(url_gemini, json=payload)
+
+                # Control de 429 (Rate Limit / Quota) con Espera Exponencial
+                if res.status_code == 429:
+                    reintentos_efectuados += 1
+                    if intento < max_reintentos:
+                        espera = espera_base * (2 ** intento)
+                        time.sleep(espera)
+                        continue
+                    else:
+                        raise ErrorCuotaExcedidaLLM(
+                            f"Google Gemini HTTP 429: Cuota excedida tras {reintentos_efectuados} reintentos con espera exponencial.",
+                            reintentos=reintentos_efectuados
+                        )
+
+                if res.status_code != 200:
+                    raise ErrorProveedorLLM(f"Google Gemini HTTP {res.status_code}: {res.text[:120]}")
+
+                # Control de Respuesta Vacía o Truncada
+                res_data = res.json()
+                candidatos = res_data.get("candidates", [])
+                if not candidatos:
+                    feedback = res_data.get("promptFeedback", {})
+                    raise ErrorRespuestaVaciaLLM(
+                        f"Google Gemini devolvió respuesta vacía (candidatos vacíos). Feedback: {feedback}"
+                    )
+
+                partes = candidatos[0].get("content", {}).get("parts", [])
+                if not partes:
+                    raise ErrorRespuestaVaciaLLM("Google Gemini devolvió candidato sin contenido de texto.")
+
+                texto_raw = partes[0].get("text", "")
+                if not texto_raw or not texto_raw.strip():
+                    raise ErrorRespuestaVaciaLLM("Google Gemini devolvió contenido de texto en blanco o vacío.")
+
+                contenido_json = texto_raw.strip()
+                latencia = round((time.time() - t_inicio) * 1000, 2)
+                clasificacion = ClasificacionIA.model_validate_json(contenido_json)
+                usage = res_data.get("usageMetadata", {})
+
+                return clasificacion, MetadatosIA(
+                    proveedor="gemini",
+                    modelo="gemini-1.5-flash",
+                    conmutado=False,
+                    motivo_conmutacion=None,
+                    latencia_ms=latencia,
+                    tokens_prompt=usage.get("promptTokenCount"),
+                    tokens_completado=usage.get("candidatesTokenCount"),
+                    tokens_total=usage.get("totalTokenCount")
+                )
+
+            except httpx.TimeoutException as e_timeout:
+                raise ErrorTiempoAgotadoLLM(
+                    f"Tiempo de espera agotado ({timeout_segundos}s) al consultar Google Gemini: {type(e_timeout).__name__}",
+                    timeout_segundos=timeout_segundos
+                )
+            except (ErrorCuotaExcedidaLLM, ErrorRespuestaVaciaLLM, ErrorTiempoAgotadoLLM):
+                raise
+            except Exception as e_otro:
+                ultimo_error = e_otro
+                if intento < max_reintentos and "429" in str(e_otro):
+                    reintentos_efectuados += 1
+                    espera = espera_base * (2 ** intento)
+                    time.sleep(espera)
+                    continue
+                raise ErrorProveedorLLM(f"Fallo en Gemini: {str(e_otro)}")
+
+        if ultimo_error:
+            raise ultimo_error
+        raise ErrorProveedorLLM("Fallo no determinado en llamada a Google Gemini")
+
+    def _invocar_groq_clasificar(
+        self,
+        texto_seguro: str,
+        motivo_fallo: Optional[str],
+        t_inicio: float,
+        simular_error_429: bool = False,
+        simular_timeout: bool = False,
+        simular_respuesta_vacia: bool = False,
+        max_reintentos: int = 2,
+        espera_base: float = 0.25,
+        timeout_segundos: float = 12.0
+    ) -> Tuple[ClasificacionIA, MetadatosIA]:
+        """
+        Invoca la API de Groq Cloud con reintentos exponenciales para 429, timeout y validación de respuesta vacía.
+        """
+        if simular_timeout:
+            raise ErrorTiempoAgotadoLLM(
+                f"Tiempo de espera agotado ({timeout_segundos}s) en Groq Cloud.",
+                timeout_segundos=timeout_segundos
+            )
+
+        if simular_respuesta_vacia:
+            raise ErrorRespuestaVaciaLLM(
+                "Groq Cloud devolvió una respuesta vacía (0 choices generadas)."
+            )
+
+        if simular_error_429:
+            for i in range(max_reintentos):
+                time.sleep(0.01 * (2 ** i))
+            raise ErrorCuotaExcedidaLLM(
+                f"Groq Cloud HTTP 429: Cuota agotada tras {max_reintentos} reintentos exponenciales.",
+                reintentos=max_reintentos
+            )
+
         from groq import Groq
         key_groq = os.environ.get("GROQ_API_KEY") or self.groq_api_key
-        client = Groq(api_key=key_groq)
+        client = Groq(api_key=key_groq, timeout=timeout_segundos)
         modelos_groq = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
-        for mod in modelos_groq:
-            try:
-                completion = client.chat.completions.create(
-                    messages=[
-                        {"role": "system", "content": self.obtener_prompt_sistema()},
-                        {"role": "user", "content": f"<solicitud>\n{texto_seguro}\n</solicitud>"}
-                    ],
 
-                    model=mod,
-                    temperature=0.1,
-                    response_format={"type": "json_object"}
-                )
-                latencia = round((time.time() - t_inicio) * 1000, 2)
-                clasificacion = ClasificacionIA.model_validate_json(completion.choices[0].message.content)
-                usage = getattr(completion, "usage", None)
-                conmutado = (self.proveedor_activo != "groq") or bool(motivo_fallo)
-                return clasificacion, MetadatosIA(
-                    proveedor="groq",
-                    modelo=mod,
-                    conmutado=conmutado,
-                    motivo_conmutacion=motivo_fallo,
-                    latencia_ms=latencia,
-                    tokens_prompt=getattr(usage, "prompt_tokens", None) if usage else None,
-                    tokens_completado=getattr(usage, "completion_tokens", None) if usage else None,
-                    tokens_total=getattr(usage, "total_tokens", None) if usage else None
-                )
-            except Exception:
-                continue
-        raise RuntimeError("No se pudo clasificar con ningún modelo de Groq")
+        ultimo_error_groq = None
+
+        for mod in modelos_groq:
+            reintentos_efectuados = 0
+            for intento in range(max_reintentos + 1):
+                try:
+                    completion = client.chat.completions.create(
+                        messages=[
+                            {"role": "system", "content": self.obtener_prompt_sistema()},
+                            {"role": "user", "content": f"<solicitud>\n{texto_seguro}\n</solicitud>"}
+                        ],
+                        model=mod,
+                        temperature=0.1,
+                        response_format={"type": "json_object"}
+                    )
+
+                    # Validación de respuesta vacía
+                    if not completion or not completion.choices:
+                        raise ErrorRespuestaVaciaLLM(f"Groq ({mod}) devolvió respuesta sin choices.")
+
+                    contenido = completion.choices[0].message.content
+                    if not contenido or not contenido.strip():
+                        raise ErrorRespuestaVaciaLLM(f"Groq ({mod}) devolvió contenido de texto vacío.")
+
+                    latencia = round((time.time() - t_inicio) * 1000, 2)
+                    clasificacion = ClasificacionIA.model_validate_json(contenido)
+                    usage = getattr(completion, "usage", None)
+                    conmutado = (self.proveedor_activo != "groq") or bool(motivo_fallo)
+                    return clasificacion, MetadatosIA(
+                        proveedor="groq",
+                        modelo=mod,
+                        conmutado=conmutado,
+                        motivo_conmutacion=motivo_fallo,
+                        latencia_ms=latencia,
+                        tokens_prompt=getattr(usage, "prompt_tokens", None) if usage else None,
+                        tokens_completado=getattr(usage, "completion_tokens", None) if usage else None,
+                        tokens_total=getattr(usage, "total_tokens", None) if usage else None
+                    )
+                except Exception as e:
+                    ultimo_error_groq = e
+                    err_msg = str(e).lower()
+                    if "429" in err_msg or "rate" in err_msg:
+                        reintentos_efectuados += 1
+                        if intento < max_reintentos:
+                            time.sleep(espera_base * (2 ** intento))
+                            continue
+                    elif "timeout" in err_msg or "timed out" in err_msg:
+                        raise ErrorTiempoAgotadoLLM(f"Tiempo agotado en Groq ({mod}): {str(e)[:100]}", timeout_segundos=timeout_segundos)
+                    elif isinstance(e, ErrorRespuestaVaciaLLM):
+                        raise
+                    break
+
+        if ultimo_error_groq:
+            if isinstance(ultimo_error_groq, (ErrorTiempoAgotadoLLM, ErrorRespuestaVaciaLLM, ErrorCuotaExcedidaLLM)):
+                raise ultimo_error_groq
+            raise ErrorProveedorLLM(f"Fallo en Groq: {str(ultimo_error_groq)[:120]}")
+        raise ErrorProveedorLLM("No se pudo clasificar con ningún modelo de Groq")
 
     # ------------------------------------------------------------------------
     # 2. Streaming Conversacional: POST /chat
@@ -565,6 +784,9 @@ def clasificar_solicitud(
     texto_usuario: str,
     simular_caida_gemini: bool = False,
     simular_caida_groq: bool = False,
+    simular_error_429: bool = False,
+    simular_timeout: bool = False,
+    simular_respuesta_vacia: bool = False,
     modo_vulnerable: bool = False
 ) -> Tuple[ClasificacionIA, MetadatosIA]:
     """Fachada pública delegada al cliente encapsulado."""
@@ -572,6 +794,9 @@ def clasificar_solicitud(
         texto_usuario,
         simular_caida_gemini=simular_caida_gemini,
         simular_caida_groq=simular_caida_groq,
+        simular_error_429=simular_error_429,
+        simular_timeout=simular_timeout,
+        simular_respuesta_vacia=simular_respuesta_vacia,
         modo_vulnerable=modo_vulnerable
     )
 
