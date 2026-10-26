@@ -166,6 +166,8 @@ python -m pytest tests/ -v
 | **Semana 2** | Pruebas con Mock del Modelo (Cero Gasto API) | `tests/test_endpoints.py` (Mocks de clasificación, streaming y análisis) | ✅ Completo |
 | **Semana 2** | Pruebas Unitarias Automatizadas con Mocks | `tests/test_endpoints.py` (28 tests pasando) | ✅ Completo |
 | **Semana 2** | Arquitectura C4 y Registros de Decisión (ADR-001 a ADR-010) | `docs/03-arquitectura.md`, `docs/09-decisiones.md` | ✅ Completo |
+| **Semana 2** | Guía Maestra de Defensa y Banco de Preguntas del Tribunal | `docs/08-guia-defensa.md` | ✅ Completo |
 | **Semana 2** | Evidencias Técnicas de la Semana 2 | `docs/evidencias/semana-2/README.md` | ✅ Completo |
+
 
 
