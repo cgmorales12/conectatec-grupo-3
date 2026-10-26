@@ -124,12 +124,13 @@ La clase `ClienteLLM` centraliza toda la interacción con modelos de lenguaje ex
 
 ---
 
-## 🧪 5. Ejecución de Pruebas Automatizadas
-El proyecto cuenta con una suite de **24 pruebas unitarias automatizadas con Mocks** que validan la priorización ITIL, la sanitización LOPDP, la conmutación por error, el streaming conversacional, el encapsulamiento del cliente LLM, la política de cero secretos, el **manejo determinista de errores del proveedor (429 con reintentos exponenciales, timeouts y respuestas vacías)** y el **log por solicitud con medición de tokens y tiempo de respuesta**, sin requerir conexión a internet ni gastar saldo de API:
+## 🧪 5. Ejecución de Pruebas Automatizadas con Mocks (Cero Gasto de API)
+El proyecto cuenta con una suite de **28 pruebas unitarias automatizadas con Mocks** que validan la priorización ITIL, la sanitización LOPDP, la conmutación por error, el streaming conversacional, el encapsulamiento del cliente LLM, la política de cero secretos, el **manejo determinista de errores del proveedor (429 con reintentos exponenciales, timeouts y respuestas vacías)**, el **log por solicitud con medición de tokens y tiempo de respuesta**, y **pruebas con un mock del modelo donde pytest prueba todos los endpoints sin gastar API ni requerir conexión a internet**:
 
 ```bash
 python -m pytest tests/ -v
 ```
+*(Tiempo de ejecución de la suite completa: **~3.29 segundos** gracias al aislamiento con mocks).*
 
 ---
 
@@ -162,7 +163,7 @@ python -m pytest tests/ -v
 | **Semana 2** | Log por Solicitud (Tokens y Tiempo Respuesta) | `app/main.py`, `app/services/llm.py`, `GET /v1/metricas/solicitudes` | ✅ Completo |
 | **Semana 2** | Catálogo de Prompts (Método R.E.C.E.T.A.) | `docs/05-prompts.md` | ✅ Completo |
 | **Semana 2** | Frontend Funcional (Tablero Kanban de Tickets) | `frontend/index.html` | ✅ Completo |
-| **Semana 2** | Cero Secretos en Git (`.env` en `.gitignore`) | `.gitignore`, `.env.example`, `scripts/auditar_cero_secretos.py` | ✅ Completo |
-| **Semana 2** | Pruebas Unitarias Automatizadas con Mocks | `tests/test_endpoints.py` (24 tests pasando) | ✅ Completo |
+| **Semana 2** | Pruebas con Mock del Modelo (Cero Gasto API) | `tests/test_endpoints.py` (Mocks de clasificación, streaming y análisis) | ✅ Completo |
+| **Semana 2** | Pruebas Unitarias Automatizadas con Mocks | `tests/test_endpoints.py` (28 tests pasando) | ✅ Completo |
 | **Semana 2** | Evidencias Técnicas de la Semana 2 | `docs/evidencias/semana-2/README.md` | ✅ Completo |
 
