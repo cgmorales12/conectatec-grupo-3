@@ -374,6 +374,55 @@ def test_encapsulamiento_cliente_llm_cambio_dinamico_proveedor():
     assert cliente_llm.obtener_proveedor_activo() == "gemini"
 
 
+def test_prompts_versionados_y_regla_abstencion():
+    """
+    Valida el requerimiento:
+    «app/prompts/system_v1.md y 3 versiones probadas: Rol, tono, restricciones e instrucción de abstenerse cuando no sabe.»
+    """
+    import os
+    from app.services.llm import cargar_prompt_sistema, cliente_llm
+
+    # 1. Validar que las 3 versiones de prompts existen en app/prompts/
+    dir_prompts = os.path.join(os.path.dirname(__file__), "..", "app", "prompts")
+    archivos_esperados = ["system_v1.md", "system_v2.md", "system_v3.md"]
+    
+    for archivo in archivos_esperados:
+        ruta = os.path.join(dir_prompts, archivo)
+        assert os.path.exists(ruta), f"El archivo {archivo} debe existir en app/prompts/"
+        with open(ruta, "r", encoding="utf-8") as f:
+            contenido = f.read().lower()
+            # Validar los 4 criterios indispensables
+            assert "rol" in contenido, f"{archivo} debe definir el Rol"
+            assert "tono" in contenido, f"{archivo} debe definir el Tono"
+            assert "restricciones" in contenido, f"{archivo} debe definir Restricciones"
+            assert ("abstención" in contenido or "abstenerse" in contenido), f"{archivo} debe contener instrucción de abstenerse cuando no sabe"
+
+    # 2. Validar endpoint de consulta de versiones
+    resp_prompts = client.get("/v1/prompts/versiones")
+    assert resp_prompts.status_code == 200
+    datos = resp_prompts.json()
+    assert datos["versiones_disponibles"] == ["v1", "v2", "v3"]
+    assert datos["criterios_verificados"]["instruccion_abstencion"] != ""
+
+    # 3. Validar regla de abstención en inferencia: consulta fuera de alcance / desconocida
+    payload_fuera_de_alcance = {
+        "nombre_cliente": "Usuario Inconsistente",
+        "email_cliente": "inconsistente@email.com",
+        "descripcion_problema": "¿Por qué llueve tanto en Ambato esta tarde y qué comida me recomiendas pedir?",
+        "simular_caida_gemini": True,
+        "simular_caida_groq": True
+    }
+    resp = client.post("/clasificar", json=payload_fuera_de_alcance)
+    assert resp.status_code == 201
+    ticket = resp.json()
+    assert ticket["categoria"] == "Solicitud No Técnica / Fuera de Alcance"
+    assert ticket["impacto"] == "Bajo"
+    assert ticket["urgencia"] == "Baja"
+    assert any(k in ticket["justificacion"].lower() for k in ["no describe", "no corresponde", "fuera de alcance", "abstiene", "aclaración"])
+
+
+
+
 
 
 
