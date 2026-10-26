@@ -516,6 +516,91 @@ def test_seguridad_cero_secretos_en_git():
     assert cliente_llm.groq_api_key == os.environ.get("GROQ_API_KEY")
 
 
+def test_manejo_error_proveedor_429_con_reintentos_y_espera_exponencial():
+    """
+    Valida el requerimiento del rubro:
+    «Manejo de errores del proveedor: 429 con reintentos y espera exponencial».
+    """
+    from app.main import _cubetas_clientes
+    _cubetas_clientes.clear()
+
+    payload = {
+        "nombre_cliente": "Docente Evaluador",
+        "email_cliente": "evaluador@uniandes.edu.ec",
+        "descripcion_problema": "La luz LOS está en color rojo parpadeante en la ONT y no hay navegación.",
+        "simular_error_429": True,
+        "simular_caida_gemini": False,
+        "simular_caida_groq": False
+    }
+
+    res = client.post("/clasificar", json=payload)
+    assert res.status_code == 201
+    ticket = res.json()
+    assert ticket["ticket_codigo"].startswith("TCK-")
+    meta = ticket["metadatos_ia"]
+    # El sistema debe haber conmutado tras agotar los reintentos exponenciales
+    assert meta["conmutado"] is True
+    assert meta["motivo_conmutacion"] is not None
+    motivo_lower = meta["motivo_conmutacion"].lower()
+    assert "429" in motivo_lower or "reintentos" in motivo_lower or "exponencial" in motivo_lower
+    assert ticket["prioridad"] in ["Alta", "Media", "Baja"]
+
+
+def test_manejo_error_proveedor_tiempo_agotado_timeout():
+    """
+    Valida el requerimiento del rubro:
+    «Manejo de errores del proveedor: tiempo agotado».
+    """
+    from app.main import _cubetas_clientes
+    _cubetas_clientes.clear()
+
+    payload = {
+        "nombre_cliente": "Docente Evaluador",
+        "email_cliente": "evaluador@uniandes.edu.ec",
+        "descripcion_problema": "La velocidad de conexión bajó a 2 Mbps cuando contraté 100 Mbps.",
+        "simular_timeout": True,
+        "simular_caida_gemini": False,
+        "simular_caida_groq": False
+    }
+
+    res = client.post("/clasificar", json=payload)
+    assert res.status_code == 201
+    ticket = res.json()
+    meta = ticket["metadatos_ia"]
+    assert meta["conmutado"] is True
+    motivo_lower = meta["motivo_conmutacion"].lower()
+    assert "tiempo" in motivo_lower or "agotado" in motivo_lower or "timeout" in motivo_lower
+    assert ticket["prioridad"] in ["Alta", "Media", "Baja"]
+
+
+def test_manejo_error_proveedor_respuesta_vacia():
+    """
+    Valida el requerimiento del rubro:
+    «Manejo de errores del proveedor: respuesta vacía».
+    """
+    from app.main import _cubetas_clientes
+    _cubetas_clientes.clear()
+
+    payload = {
+        "nombre_cliente": "Docente Evaluador",
+        "email_cliente": "evaluador@uniandes.edu.ec",
+        "descripcion_problema": "Solicito cambio de contraseña y nombre SSID de mi red Wi-Fi.",
+        "simular_respuesta_vacia": True,
+        "simular_caida_gemini": False,
+        "simular_caida_groq": False
+    }
+
+    res = client.post("/clasificar", json=payload)
+    assert res.status_code == 201
+    ticket = res.json()
+    meta = ticket["metadatos_ia"]
+    assert meta["conmutado"] is True
+    motivo_lower = meta["motivo_conmutacion"].lower()
+    assert "vacía" in motivo_lower or "vacia" in motivo_lower or "incompleta" in motivo_lower or "sin candidatos" in motivo_lower
+    assert ticket["prioridad"] in ["Alta", "Media", "Baja"]
+
+
+
 
 
 
