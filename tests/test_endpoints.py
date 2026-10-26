@@ -467,6 +467,56 @@ def test_frontend_interfaz_propia_y_elementos_reactivos():
     assert "Descripción del problema" in err_body["detail"] or "caracteres" in err_body["detail"]
 
 
+def test_seguridad_cero_secretos_en_git():
+    """
+    Valida el cumplimiento del rubro:
+    «Clave solo en variables de entorno: .env en .gitignore y verificado que no aparece en ningún commit.»
+    """
+    import os
+    import subprocess
+    import re
+    from app.services.llm import cliente_llm
+
+    raiz_proyecto = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
+
+    # 1. Verificar que .env y sus variantes están explícitamente ignorados en .gitignore
+    ruta_gitignore = os.path.join(raiz_proyecto, ".gitignore")
+    assert os.path.exists(ruta_gitignore), "El archivo .gitignore debe existir en la raíz"
+    with open(ruta_gitignore, "r", encoding="utf-8") as f:
+        lineas_gitignore = [l.strip() for l in f if l.strip() and not l.strip().startswith("#")]
+
+    assert ".env" in lineas_gitignore or any(p.startswith(".env") for p in lineas_gitignore), ".env debe estar en .gitignore"
+
+    # 2. Verificar que .env NO está rastreado en el índice activo de Git
+    cmd_ls = ["git", "ls-files", ".env"]
+    res_ls = subprocess.run(cmd_ls, cwd=raiz_proyecto, capture_output=True, text=True)
+    assert res_ls.returncode == 0
+    assert res_ls.stdout.strip() == "", "El archivo .env NO debe estar en el índice de Git (git ls-files .env debe estar vacío)"
+
+    # 3. Verificar que .env NUNCA ha sido incluido en ningún commit en toda la historia de Git
+    cmd_log = ["git", "log", "--all", "--full-history", "--oneline", "--", ".env"]
+    res_log = subprocess.run(cmd_log, cwd=raiz_proyecto, capture_output=True, text=True)
+    assert res_log.returncode == 0
+    assert res_log.stdout.strip() == "", "El archivo .env NUNCA debe haber aparecido en ningún commit en la historia del repositorio"
+
+    # 4. Verificar que .env.example existe y no contiene claves de API reales
+    ruta_example = os.path.join(raiz_proyecto, ".env.example")
+    assert os.path.exists(ruta_example), "El archivo .env.example debe existir como plantilla pública"
+    with open(ruta_example, "r", encoding="utf-8") as f:
+        contenido_example = f.read()
+
+    # No debe tener claves reales de Gemini (AIzaSy...) ni de Groq (gsk_...)
+    assert not re.search(r'AIzaSy[A-Za-z0-9_-]{33}', contenido_example), ".env.example no debe contener claves reales de Gemini"
+    assert not re.search(r'gsk_[A-Za-z0-9]{50,}', contenido_example), ".env.example no debe contener claves reales de Groq"
+    assert "GEMINI_API_KEY" in contenido_example
+    assert "GROQ_API_KEY" in contenido_example
+
+    # 5. Verificar que el cliente LLM lee las claves a través de os.environ y no por código quemado
+    assert cliente_llm.gemini_api_key == os.environ.get("GEMINI_API_KEY")
+    assert cliente_llm.groq_api_key == os.environ.get("GROQ_API_KEY")
+
+
+
 
 
 

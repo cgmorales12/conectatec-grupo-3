@@ -219,10 +219,18 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Variables de entorno y secretos (LOPDP y Cero Secretos en Git)
+# ============================================================================
+# Variables de entorno y secretos (Art. 23 LOPDP Ecuador y OWASP LLM06)
+# Política: CERO SECRETOS EN GIT (.env NUNCA se comitea; .env.example es la plantilla)
+# ============================================================================
 .env
+.env.*
 *.env
 .env.local
+.env.development
+.env.production
+.env.test
+!.env.example
 
 # Bases de datos y almacenamiento vectorial
 data/chroma/
