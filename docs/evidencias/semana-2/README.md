@@ -100,6 +100,11 @@ Durante el ciclo de desarrollo de la Semana 2 surgieron cinco desafíos técnico
 - **Diagnóstico:** Al pulsar el botón de creación de tickets, la latencia normal de inferencia provocaba que los usuarios hicieran múltiples clics sucesivos, generando tickets duplicados. Además, ante errores de validación de entrada se mostraban códigos técnicos como `422 Unprocessable Entity`.
 - **Solución Implementada:** En [frontend/index.html](../../frontend/index.html), el botón de envío se desactiva de forma inmediata al hacer clic (`button.disabled = true`), activando un spinner visual animado con el texto `⏳ Analizando con IA y RAG...`. Si el backend rechaza la entrada, el middleware RFC 9457 traduce el error a un mensaje en español comprensible (`El campo 'Descripción del problema' debe tener al menos 10 caracteres`), guiando al usuario sin frustración.
 
+### Problema 6: Deprecación de Modelos Externos y Activación del Plan C en Pruebas de Caos (Caso Ticket `TCK-E640339D`)
+- **Diagnóstico:** Durante las pruebas en vivo del equipo (prueba de Fernando), se observó que el sistema generó un ticket procesado por `conmutador-local-offline` a pesar de que el indicador visual mostraba `Gemini ACTIVO`. Al auditar la base de datos `data/conectatec.db`, el registro reveló que Google devolvió un error `HTTP 404: models/gemini-1.5-flash is not found` debido a que dicha versión fue deprecada por Google exigiendo `gemini-3.5-flash-lite`. Dado que el operador simultáneamente tenía activado el interruptor `🔴 Groq: CAÍDO (Simulado)` en la interfaz para simular caos, el Gateway de Resiliencia respetó la caída de Groq y activó exitosamente el Plan C (Motor Local Heurístico). Asimismo, el texto ingresado (*"Lost encendido"*) no coincidió con las siglas exactas de los manuales RAG, activando la directiva de seguridad con escalado a Nivel 2 sin alucinar manuales falsos.
+- **Solución Implementada:** En [app/services/llm.py](../../app/services/llm.py) se actualizó la lista de modelos primarios a `gemini-3.5-flash-lite` y `openai/gpt-oss-120b`, incorporando un ciclo de fallback que avanza automáticamente entre versiones si una de ellas devuelve 404, garantizando que el triaje nominal opere siempre en vivo y que la conmutación a local se reserve exclusivamente para fallas totales de conectividad.
+
+
 ---
 
 ## 5. Resumen de Verificación y Estado del Repositorio
