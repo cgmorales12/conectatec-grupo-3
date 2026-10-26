@@ -45,6 +45,85 @@ class ActualizarEstadoIn(BaseModel):
 
 
 # ============================================================================
+# Esquemas Conversacionales y de Análisis Técnico (Endpoints Principales)
+# ============================================================================
+
+class MensajeHistorialChat(BaseModel):
+    """Mensaje individual en el historial conversacional."""
+    model_config = ConfigDict(extra="forbid")
+
+    rol: str = Field(
+        ...,
+        pattern="^(user|model|asistente|system)$",
+        description="Rol del emisor en la conversación"
+    )
+    contenido: str = Field(
+        ...,
+        min_length=1,
+        max_length=4000,
+        description="Contenido del mensaje conversacional"
+    )
+
+
+class SolicitudChatIn(BaseModel):
+    """Payload de entrada para el endpoint conversacional con streaming (POST /chat)."""
+    model_config = ConfigDict(extra="forbid")
+
+    mensaje: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Pregunta o consulta técnica del usuario para el asistente"
+    )
+    historial: Optional[List[MensajeHistorialChat]] = Field(
+        default_factory=list,
+        description="Historial previo de la conversación para mantener contexto"
+    )
+    simular_caida_gemini: bool = Field(
+        False,
+        description="Simula caída de Gemini para verificar failover de streaming"
+    )
+    simular_caida_groq: bool = Field(
+        False,
+        description="Simula caída de Groq para verificar contingencia offline"
+    )
+
+
+class SolicitudAnalizarIn(BaseModel):
+    """Payload para análisis técnico profundo de fallas o incidencias (POST /analizar)."""
+    model_config = ConfigDict(extra="forbid")
+
+    descripcion_problema: str = Field(
+        ...,
+        min_length=10,
+        max_length=2000,
+        description="Descripción detallada de la avería, síntomas o comportamiento anómalo"
+    )
+    equipo_afectado: Optional[str] = Field(
+        "ONT / Router Wi-Fi",
+        max_length=100,
+        description="Equipo, servicio o plataforma reportada"
+    )
+    sintomas: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Lista de síntomas o estados de luces observados"
+    )
+
+
+class ResultadoAnalizarOut(BaseModel):
+    """Contrato de salida en formato JSON estructurado para POST /analizar."""
+    model_config = ConfigDict(extra="forbid")
+
+    diagnostico: str = Field(..., description="Diagnóstico técnico del problema identificado")
+    causa_probable: str = Field(..., description="Causa raíz estimada del incidente")
+    nivel_severidad: str = Field(..., description="Nivel de severidad técnica (Crítica, Alta, Media, Baja)")
+    acciones_recomendadas: List[str] = Field(..., description="Lista ordenada de pasos correctivos o de mitigación")
+    requiere_visita_campo: bool = Field(False, description="True si requiere asistencia física de cuadrilla técnica")
+    documentos_sugeridos: List[str] = Field(default_factory=list, description="Manuales técnicos sugeridos para consulta")
+
+
+
+# ============================================================================
 # Esquemas de IA y Negocio (Internal & Output DTOs)
 # ============================================================================
 
