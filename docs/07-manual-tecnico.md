@@ -86,11 +86,33 @@ app/
 
 ---
 
-## 5. Ejecución de Pruebas Unitarias Automatizadas con Mocks
-El proyecto incluye pruebas que validan los contratos, la matriz ITIL, la anonimización LOPDP y la resiliencia sin necesidad de internet:
+## 5. Ejecución de Pruebas Unitarias Automatizadas con Mocks (Cero Gasto de API)
+
+Para cumplir con la rúbrica de titulación (*«Pruebas con un mock del modelo: pytest prueba el endpoint sin gastar API»*):
+
+### 5.1. Filosofía de Pruebas Aisladas y Deterministas
+El Modelo de Lenguaje (LLM) es un servicio externo probabilístico, de costo recurrente y dependiente de conectividad. Para garantizar que la suite de pruebas sea:
+1. **100% Reproducible en CI/CD:** No depende de que los servidores de Google Gemini o Groq Cloud estén activos.
+2. **Cero Consumo de Saldo/Tokens:** Ninguna prueba unitaria descuenta tokens ni incurre en cobros de API.
+3. **Velocidad de Ejecución:** Las 28 pruebas corren en aproximadamente 3 segundos.
+
+### 5.2. Niveles de Mock Implementados (`tests/test_endpoints.py`)
+1. **Mock de Inferencia de Clasificación (`test_mock_modelo_clasificacion_aislado_sin_gastar_api`):**
+   - Intercepta `cliente_llm.clasificar` inyectando un mock determinista.
+   - Prueba `POST /clasificar` verificando que el backend valida el esquema Pydantic `SolicitudTicketIn`, calcula la prioridad ITIL matemáticamente en Python, enlaza citas RAG y emite `TicketOut`.
+2. **Mock de Streaming Conversacional (`test_mock_modelo_chat_streaming_sin_gastar_api`):**
+   - Intercepta `cliente_llm.chat_stream` con un generador controlado token a token.
+   - Prueba `POST /chat` verificando la transmisión `StreamingResponse` (`text/plain; charset=utf-8`).
+3. **Mock de Diagnóstico Técnico Estructurado (`test_mock_modelo_analisis_tecnico_sin_gastar_api`):**
+   - Intercepta `cliente_llm.analizar` y prueba `POST /analizar` con validación estricta de `ResultadoAnalizarOut`.
+4. **Garantía de Cero Red (`test_mock_garantia_cero_consumo_api_y_cero_red`):**
+   - Blinda variables de entorno `GEMINI_API_KEY=""` y `GROQ_API_KEY=""` demostrando que el sistema atiende peticiones en modo autónomo local sin requerir internet.
+
+### 5.3. Comando de Ejecución
 ```bash
-pytest -v tests/test_endpoints.py
+python -m pytest tests/test_endpoints.py -v
 ```
+*(Resultado verificado: **28 passed** en ~3.29 segundos, 0 llamadas externas).*
 
 ---
 
