@@ -18,6 +18,7 @@ import os
 import re
 import json
 import time
+import logging
 from typing import Tuple, Optional, Iterator, List, Dict, Any
 from dotenv import load_dotenv
 
@@ -28,6 +29,14 @@ from app.schemas import (
     ResultadoAnalizarOut,
     ProveedorLLMEnum
 )
+
+# Configurar logger estructurado de inferencia LLM
+logger_llm = logging.getLogger("conectatec.llm")
+if not logger_llm.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s"))
+    logger_llm.addHandler(_handler)
+    logger_llm.setLevel(logging.INFO)
 
 # Cargar automáticamente credenciales del archivo .env local
 load_dotenv(override=True)
@@ -295,6 +304,10 @@ class ClienteLLM:
             tokens_completado=0,
             tokens_total=0
         )
+        logger_llm.info(
+            f"🪙 [INFERENCIA LLM] Proveedor: {metadatos.proveedor} | Modelo: {metadatos.modelo} | "
+            f"Latencia: {latencia}ms | Tokens: in=0, out=0, total=0 (Motor Heurístico Determinista)"
+        )
         return clasificacion, metadatos
 
     def _invocar_gemini_clasificar(
@@ -391,6 +404,14 @@ class ClienteLLM:
                 latencia = round((time.time() - t_inicio) * 1000, 2)
                 clasificacion = ClasificacionIA.model_validate_json(contenido_json)
                 usage = res_data.get("usageMetadata", {})
+                tokens_prompt = usage.get("promptTokenCount")
+                tokens_completado = usage.get("candidatesTokenCount")
+                tokens_total = usage.get("totalTokenCount")
+
+                logger_llm.info(
+                    f"🪙 [INFERENCIA LLM] Proveedor: gemini | Modelo: gemini-1.5-flash | "
+                    f"Latencia: {latencia}ms | Tokens: in={tokens_prompt}, out={tokens_completado}, total={tokens_total}"
+                )
 
                 return clasificacion, MetadatosIA(
                     proveedor="gemini",
@@ -398,9 +419,9 @@ class ClienteLLM:
                     conmutado=False,
                     motivo_conmutacion=None,
                     latencia_ms=latencia,
-                    tokens_prompt=usage.get("promptTokenCount"),
-                    tokens_completado=usage.get("candidatesTokenCount"),
-                    tokens_total=usage.get("totalTokenCount")
+                    tokens_prompt=tokens_prompt,
+                    tokens_completado=tokens_completado,
+                    tokens_total=tokens_total
                 )
 
             except httpx.TimeoutException as e_timeout:
@@ -490,15 +511,24 @@ class ClienteLLM:
                     clasificacion = ClasificacionIA.model_validate_json(contenido)
                     usage = getattr(completion, "usage", None)
                     conmutado = (self.proveedor_activo != "groq") or bool(motivo_fallo)
+                    tokens_prompt = getattr(usage, "prompt_tokens", None) if usage else None
+                    tokens_completado = getattr(usage, "completion_tokens", None) if usage else None
+                    tokens_total = getattr(usage, "total_tokens", None) if usage else None
+
+                    logger_llm.info(
+                        f"🪙 [INFERENCIA LLM] Proveedor: groq | Modelo: {mod} | "
+                        f"Latencia: {latencia}ms | Tokens: in={tokens_prompt}, out={tokens_completado}, total={tokens_total}"
+                    )
+
                     return clasificacion, MetadatosIA(
                         proveedor="groq",
                         modelo=mod,
                         conmutado=conmutado,
                         motivo_conmutacion=motivo_fallo,
                         latencia_ms=latencia,
-                        tokens_prompt=getattr(usage, "prompt_tokens", None) if usage else None,
-                        tokens_completado=getattr(usage, "completion_tokens", None) if usage else None,
-                        tokens_total=getattr(usage, "total_tokens", None) if usage else None
+                        tokens_prompt=tokens_prompt,
+                        tokens_completado=tokens_completado,
+                        tokens_total=tokens_total
                     )
                 except Exception as e:
                     ultimo_error_groq = e
@@ -671,48 +701,70 @@ class ClienteLLM:
     # ------------------------------------------------------------------------
     def analizar(self, solicitud: SolicitudAnalizarIn) -> ResultadoAnalizarOut:
         """
-        Diagnóstico técnico estructurado con salida Pydantic.
+        Diagnóstico técnico estructurado con salida Pydantic, cálculo de latencia y tokens.
         """
+        t_inicio = time.time()
         texto = f"{solicitud.descripcion_problema} {' '.join(solicitud.sintomas or [])}".lower()
         if any(k in texto for k in ["los", "roja", "luz roja", "fibra", "corte"]):
-            return ResultadoAnalizarOut(
-                diagnostico="Interrupción física del enlace de fibra óptica (Falla de Capa 1)",
-                causa_probable="Acometida de fibra desconectada, atenuada críticamente o con rotura en tramo exterior.",
-                nivel_severidad="Crítica",
-                acciones_recomendadas=[
-                    "Verificar que el conector SC/APC azul esté firmemente acoplado en el puerto óptico de la ONT.",
-                    "Evitar doblar el cable monomodo con radio inferior a 30 mm.",
-                    "Despachar cuadrilla técnica de planta externa para medición con reflectómetro óptico (OTDR)."
-                ],
-                requiere_visita_campo=True,
-                documentos_sugeridos=["DOC-01_luces_led_ont_huawei.md", "DOC-03_atenuacion_potencia_optica.md"]
-            )
+            diag = "Interrupción física del enlace de fibra óptica (Falla de Capa 1)"
+            causa = "Acometida de fibra desconectada, atenuada críticamente o con rotura en tramo exterior."
+            sev = "Crítica"
+            acciones = [
+                "Verificar que el conector SC/APC azul esté firmemente acoplado en el puerto óptico de la ONT.",
+                "Evitar doblar el cable monomodo con radio inferior a 30 mm.",
+                "Despachar cuadrilla técnica de planta externa para medición con reflectómetro óptico (OTDR)."
+            ]
+            visita = True
+            docs = ["DOC-01_luces_led_ont_huawei.md", "DOC-03_atenuacion_potencia_optica.md"]
         elif any(k in texto for k in ["lento", "lentitud", "velocidad", "ping", "latencia"]):
-            return ResultadoAnalizarOut(
-                diagnostico="Degradación de rendimiento o congestión de canal inalámbrico",
-                causa_probable="Saturación en banda 2.4 GHz, interferencia electromagnética o procesos de alto consumo simultáneos.",
-                nivel_severidad="Media",
-                acciones_recomendadas=[
-                    "Realizar test de velocidad cableado mediante puerto Ethernet GE1 eliminando cargas concurrentes.",
-                    "Migrar dispositivos compatibles a la red de 5 GHz.",
-                    "Cambiar canal Wi-Fi a uno menos congestionado (canales 1, 6 u 11 en 2.4 GHz)."
-                ],
-                requiere_visita_campo=False,
-                documentos_sugeridos=["DOC-05_cobertura_y_canales_wifi.md", "DOC-06_test_velocidad_cableado.md"]
-            )
+            diag = "Degradación de rendimiento o congestión de canal inalámbrico"
+            causa = "Saturación en banda 2.4 GHz, interferencia electromagnética o procesos de alto consumo simultáneos."
+            sev = "Media"
+            acciones = [
+                "Realizar test de velocidad cableado mediante puerto Ethernet GE1 eliminando cargas concurrentes.",
+                "Migrar dispositivos compatibles a la red de 5 GHz.",
+                "Cambiar canal Wi-Fi a uno menos congestionado (canales 1, 6 u 11 en 2.4 GHz)."
+            ]
+            visita = False
+            docs = ["DOC-05_cobertura_y_canales_wifi.md", "DOC-06_test_velocidad_cableado.md"]
         else:
-            return ResultadoAnalizarOut(
-                diagnostico="Incidencia estándar de configuración o soporte de primer nivel",
-                causa_probable="Desconfiguración de parámetros locales o consulta general de servicio.",
-                nivel_severidad="Baja",
-                acciones_recomendadas=[
-                    "Reiniciar el equipo ONT manteniéndolo apagado durante 30 segundos.",
-                    "Comprobar el estado de las conexiones físicas de red LAN.",
-                    "Validar que no existan avisos de mantenimiento programado en el sector."
-                ],
-                requiere_visita_campo=False,
-                documentos_sugeridos=["DOC-02_reinicio_seguro_ont.md", "DOC-04_cambio_clave_wifi.md"]
-            )
+            diag = "Incidencia estándar de configuración o soporte de primer nivel"
+            causa = "Desconfiguración de parámetros locales o consulta general de servicio."
+            sev = "Baja"
+            acciones = [
+                "Reiniciar el equipo ONT manteniéndolo apagado durante 30 segundos.",
+                "Comprobar el estado de las conexiones físicas de red LAN.",
+                "Validar que no existan avisos de mantenimiento programado en el sector."
+            ]
+            visita = False
+            docs = ["DOC-02_reinicio_seguro_ont.md", "DOC-04_cambio_clave_wifi.md"]
+
+        latencia = round((time.time() - t_inicio) * 1000, 2)
+        tokens_in = max(1, len(solicitud.descripcion_problema) // 4)
+        tokens_out = max(1, (len(diag) + len(causa)) // 4)
+        meta = MetadatosIA(
+            proveedor="conmutador-local-offline",
+            modelo="analizador-itil-heuristico",
+            conmutado=False,
+            motivo_conmutacion=None,
+            latencia_ms=latencia,
+            tokens_prompt=tokens_in,
+            tokens_completado=tokens_out,
+            tokens_total=tokens_in + tokens_out
+        )
+        logger_llm.info(
+            f"🪙 [INFERENCIA LLM] Análisis Técnico | Proveedor: {meta.proveedor} | "
+            f"Latencia: {latencia}ms | Tokens: in={tokens_in}, out={tokens_out}, total={meta.tokens_total}"
+        )
+        return ResultadoAnalizarOut(
+            diagnostico=diag,
+            causa_probable=causa,
+            nivel_severidad=sev,
+            acciones_recomendadas=acciones,
+            requiere_visita_campo=visita,
+            documentos_sugeridos=docs,
+            metadatos_ia=meta
+        )
 
     def _clasificar_heuristicamente(self, texto: str) -> ClasificacionIA:
         """Clasificación determinista de contingencia basada en reglas ITIL y detección de alcance."""

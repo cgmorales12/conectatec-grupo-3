@@ -6,7 +6,9 @@ Cumple: RFC 9457 Problem Details, Token Bucket Rate Limiting, CORS seguro y AnyI
 
 import time
 import uuid
-from collections import defaultdict
+import logging
+from collections import defaultdict, deque
+from datetime import datetime, timezone
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -21,6 +23,57 @@ load_dotenv(override=True)
 
 from app.routers import tickets_router, salud_router, auth_router, manuales_router, principal_router
 from app.database import inicializar_bd
+
+
+# ============================================================================
+# Logger Estructurado y Registro de Observabilidad (Tokens y Latencia)
+# ============================================================================
+
+logger_solicitudes = logging.getLogger("conectatec.solicitudes")
+if not logger_solicitudes.handlers:
+    _sh = logging.StreamHandler()
+    _sh.setFormatter(logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s"))
+    logger_solicitudes.addHandler(_sh)
+    logger_solicitudes.setLevel(logging.INFO)
+
+# Buffer circular en memoria de métricas por solicitud (últimas 300 peticiones)
+_registro_solicitudes_metricas = deque(maxlen=300)
+
+
+def registrar_log_solicitud(datos: dict):
+    """Almacena el registro de una solicitud en el buffer de métricas."""
+    _registro_solicitudes_metricas.append(datos)
+
+
+def obtener_metricas_solicitudes():
+    """Calcula estadísticas agregadas de solicitudes, tokens consumidos y tiempos de respuesta."""
+    items = list(_registro_solicitudes_metricas)
+    total = len(items)
+    if total == 0:
+        return {
+            "total_solicitudes": 0,
+            "tiempo_promedio_ms": 0.0,
+            "total_tokens_consumidos": 0,
+            "total_tokens_prompt": 0,
+            "total_tokens_completado": 0,
+            "solicitudes_recientes": []
+        }
+
+    tiempos = [it["tiempo_respuesta_ms"] for it in items if "tiempo_respuesta_ms" in it]
+    tokens_tot = [it["tokens_total"] for it in items if it.get("tokens_total") is not None]
+    tokens_in = [it["tokens_prompt"] for it in items if it.get("tokens_prompt") is not None]
+    tokens_out = [it["tokens_completado"] for it in items if it.get("tokens_completado") is not None]
+
+    promedio_ms = round(sum(tiempos) / len(tiempos), 2) if tiempos else 0.0
+
+    return {
+        "total_solicitudes": total,
+        "tiempo_promedio_ms": promedio_ms,
+        "total_tokens_consumidos": sum(tokens_tot),
+        "total_tokens_prompt": sum(tokens_in),
+        "total_tokens_completado": sum(tokens_out),
+        "solicitudes_recientes": items[::-1][:50]
+    }
 
 
 # ============================================================================
@@ -63,8 +116,11 @@ _cubetas_clientes = defaultdict(lambda: {"fichas": CUBETA_CAPACIDAD, "ultimo_tie
 
 @app.middleware("http")
 async def limitador_tasa_token_bucket(request: Request, call_next):
-    # Excluir rutas de interfaz gráfica, salud y documentación de límites de consumo
-    rutas_excluidas = ["/", "/health", "/salud", "/v1/salud", "/docs", "/redoc", "/openapi.json", "/tablero", "/favicon.ico"]
+    # Excluir rutas de interfaz gráfica, salud, métricas y documentación de límites de consumo
+    rutas_excluidas = [
+        "/", "/health", "/salud", "/v1/salud", "/docs", "/redoc", "/openapi.json",
+        "/tablero", "/favicon.ico", "/v1/metricas/solicitudes", "/metricas/solicitudes"
+    ]
     if request.url.path in rutas_excluidas or request.url.path.startswith("/docs"):
         return await call_next(request)
         
@@ -99,6 +155,63 @@ async def limitador_tasa_token_bucket(request: Request, call_next):
                 "instance": f"{request.url.path}#{req_id}"
             }
         )
+
+
+# ============================================================================
+# Middleware: Log por Solicitud, Medición de Latencia y Consumo de Tokens
+# Rubro: "Log por solicitud: Tokens consumidos y tiempo de respuesta."
+# ============================================================================
+
+@app.middleware("http")
+async def middleware_observabilidad_solicitudes(request: Request, call_next):
+    req_id = f"req-{str(uuid.uuid4())[:8]}"
+    request.state.req_id = req_id
+    t_inicio = time.perf_counter()
+
+    response = await call_next(request)
+
+    duracion_ms = round((time.perf_counter() - t_inicio) * 1000, 2)
+    response.headers["X-Response-Time-Ms"] = str(duracion_ms)
+    response.headers["X-Request-ID"] = req_id
+
+    # Extraer metadatos de IA si fueron generados durante la atención del endpoint
+    meta_ia = getattr(request.state, "metadatos_ia", None)
+    tokens_prompt = getattr(meta_ia, "tokens_prompt", None) if meta_ia else None
+    tokens_completado = getattr(meta_ia, "tokens_completado", None) if meta_ia else None
+    tokens_total = getattr(meta_ia, "tokens_total", None) if meta_ia else None
+    proveedor = getattr(meta_ia, "proveedor", None) if meta_ia else None
+    modelo = getattr(meta_ia, "modelo", None) if meta_ia else None
+
+    # Registrar en buffer de auditoría y métricas
+    registro = {
+        "req_id": req_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "metodo": request.method,
+        "ruta": request.url.path,
+        "status_code": response.status_code,
+        "tiempo_respuesta_ms": duracion_ms,
+        "proveedor": proveedor or "n/a",
+        "modelo": modelo or "n/a",
+        "tokens_prompt": tokens_prompt if tokens_prompt is not None else 0,
+        "tokens_completado": tokens_completado if tokens_completado is not None else 0,
+        "tokens_total": tokens_total if tokens_total is not None else 0
+    }
+    registrar_log_solicitud(registro)
+
+    # Registro en log por solicitud con formato estructurado
+    if tokens_total is not None and tokens_total > 0:
+        logger_solicitudes.info(
+            f"📊 [SOLICITUD HTTP] {request.method} {request.url.path} -> {response.status_code} | "
+            f"Tiempo: {duracion_ms}ms | ReqID: {req_id} | "
+            f"IA: {proveedor}:{modelo} | Tokens: in={tokens_prompt}, out={tokens_completado}, total={tokens_total}"
+        )
+    else:
+        logger_solicitudes.info(
+            f"📊 [SOLICITUD HTTP] {request.method} {request.url.path} -> {response.status_code} | "
+            f"Tiempo: {duracion_ms}ms | ReqID: {req_id}"
+        )
+
+    return response
 
 # ============================================================================
 # Manejadores de Excepciones Estándar RFC 9457 (Problem Details)

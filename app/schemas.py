@@ -126,18 +126,6 @@ class SolicitudAnalizarIn(BaseModel):
     )
 
 
-class ResultadoAnalizarOut(BaseModel):
-    """Contrato de salida en formato JSON estructurado para POST /analizar."""
-    model_config = ConfigDict(extra="forbid")
-
-    diagnostico: str = Field(..., description="Diagnóstico técnico del problema identificado")
-    causa_probable: str = Field(..., description="Causa raíz estimada del incidente")
-    nivel_severidad: str = Field(..., description="Nivel de severidad técnica (Crítica, Alta, Media, Baja)")
-    acciones_recomendadas: List[str] = Field(..., description="Lista ordenada de pasos correctivos o de mitigación")
-    requiere_visita_campo: bool = Field(False, description="True si requiere asistencia física de cuadrilla técnica")
-    documentos_sugeridos: List[str] = Field(default_factory=list, description="Manuales técnicos sugeridos para consulta")
-
-
 
 # ============================================================================
 # Esquemas de IA y Negocio (Internal & Output DTOs)
@@ -157,6 +145,19 @@ class MetadatosIA(BaseModel):
     tokens_total: Optional[int] = Field(None, description="Total de tokens consumidos en la llamada LLM")
     modo_vulnerable: Optional[bool] = Field(False, description="True si se procesó en modo vulnerable sin defensas de seguridad")
     alucinacion_detectada: Optional[bool] = Field(False, description="True si se detectó violación de contrato o alucinación simulada")
+
+
+class ResultadoAnalizarOut(BaseModel):
+    """Contrato de salida en formato JSON estructurado para POST /analizar."""
+    model_config = ConfigDict(extra="forbid")
+
+    diagnostico: str = Field(..., description="Diagnóstico técnico del problema identificado")
+    causa_probable: str = Field(..., description="Causa raíz estimada del incidente")
+    nivel_severidad: str = Field(..., description="Nivel de severidad técnica (Crítica, Alta, Media, Baja)")
+    acciones_recomendadas: List[str] = Field(..., description="Lista ordenada de pasos correctivos o de mitigación")
+    requiere_visita_campo: bool = Field(False, description="True si requiere asistencia física de cuadrilla técnica")
+    documentos_sugeridos: List[str] = Field(default_factory=list, description="Manuales técnicos sugeridos para consulta")
+    metadatos_ia: Optional[MetadatosIA] = Field(None, description="Métricas de ejecución, latencia en ms y consumo de tokens")
 
 
 class ClasificacionIA(BaseModel):

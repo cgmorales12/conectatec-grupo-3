@@ -3,7 +3,7 @@ Enrutador de Tickets de Soporte Técnico - ConectaTec
 Endpoints: Clasificación Inteligente, Consulta de Tickets y Cambio de Estado Kanban.
 """
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from datetime import datetime, timezone
 import uuid
 
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/v1/tickets", tags=["Tickets de Soporte"])
     status_code=status.HTTP_201_CREATED,
     summary="Clasifica y genera un ticket de soporte con IA y RAG"
 )
-def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn):
+def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn, request: Request = None):
     """
     Recibe el reporte de una avería, extrae impacto y urgencia con Gemini/Groq,
     calcula la prioridad matemática con la matriz ITIL y consulta los manuales técnicos RAG.
@@ -47,6 +47,9 @@ def clasificar_y_crear_ticket(solicitud: SolicitudTicketIn):
         simular_respuesta_vacia=solicitud.simular_respuesta_vacia,
         modo_vulnerable=solicitud.modo_vulnerable
     )
+    
+    if request:
+        request.state.metadatos_ia = metadatos_ia
     
     # 2. Priorización determinista por código Python (Matriz ITIL) vs Alucinación en Modo Vulnerable
     if solicitud.modo_vulnerable:
