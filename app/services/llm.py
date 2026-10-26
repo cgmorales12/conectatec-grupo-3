@@ -350,7 +350,7 @@ class ClienteLLM:
 
         import httpx
         key_gemini = os.environ.get("GEMINI_API_KEY") or self.gemini_api_key
-        url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key_gemini}"
+        modelos_gemini = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash-lite", "gemini-1.5-flash"]
         payload = {
             "contents": [{"parts": [{"text": prompt_usuario}]}],
             "generationConfig": {
@@ -362,86 +362,91 @@ class ClienteLLM:
         reintentos_efectuados = 0
         ultimo_error = None
 
-        for intento in range(max_reintentos + 1):
-            try:
-                with httpx.Client(timeout=timeout_segundos) as client:
-                    res = client.post(url_gemini, json=payload)
+        for mod_gemini in modelos_gemini:
+            url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/{mod_gemini}:generateContent?key={key_gemini}"
+            for intento in range(max_reintentos + 1):
+                try:
+                    with httpx.Client(timeout=timeout_segundos) as client:
+                        res = client.post(url_gemini, json=payload)
 
-                # Control de 429 (Rate Limit / Quota) con Espera Exponencial
-                if res.status_code == 429:
-                    reintentos_efectuados += 1
-                    if intento < max_reintentos:
+                    # Control de 429 (Rate Limit / Quota) con Espera Exponencial
+                    if res.status_code == 429:
+                        reintentos_efectuados += 1
+                        if intento < max_reintentos:
+                            espera = espera_base * (2 ** intento)
+                            time.sleep(espera)
+                            continue
+                        else:
+                            raise ErrorCuotaExcedidaLLM(
+                                f"Google Gemini HTTP 429: Cuota excedida tras {reintentos_efectuados} reintentos con espera exponencial.",
+                                reintentos=reintentos_efectuados
+                            )
+
+                    if res.status_code != 200:
+                        raise ErrorProveedorLLM(f"Google Gemini HTTP {res.status_code}: {res.text[:120]}")
+
+                    # Control de Respuesta Vacía o Truncada
+                    res_data = res.json()
+                    candidatos = res_data.get("candidates", [])
+                    if not candidatos:
+                        feedback = res_data.get("promptFeedback", {})
+                        raise ErrorRespuestaVaciaLLM(
+                            f"Google Gemini devolvió respuesta vacía (candidatos vacíos). Feedback: {feedback}"
+                        )
+
+                    partes = candidatos[0].get("content", {}).get("parts", [])
+                    if not partes:
+                        raise ErrorRespuestaVaciaLLM("Google Gemini devolvió candidato sin contenido de texto.")
+
+                    texto_raw = partes[0].get("text", "")
+                    if not texto_raw or not texto_raw.strip():
+                        raise ErrorRespuestaVaciaLLM("Google Gemini devolvió contenido de texto en blanco o vacío.")
+
+                    contenido_json = texto_raw.strip()
+                    latencia = round((time.time() - t_inicio) * 1000, 2)
+                    clasificacion = ClasificacionIA.model_validate_json(contenido_json)
+                    usage = res_data.get("usageMetadata", {})
+                    tokens_prompt = usage.get("promptTokenCount")
+                    tokens_completado = usage.get("candidatesTokenCount")
+                    tokens_total = usage.get("totalTokenCount")
+
+                    logger_llm.info(
+                        f"🪙 [INFERENCIA LLM] Proveedor: gemini | Modelo: {mod_gemini} | "
+                        f"Latencia: {latencia}ms | Tokens: in={tokens_prompt}, out={tokens_completado}, total={tokens_total}"
+                    )
+
+                    return clasificacion, MetadatosIA(
+                        proveedor="gemini",
+                        modelo=mod_gemini,
+                        conmutado=False,
+                        motivo_conmutacion=None,
+                        latencia_ms=latencia,
+                        tokens_prompt=tokens_prompt,
+                        tokens_completado=tokens_completado,
+                        tokens_total=tokens_total
+                    )
+
+                except httpx.TimeoutException as e_timeout:
+                    raise ErrorTiempoAgotadoLLM(
+                        f"Tiempo de espera agotado ({timeout_segundos}s) al consultar Google Gemini: {type(e_timeout).__name__}",
+                        timeout_segundos=timeout_segundos
+                    )
+                except (ErrorCuotaExcedidaLLM, ErrorRespuestaVaciaLLM, ErrorTiempoAgotadoLLM):
+                    raise
+                except Exception as e_otro:
+                    ultimo_error = e_otro
+                    if "404" in str(e_otro):
+                        # Probar el siguiente modelo en la lista de fallback
+                        break
+                    if intento < max_reintentos and "429" in str(e_otro):
+                        reintentos_efectuados += 1
                         espera = espera_base * (2 ** intento)
                         time.sleep(espera)
                         continue
-                    else:
-                        raise ErrorCuotaExcedidaLLM(
-                            f"Google Gemini HTTP 429: Cuota excedida tras {reintentos_efectuados} reintentos con espera exponencial.",
-                            reintentos=reintentos_efectuados
-                        )
-
-                if res.status_code != 200:
-                    raise ErrorProveedorLLM(f"Google Gemini HTTP {res.status_code}: {res.text[:120]}")
-
-                # Control de Respuesta Vacía o Truncada
-                res_data = res.json()
-                candidatos = res_data.get("candidates", [])
-                if not candidatos:
-                    feedback = res_data.get("promptFeedback", {})
-                    raise ErrorRespuestaVaciaLLM(
-                        f"Google Gemini devolvió respuesta vacía (candidatos vacíos). Feedback: {feedback}"
-                    )
-
-                partes = candidatos[0].get("content", {}).get("parts", [])
-                if not partes:
-                    raise ErrorRespuestaVaciaLLM("Google Gemini devolvió candidato sin contenido de texto.")
-
-                texto_raw = partes[0].get("text", "")
-                if not texto_raw or not texto_raw.strip():
-                    raise ErrorRespuestaVaciaLLM("Google Gemini devolvió contenido de texto en blanco o vacío.")
-
-                contenido_json = texto_raw.strip()
-                latencia = round((time.time() - t_inicio) * 1000, 2)
-                clasificacion = ClasificacionIA.model_validate_json(contenido_json)
-                usage = res_data.get("usageMetadata", {})
-                tokens_prompt = usage.get("promptTokenCount")
-                tokens_completado = usage.get("candidatesTokenCount")
-                tokens_total = usage.get("totalTokenCount")
-
-                logger_llm.info(
-                    f"🪙 [INFERENCIA LLM] Proveedor: gemini | Modelo: gemini-1.5-flash | "
-                    f"Latencia: {latencia}ms | Tokens: in={tokens_prompt}, out={tokens_completado}, total={tokens_total}"
-                )
-
-                return clasificacion, MetadatosIA(
-                    proveedor="gemini",
-                    modelo="gemini-1.5-flash",
-                    conmutado=False,
-                    motivo_conmutacion=None,
-                    latencia_ms=latencia,
-                    tokens_prompt=tokens_prompt,
-                    tokens_completado=tokens_completado,
-                    tokens_total=tokens_total
-                )
-
-            except httpx.TimeoutException as e_timeout:
-                raise ErrorTiempoAgotadoLLM(
-                    f"Tiempo de espera agotado ({timeout_segundos}s) al consultar Google Gemini: {type(e_timeout).__name__}",
-                    timeout_segundos=timeout_segundos
-                )
-            except (ErrorCuotaExcedidaLLM, ErrorRespuestaVaciaLLM, ErrorTiempoAgotadoLLM):
-                raise
-            except Exception as e_otro:
-                ultimo_error = e_otro
-                if intento < max_reintentos and "429" in str(e_otro):
-                    reintentos_efectuados += 1
-                    espera = espera_base * (2 ** intento)
-                    time.sleep(espera)
-                    continue
-                raise ErrorProveedorLLM(f"Fallo en Gemini: {str(e_otro)}")
+                    raise ErrorProveedorLLM(f"Fallo en Gemini: {str(e_otro)}")
 
         if ultimo_error:
-            raise ultimo_error
+            raise ErrorProveedorLLM(f"Fallo en Gemini: {str(ultimo_error)}")
         raise ErrorProveedorLLM("Fallo no determinado en llamada a Google Gemini")
 
     def _invocar_groq_clasificar(
@@ -611,7 +616,7 @@ class ClienteLLM:
 
     def _stream_gemini(self, prompt: str, key_gemini: str) -> Iterator[str]:
         import httpx
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key={key_gemini}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key={key_gemini}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.2}
