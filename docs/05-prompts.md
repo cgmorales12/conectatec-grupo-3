@@ -85,6 +85,24 @@ La siguiente tabla resume los resultados observados al someter las 10 entradas d
 
 ---
 
+### 2.3. Resumen Estadístico y Métricas de Calidad
+
+| Métrica Evaluada | Versión 1 (`system_v1.md`) | Versión 2 (`system_v2.md`) | Versión 3 (`system_v3.md` · Producción) | Impacto de la Optimización |
+| :--- | :---: | :---: | :---: | :--- |
+| **Precisión de Clasificación (Correcta)** | 50% (5/10) | 80% (8/10) | **100% (10/10)** | +50% de exactitud mediante delimitación y reglas fijas |
+| **Tasa de Alucinación (Inventa)** | 50% (5/10) | 20% (2/10) | **0% (0/10)** | **Eliminación total** de alucinaciones gracias al guardrail de abstención activa |
+| **Conformidad de Formato JSON** | 70% (7/10) | 80% (8/10) | **100% (10/10)** | Incompatibilidades resueltas con esquema Pydantic V2 (`extra="forbid"`) |
+| **Resistencia a Inyección (OWASP LLM01)** | ❌ Vulnerable | ⚠️ Parcial | **🛡️ Inmune** | Contención efectiva por aislamiento semántico `<solicitud>` |
+| **Cumplimiento Privacidad (LOPDP Art. 23)** | ❌ Fuga credenciales | ⚠️ Fuga parcial | **🛡️ Protegido** | Anonimización previa obligatoria por Regex antes del LLM |
+
+### 2.4. Conclusiones de Ingeniería de Prompts del Grupo 3
+1. **La regla de abstención explícita es indispensable:** Sin una instrucción taxativa de abstenerse cuando no se tiene certeza, los modelos de lenguaje tienden a inventar fallas o suponer manuales inexistentes (como el caso DOC-99 en las versiones 1 y 2).
+2. **El delimitador XML neutraliza el secuestro de contexto:** La etiqueta `<solicitud>` impide que instrucciones maliciosas del usuario modifiquen el rol del analista técnico.
+3. **El modelo propone, el código dispone:** Combinar un prompt riguroso con un validador Pydantic V2 y una matriz matemática en Python asegura una mesa de ayuda 100% predecible, segura y confiable para la institución.
+
+---
+
+
 
 ## 3. Prompt de Auto-Reparación (One-Shot Self-Healing)
 
