@@ -263,5 +263,75 @@ def test_simulacion_modo_vulnerable_alucinacion_libre():
     assert "DOC-99" in ticket["citas"][0]["documento_id"]
 
 
+def test_endpoint_clasificar_directo_pydantic():
+    """Valida POST /clasificar cumpliendo JSON estructurado bajo esquema Pydantic V2."""
+    payload = {
+        "nombre_cliente": "Docente Prueba",
+        "email_cliente": "docente@instituto.edu.ec",
+        "descripcion_problema": "La luz LOS está en color rojo parpadeante y no hay conexión a internet.",
+        "codigo_abonado": "AB-9921",
+        "simular_caida_gemini": True,
+        "simular_caida_groq": True,
+        "simular_caida_rag": False,
+        "modo_vulnerable": False
+    }
+    response = client.post("/clasificar", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert "ticket_codigo" in data
+    assert data["ticket_codigo"].startswith("TCK-")
+    assert data["prioridad"] in ["Alta", "Media", "Baja"]
+    assert "solucion_propuesta" in data
+    assert isinstance(data["citas"], list)
+
+
+def test_endpoint_chat_streaming_conversacional():
+    """Valida POST /chat cumpliendo streaming en endpoint conversacional."""
+    payload = {
+        "mensaje": "Hola, tengo la luz LOS en rojo en mi módem de fibra",
+        "historial": [
+            {"rol": "user", "contenido": "Buenos días"},
+            {"rol": "model", "contenido": "¡Hola! ¿En qué puedo ayudarte hoy?"}
+        ],
+        "simular_caida_gemini": True,
+        "simular_caida_groq": True
+    }
+    response = client.post("/chat", json=payload)
+    assert response.status_code == 200
+    assert "text/plain" in response.headers.get("content-type", "")
+    contenido_stream = response.text
+    assert len(contenido_stream) > 20
+    assert "LOS" in contenido_stream or "fibra" in contenido_stream or "ConectaTec" in contenido_stream
+
+
+def test_endpoint_analizar_esquema_pydantic():
+    """Valida POST /analizar retornando JSON estructurado bajo esquema ResultadoAnalizarOut."""
+    payload = {
+        "descripcion_problema": "Corte de fibra óptica en la entrada con indicador LOS en rojo",
+        "equipo_afectado": "ONT Huawei HG8245H",
+        "sintomas": ["LOS rojo fijo", "POWER verde"]
+    }
+    response = client.post("/analizar", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "diagnostico" in data
+    assert "causa_probable" in data
+    assert data["nivel_severidad"] == "Crítica"
+    assert data["requiere_visita_campo"] is True
+    assert len(data["acciones_recomendadas"]) > 0
+
+
+def test_rechazo_extra_forbid_en_nuevos_endpoints():
+    """Valida que los esquemas Pydantic rechacen campos no declarados (extra='forbid') con HTTP 422."""
+    payload_invalido = {
+        "mensaje": "Mensaje de prueba",
+        "parametro_malicioso_no_permitido": "inyeccion_extra"
+    }
+    response = client.post("/chat", json=payload_invalido)
+    assert response.status_code == 422
+    assert response.headers["content-type"] == "application/problem+json"
+
+
+
 
 

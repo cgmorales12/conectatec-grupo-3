@@ -74,10 +74,13 @@ flowchart TD
 
 | Método | Endpoint | Propósito | Formato Entrada / Salida |
 |--------|----------|-----------|---------------------------|
-| POST | `/solicitudes` | Recibe reporte de incidente del cliente, invoca al LLM y calcula prioridad determinista. | **In:** `SolicitudCreate` (JSON)  **Out:** `TicketResponse` (JSON estructurado) |
-| GET | `/tickets` | Obtiene el listado consolidado de tickets clasificados para el tablero técnico. | **In:** Query params (`estado`, `prioridad`)  **Out:** Listado de tickets (JSON) |
-| PATCH | `/tickets/{id}` | Actualiza el estado operativo de un ticket (`Nuevo`, `En atención`, `Resuelto`, `Escalado`). | **In:** `EstadoUpdate` (JSON)  **Out:** `TicketResponse` (JSON) |
-| GET | `/health` | Chequeo de salud del servicio backend, conectividad con base de datos y proveedor LLM. | **In:** Ninguno  **Out:** `{"status": "ok"}` |
+| POST | `/chat` | **Conversacional Interactivo (Streaming):** Diálogo técnico continuo token a token con asistencia en vivo. | **In:** `SolicitudChatIn` (Pydantic, `extra="forbid"`)<br/>**Out:** `StreamingResponse` (`text/plain; charset=utf-8` o SSE) |
+| POST | `/clasificar` | **Triaje e Inferencia Estructurada:** Extracción de categoría, impacto y urgencia con cálculo ITIL determinista. | **In:** `SolicitudTicketIn` (Pydantic, `extra="forbid"`)<br/>**Out:** `TicketOut` (JSON estricto Pydantic) |
+| POST | `/analizar` | **Diagnóstico Técnico de Averías:** Análisis de causas probables, severidad y pasos correctivos. | **In:** `SolicitudAnalizarIn` (Pydantic, `extra="forbid"`)<br/>**Out:** `ResultadoAnalizarOut` (JSON estricto Pydantic) |
+| GET | `/v1/tickets` | Listado consolidado de tickets clasificados para el tablero técnico Kanban. | **In:** Query params opcionales<br/>**Out:** `ListaTicketsOut` (JSON) |
+| PUT | `/v1/tickets/{codigo}/estado` | Actualiza el estado operativo de un ticket (`nuevo`, `en_atencion`, `resuelto`, `escalado_cuadrilla`). | **In:** `ActualizarEstadoIn` (JSON)<br/>**Out:** `TicketOut` (JSON) |
+| GET | `/v1/salud` | Chequeo de salud del servicio backend, arquitectura y conectividad de modelos. | **In:** Ninguno<br/>**Out:** `{"status": "ok", "servicio": "conectatec-api"}` |
+
 
 ## 4. Secuencia de atención de una solicitud
 
