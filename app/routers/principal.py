@@ -19,7 +19,9 @@ from app.schemas import (
     PresupuestoIn,
     PresupuestoCalculadoOut,
     ConsultaCalendarioOut,
-    PenalizacionSLAOut
+    PenalizacionSLAOut,
+    PropuestaRegistroTicketOut,
+    ConfirmarRegistroIn
 )
 from app.agente import (
     SolicitudAgenteIn,
@@ -40,7 +42,11 @@ from app.tools.configuracion import (
     es_horario_laborable_habil,
     calcular_penalizacion_sla_por_horas
 )
-from app.routers.tickets import clasificar_y_crear_ticket
+from app.routers.tickets import (
+    clasificar_y_crear_ticket,
+    proponer_registro_ticket,
+    confirmar_y_guardar_ticket
+)
 
 router = APIRouter(tags=["Endpoints Principales"])
 
@@ -137,6 +143,31 @@ def clasificar_directo(solicitud: SolicitudTicketIn, request: Request = None):
     if request and hasattr(resultado, "metadatos_ia"):
         request.state.metadatos_ia = resultado.metadatos_ia
     return resultado
+
+
+@router.post(
+    "/proponer",
+    response_model=PropuestaRegistroTicketOut,
+    status_code=status.HTTP_200_OK,
+    summary="Propone el registro de un ticket antes de persistir (Human-in-the-Loop)",
+    description="Genera la clasificación IA, matriz ITIL y solución RAG en modo propuesta sin escribir en base de datos."
+)
+def proponer_ticket_principal(solicitud: SolicitudTicketIn, request: Request = None):
+    """Endpoint principal de pre-triaje con confirmación humana requerida."""
+    return proponer_registro_ticket(solicitud, request=request)
+
+
+@router.post(
+    "/confirmar-registro",
+    response_model=TicketOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Confirma y persiste la propuesta de ticket autorizada por el humano",
+    description="Persiste el ticket en SQLite asignando el operador confirmador auditado."
+)
+def confirmar_ticket_principal(payload: ConfirmarRegistroIn):
+    """Endpoint principal de confirmación y persistencia de ticket."""
+    return confirmar_y_guardar_ticket(payload)
+
 
 
 @router.post(

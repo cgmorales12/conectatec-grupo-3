@@ -224,6 +224,11 @@ class TicketOut(BaseModel):
     metadatos_ia: MetadatosIA
     justificacion: Optional[str] = Field(None, description="Justificación técnica de la clasificación generada por la IA")
     sintomas_detectados: List[str] = Field(default_factory=list, description="Lista de síntomas técnicos identificados")
+    confirmado_por: Optional[str] = Field(None, description="Nombre del operador que autorizó el registro o acción")
+    fecha_confirmacion: Optional[str] = Field(None, description="Fecha y hora de la confirmación humana")
+    notificacion_enviada: bool = Field(False, description="True si la notificación por correo fue autorizada y enviada")
+    cuadrilla_despachada: bool = Field(False, description="True si la derivación de cuadrilla presencial fue aprobada")
+    orden_despacho_id: Optional[str] = Field(None, description="Identificador de la orden de trabajo de cuadrilla")
 
 
 class ListaTicketsOut(BaseModel):
@@ -425,4 +430,121 @@ class ConsultaCalendarioOut(BaseModel):
     horario_vigente: Optional[str] = None
     motivo: str
     guardia_noc_24_7_activa: bool
+
+
+# ============================================================================
+# Esquemas de Confirmación Humana (Human-in-the-Loop - OWASP LLM08)
+# Principio: «Antes de registrar, enviar o derivar, el humano autoriza»
+# ============================================================================
+
+class PropuestaRegistroTicketOut(BaseModel):
+    """Propuesta estructurada de pre-triaje antes de registrar en base de datos."""
+    model_config = ConfigDict(extra="forbid")
+
+    ticket_codigo_propuesto: str
+    nombre_cliente: str
+    email_cliente: str
+    descripcion_problema: str
+    categoria_propuesta: str
+    impacto_propuesto: str
+    urgencia_propuesta: str
+    prioridad_itil: str
+    sla_minutos: int
+    descripcion_sla: str
+    solucion_propuesta: str
+    citas: List[CitaRAG] = Field(default_factory=list)
+    requiere_confirmacion_humana: bool = True
+    tipo_accion: str = "registro_ticket"
+    justificacion_ia: Optional[str] = None
+    sintomas_detectados: List[str] = Field(default_factory=list)
+    metadatos_ia: Optional[MetadatosIA] = None
+
+
+class ConfirmarRegistroIn(BaseModel):
+    """Payload para autorizar y persistir el registro del ticket tras revisión humana."""
+    model_config = ConfigDict(extra="forbid")
+
+    ticket_codigo_propuesto: str = Field(..., min_length=4, max_length=50)
+    nombre_cliente: str = Field(..., min_length=2, max_length=100)
+    email_cliente: str = Field(..., min_length=5, max_length=120)
+    descripcion_problema: str = Field(..., min_length=5, max_length=2000)
+    categoria: str = Field(..., min_length=3, max_length=100)
+    impacto: str = Field(..., min_length=3, max_length=20)
+    urgencia: str = Field(..., min_length=3, max_length=20)
+    prioridad: str = Field(..., min_length=3, max_length=20)
+    sla_minutos: int = Field(..., ge=1, le=10080)
+    descripcion_sla: str = Field(..., min_length=5, max_length=300)
+    solucion_propuesta: str = Field(..., min_length=10, max_length=2000)
+    citas: List[CitaRAG] = Field(default_factory=list)
+    justificacion: Optional[str] = None
+    sintomas_detectados: List[str] = Field(default_factory=list)
+    operador_confirmador: str = Field(..., min_length=2, max_length=100, description="Nombre del técnico u operador que aprueba el registro")
+    notas_operador: Optional[str] = Field(None, max_length=500, description="Observaciones técnicas añadidas manualmente")
+
+
+class PropuestaEnviarNotificacionOut(BaseModel):
+    """Borrador de notificación por correo/resolución generado antes de ser enviado."""
+    model_config = ConfigDict(extra="forbid")
+
+    ticket_id: int
+    ticket_codigo: str
+    destinatario_email: str
+    asunto_propuesto: str
+    mensaje_propuesto: str
+    requiere_confirmacion_humana: bool = True
+    tipo_accion: str = "enviar_notificacion"
+
+
+class ConfirmarEnvioIn(BaseModel):
+    """Autorización y confirmación humana para remitir la notificación oficial al usuario."""
+    model_config = ConfigDict(extra="forbid")
+
+    ticket_id: int
+    destinatario_email: str = Field(..., min_length=5, max_length=120)
+    asunto: str = Field(..., min_length=5, max_length=200)
+    mensaje_final: str = Field(..., min_length=10, max_length=5000)
+    operador_confirmador: str = Field(..., min_length=2, max_length=100)
+
+
+class PropuestaDerivarCuadrillaOut(BaseModel):
+    """Propuesta de escalamiento presencial con personal de planta externa."""
+    model_config = ConfigDict(extra="forbid")
+
+    ticket_id: int
+    ticket_codigo: str
+    sector: str
+    motivo_derivacion: str
+    cuadrilla_sugerida: str
+    herramientas_requeridas: List[str]
+    costo_estimado_usd: float
+    tiempo_estimado_arribo_minutos: int
+    requiere_confirmacion_humana: bool = True
+    tipo_accion: str = "derivar_cuadrilla"
+
+
+class ConfirmarDerivacionIn(BaseModel):
+    """Autorización explícita para despachar cuadrilla física presencial de campo."""
+    model_config = ConfigDict(extra="forbid")
+
+    ticket_id: int
+    cuadrilla_asignada: str = Field(..., min_length=3, max_length=120)
+    sector: str = Field(..., min_length=3, max_length=120)
+    motivo: str = Field(..., min_length=5, max_length=500)
+    operador_confirmador: str = Field(..., min_length=2, max_length=100)
+    autoriza_despacho_presencial: bool = True
+    orden_despacho_id: Optional[str] = Field(None, max_length=40)
+
+
+class ResultadoConfirmacionHumanaOut(BaseModel):
+    """Resultado auditado de la acción humana confirmada (HITL)."""
+    model_config = ConfigDict(extra="forbid")
+
+    exito: bool
+    accion_ejecutada: str
+    ticket_codigo: str
+    mensaje: str
+    confirmado_por: str
+    fecha_confirmacion: str
+    ticket_actualizado: Optional[TicketOut] = None
+
 

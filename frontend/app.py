@@ -167,7 +167,54 @@ with col_der:
             elif t.get("requiere_revision_humana"):
                 st.warning("⚠️ *Caso derivado a Nivel 2 humano (Umbral de confianza o contingencia).*")
 
+            # Indicadores Human-in-the-Loop (HITL · OWASP LLM08)
+            if t.get("confirmado_por"):
+                st.success(f"🛡️ **Aprobado HITL por:** {t['confirmado_por']}")
+            if t.get("notificacion_enviada"):
+                st.info("✉️ **Notificación Oficial Remitida al Abonado**")
+            if t.get("cuadrilla_despachada"):
+                st.warning(f"👷 **Cuadrilla Despachada:** `{t.get('orden_despacho_id', 'ODT-FIBRA')}`")
+
             st.caption(f"IA: {t.get('metadatos_ia', {}).get('proveedor', 'gemini')} | Cat: {t.get('categoria', '')}")
+
+            # Botones interactivos HITL
+            b_col1, b_col2 = st.columns(2)
+            with b_col1:
+                if st.button("✉️ Notificar", key=f"btn_notif_{t['id']}", help="Confirmación humana antes de enviar notificación"):
+                    try:
+                        res_p = requests.get(f"{API_BASE_URL}/v1/tickets/{t['id']}/proponer-envio", timeout=2)
+                        if res_p.status_code == 200:
+                            data_env = res_p.json()
+                            requests.post(f"{API_BASE_URL}/v1/tickets/{t['id']}/confirmar-envio", json={
+                                "ticket_id": t["id"],
+                                "destinatario_email": data_env["destinatario_email"],
+                                "asunto": data_env["asunto_propuesto"],
+                                "mensaje_final": data_env["mensaje_propuesto"],
+                                "operador_confirmador": "Operador TIC Streamlit"
+                            }, timeout=2)
+                            st.toast("✉️ Notificación autorizada y enviada al abonado.")
+                            st.rerun()
+                    except Exception as ex:
+                        st.error(f"Error: {ex}")
+            with b_col2:
+                if t["estado"] != "escalado_cuadrilla":
+                    if st.button("🚨 Cuadrilla", key=f"btn_cuad_{t['id']}", help="Confirmación humana antes de derivar a cuadrilla física"):
+                        try:
+                            res_c = requests.get(f"{API_BASE_URL}/v1/tickets/{t['id']}/proponer-derivacion", timeout=2)
+                            if res_c.status_code == 200:
+                                data_der = res_c.json()
+                                requests.post(f"{API_BASE_URL}/v1/tickets/{t['id']}/confirmar-derivacion", json={
+                                    "ticket_id": t["id"],
+                                    "cuadrilla_asignada": data_der["cuadrilla_sugerida"],
+                                    "sector": data_der["sector"],
+                                    "motivo": data_der["motivo_derivacion"],
+                                    "operador_confirmador": "Operador TIC Streamlit",
+                                    "autoriza_despacho_presencial": True
+                                }, timeout=2)
+                                st.toast("👷 Despacho de cuadrilla confirmado.")
+                                st.rerun()
+                        except Exception as ex:
+                            st.error(f"Error: {ex}")
 
     col_nuevo, col_atencion, col_cuadrilla, col_resuelto = st.columns(4)
 

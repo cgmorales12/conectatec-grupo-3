@@ -770,6 +770,54 @@
             box-shadow: 0 2px 4px rgba(22, 101, 52, 0.1);
         }
 
+        /* Estilos de Human-in-the-Loop (HITL · OWASP LLM08) */
+        .badge-hitl-ok {
+            background: #DCFCE7;
+            color: #166534;
+            border: 1px solid #86EFAC;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .badge-notif-enviada {
+            background: #DBEAFE;
+            color: #1E40AF;
+            border: 1px solid #93C5FD;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .badge-cuadrilla-despachada {
+            background: #FEF3C7;
+            color: #92400E;
+            border: 1px solid #FCD34D;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .hitl-alert-box {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-left: 4px solid #16A34A;
+            padding: 10px 14px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 12px;
+            font-size: 12px;
+            color: #334155;
+        }
+
         /* Pie de Página Institucional */
         .app-footer {
             background: var(--header);
@@ -1250,6 +1298,17 @@
 
                 <!-- Contenedor Accesible de Errores Comprensibles (RFC 9457) -->
                 <div id="formErrorContainer" class="form-error-banner" role="alert" aria-live="polite" style="display:none;"></div>
+
+                <!-- Control de Confirmación Humana Previa (HITL · OWASP LLM08) -->
+                <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                    <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; color:#166534; cursor:pointer;">
+                        <input type="checkbox" id="chkModoHITL" checked style="width:16px; height:16px; accent-color:#16A34A;">
+                        <span>🛡️ Confirmación Humana Previa (HITL)</span>
+                    </label>
+                    <small style="display:block; font-size:10.5px; color:#4B5563; margin-top:2px;">
+                        Exige revisión y autorización humana explícita antes de persistir o comprometer SLA (OWASP LLM08).
+                    </small>
+                </div>
 
                 <button type="submit" id="btnSubmit" class="btn-submit">
                     <span id="btnSubmitIcon">⚡</span>
@@ -1801,6 +1860,18 @@
                 tokensTxt = '🪙 0 tokens (Costo $0 · Procesamiento Offline)';
             }
 
+            // Metadatos Human-in-the-Loop (HITL)
+            let hitlInfoHtml = '';
+            if (t.confirmado_por) {
+                hitlInfoHtml += `<div class="meta-row"><span class="meta-lbl">Aprobado HITL:</span> <span class="badge-hitl-ok">🛡️ ${t.confirmado_por}</span></div>`;
+            }
+            if (t.notificacion_enviada) {
+                hitlInfoHtml += `<div class="meta-row"><span class="meta-lbl">Notificación:</span> <span class="badge-notif-enviada">✉️ Enviada al Usuario</span></div>`;
+            }
+            if (t.cuadrilla_despachada) {
+                hitlInfoHtml += `<div class="meta-row"><span class="meta-lbl">Despacho Físico:</span> <span class="badge-cuadrilla-despachada">👷 ${t.orden_despacho_id || 'ODT-FIBRA'}</span></div>`;
+            }
+
             const esTIC = Boolean(window._sesionTIC && window._sesionTIC.token);
             const botonEliminarHtml = esTIC ? 
                 `<button type="button" class="btn-eliminar-ticket" onclick="confirmarEliminarTicket(${t.id}, '${t.ticket_codigo}')" title="Eliminar ticket (Acción auditada bajo LOPDP)">🗑️</button>` : '';
@@ -1821,10 +1892,13 @@
                     <div class="meta-row"><span class="meta-lbl">Impacto x Urg.:</span> ${t.impacto} x ${t.urgencia}</div>
                     <div class="meta-row"><span class="meta-lbl">IA:</span> ${iaTxt}</div>
                     <div class="meta-row"><span class="meta-lbl">Consumo:</span> <span>${tokensTxt}</span></div>
+                    ${hitlInfoHtml}
                 </div>
                 <div class="ticket-cita">${citaTxt}</div>
                 <button type="button" class="exp-btn" onclick="abrirModalExplicabilidad(${t.id})">💡 ¿Por qué esta clasificación?</button>
                 <div class="ticket-actions">
+                    <button type="button" class="act-btn" style="background:#EFF6FF; color:#1D4ED8; border-color:#BFDBFE; font-weight:600;" onclick="abrirModalConfirmarEnvio(${t.id})" title="Confirmación humana antes de enviar notificación oficial">✉️ Enviar Notif.</button>
+                    <button type="button" class="act-btn" style="background:#FEF3C7; color:#B45309; border-color:#FDE68A; font-weight:600;" onclick="abrirModalConfirmarDerivacion(${t.id})" title="Confirmación humana antes de derivar cuadrilla presencial">🚨 Derivar Cuadrilla</button>
                     ${estado !== 'en_atencion' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'en_atencion')">⚙️ Atender</button>` : ''}
                     ${estado !== 'escalado_cuadrilla' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'escalado_cuadrilla')">🚚 Escalar</button>` : ''}
                     ${estado !== 'resuelto' ? `<button class="act-btn" onclick="cambiarEstado(${t.id}, 'resuelto')">✅ Resolver</button>` : ''}
@@ -2024,24 +2098,30 @@
                 modo_vulnerable: document.getElementById('toggleDefensas') ? !document.getElementById('toggleDefensas').checked : false
             };
 
+            const esModoHITL = document.getElementById('chkModoHITL') ? document.getElementById('chkModoHITL').checked : true;
+            const endpointTriaje = esModoHITL ? `${API_URL}/proponer` : `${API_URL}/clasificar`;
+
             try {
-                const res = await fetch(`${API_URL}/clasificar`, {
+                const res = await fetch(endpointTriaje, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
                 if (res.ok) {
-                    const ticketCreado = await res.json();
-                    
+                    const dataResp = await res.json();
                     limpiarErrorFormulario();
-                    actualizarHeaderBadge(ticketCreado.metadatos_ia);
-                    mostrarToast(`⚡ Ticket ${ticketCreado.ticket_codigo} clasificado con ${ticketCreado.metadatos_ia.proveedor}`, 'exito');
 
-                    document.getElementById('ticketForm').reset();
-                    // Asegurar que la columna del ticket creado muestre la primera página con el nuevo ticket
-                    paginacionColumnas[ticketCreado.estado] = 1;
-                    cargarTickets();
+                    if (esModoHITL && dataResp.requiere_confirmacion_humana) {
+                        abrirModalConfirmarRegistro(dataResp);
+                        mostrarToast('🛡️ Propuesta generada: requiere confirmación humana antes de registrar', 'info');
+                    } else {
+                        actualizarHeaderBadge(dataResp.metadatos_ia);
+                        mostrarToast(`⚡ Ticket ${dataResp.ticket_codigo} clasificado con ${dataResp.metadatos_ia.proveedor}`, 'exito');
+                        document.getElementById('ticketForm').reset();
+                        paginacionColumnas[dataResp.estado] = 1;
+                        cargarTickets();
+                    }
                 } else {
                     let err = {};
                     try {
@@ -2884,6 +2964,217 @@ Verifique que los niveles de potencia o navegación vuelvan a parámetros nomina
             });
         }
 
+        // ============================================================================
+        // Funciones Human-in-the-Loop (HITL · OWASP LLM08): Confirmar antes de actuar
+        // ============================================================================
+
+        window._propuestaHITLActiva = null;
+
+        function abrirModalConfirmarRegistro(propuesta) {
+            window._propuestaHITLActiva = propuesta;
+            document.getElementById('hitlRegCodigo').textContent = propuesta.ticket_codigo_propuesto;
+            document.getElementById('hitlRegCliente').textContent = `${propuesta.nombre_cliente} (${propuesta.email_cliente})`;
+            document.getElementById('hitlRegProblema').textContent = propuesta.descripcion_problema;
+            document.getElementById('hitlRegCategoria').value = propuesta.categoria_propuesta;
+            document.getElementById('hitlRegPrioridad').value = propuesta.prioridad_itil;
+            document.getElementById('hitlRegSla').value = propuesta.sla_minutos;
+            document.getElementById('hitlRegSolucion').value = propuesta.solucion_propuesta;
+
+            const citasCont = document.getElementById('hitlRegCitasContainer');
+            if (propuesta.citas && propuesta.citas.length > 0) {
+                citasCont.innerHTML = '<b>📖 Citas RAG asociadas al procedimiento:</b><br>' + propuesta.citas.map(c => `• <b>${c.documento_id}:</b> ${c.paso_exacto} — «${(c.fragmento_aplicado || '').slice(0, 95)}...»`).join('<br>');
+            } else {
+                citasCont.innerHTML = '<i>Sin citas RAG asociadas (caso fuera de alcance o consulta administrativa).</i>';
+            }
+
+            document.getElementById('modalConfirmarRegistro').classList.add('activo');
+        }
+
+        function cerrarModalConfirmarRegistro() {
+            document.getElementById('modalConfirmarRegistro').classList.remove('activo');
+            window._propuestaHITLActiva = null;
+        }
+
+        function actualizarSlaSegunPrioridadHitl() {
+            const p = document.getElementById('hitlRegPrioridad').value;
+            const slaInput = document.getElementById('hitlRegSla');
+            if (p === 'Alta') slaInput.value = 15;
+            else if (p === 'Media') slaInput.value = 240;
+            else slaInput.value = 480;
+        }
+
+        async function ejecutarConfirmarRegistro() {
+            if (!window._propuestaHITLActiva) return;
+            const btn = document.getElementById('btnEjecutarConfirmarRegistro');
+            btn.disabled = true;
+            btn.textContent = 'Guardando en BD...';
+
+            const p = window._propuestaHITLActiva;
+            const payload = {
+                ticket_codigo_propuesto: p.ticket_codigo_propuesto,
+                nombre_cliente: p.nombre_cliente,
+                email_cliente: p.email_cliente,
+                descripcion_problema: p.descripcion_problema,
+                categoria: document.getElementById('hitlRegCategoria').value,
+                impacto: p.impacto_propuesto,
+                urgencia: p.urgencia_propuesta,
+                prioridad: document.getElementById('hitlRegPrioridad').value,
+                sla_minutos: parseInt(document.getElementById('hitlRegSla').value) || p.sla_minutos,
+                descripcion_sla: p.descripcion_sla,
+                solucion_propuesta: document.getElementById('hitlRegSolucion').value,
+                citas: p.citas || [],
+                justificacion: p.justificacion_ia,
+                sintomas_detectados: p.sintomas_detectados || [],
+                operador_confirmador: document.getElementById('hitlRegOperador').value || 'Christian Morales (Tech Lead)',
+                notas_operador: 'Aprobado formalmente mediante control Human-in-the-Loop.'
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/confirmar-registro`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    const ticketGuardado = await res.json();
+                    cerrarModalConfirmarRegistro();
+                    document.getElementById('ticketForm').reset();
+                    mostrarToast(`🛡️ Ticket ${ticketGuardado.ticket_codigo} confirmado y registrado formalmente por ${payload.operador_confirmador}`, 'exito');
+                    paginacionColumnas[ticketGuardado.estado] = 1;
+                    cargarTickets();
+                } else {
+                    const err = await res.json();
+                    alert('Error al confirmar ticket: ' + JSON.stringify(err.detail));
+                }
+            } catch (e) {
+                alert('Error de conexión al confirmar ticket: ' + e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '✅ Confirmar y Registrar en Kanban';
+            }
+        }
+
+        async function abrirModalConfirmarEnvio(ticketId) {
+            try {
+                const res = await fetch(`${API_URL}/v1/tickets/${ticketId}/proponer-envio`);
+                if (!res.ok) throw new Error('No se pudo obtener la propuesta de envío');
+                const p = await res.json();
+
+                document.getElementById('hitlEnvioTicketId').value = p.ticket_id;
+                document.getElementById('hitlEnvioEmail').value = p.destinatario_email;
+                document.getElementById('hitlEnvioAsunto').value = p.asunto_propuesto;
+                document.getElementById('hitlEnvioMensaje').value = p.mensaje_propuesto;
+
+                document.getElementById('modalConfirmarEnvio').classList.add('activo');
+            } catch (e) {
+                mostrarToast('Error al preparar envío de notificación: ' + e.message, 'error');
+            }
+        }
+
+        function cerrarModalConfirmarEnvio() {
+            document.getElementById('modalConfirmarEnvio').classList.remove('activo');
+        }
+
+        async function ejecutarConfirmarEnvio() {
+            const ticketId = document.getElementById('hitlEnvioTicketId').value;
+            const btn = document.getElementById('btnEjecutarConfirmarEnvio');
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            const payload = {
+                ticket_id: parseInt(ticketId),
+                destinatario_email: document.getElementById('hitlEnvioEmail').value,
+                asunto: document.getElementById('hitlEnvioAsunto').value,
+                mensaje_final: document.getElementById('hitlEnvioMensaje').value,
+                operador_confirmador: document.getElementById('hitlEnvioOperador').value || 'Christian Morales (Operador Técnico)'
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/v1/tickets/${ticketId}/confirmar-envio`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    const r = await res.json();
+                    cerrarModalConfirmarEnvio();
+                    mostrarToast(`✉️ Notificación enviada exitosamente a ${payload.destinatario_email}`, 'exito');
+                    cargarTickets();
+                } else {
+                    alert('Error al confirmar envío.');
+                }
+            } catch (e) {
+                alert('Error de conexión: ' + e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📤 Confirmar y Enviar al Usuario';
+            }
+        }
+
+        async function abrirModalConfirmarDerivacion(ticketId) {
+            try {
+                const res = await fetch(`${API_URL}/v1/tickets/${ticketId}/proponer-derivacion`);
+                if (!res.ok) throw new Error('No se pudo obtener la propuesta de derivación');
+                const p = await res.json();
+
+                document.getElementById('hitlDerivacionTicketId').value = p.ticket_id;
+                document.getElementById('hitlDerivacionTicketCodigo').textContent = p.ticket_codigo;
+                document.getElementById('hitlDerivacionMotivo').textContent = p.motivo_derivacion;
+                document.getElementById('hitlDerivacionCuadrilla').value = p.cuadrilla_sugerida;
+                document.getElementById('hitlDerivacionSector').value = p.sector;
+                document.getElementById('hitlDerivacionCosto').textContent = `$${p.costo_estimado_usd.toFixed(2)} USD (según config/tarifas.json)`;
+
+                const herrs = document.getElementById('hitlDerivacionHerramientas');
+                herrs.innerHTML = p.herramientas_requeridas.map(h => `• ${h}`).join('<br>');
+
+                document.getElementById('modalConfirmarDerivacion').classList.add('activo');
+            } catch (e) {
+                mostrarToast('Error al preparar derivación de cuadrilla: ' + e.message, 'error');
+            }
+        }
+
+        function cerrarModalConfirmarDerivacion() {
+            document.getElementById('modalConfirmarDerivacion').classList.remove('activo');
+        }
+
+        async function ejecutarConfirmarDerivacion() {
+            const ticketId = document.getElementById('hitlDerivacionTicketId').value;
+            const btn = document.getElementById('btnEjecutarConfirmarDerivacion');
+            btn.disabled = true;
+            btn.textContent = 'Despachando...';
+
+            const payload = {
+                ticket_id: parseInt(ticketId),
+                cuadrilla_asignada: document.getElementById('hitlDerivacionCuadrilla').value,
+                sector: document.getElementById('hitlDerivacionSector').value,
+                motivo: document.getElementById('hitlDerivacionMotivo').textContent,
+                operador_confirmador: document.getElementById('hitlDerivacionOperador').value || 'Christian Morales (Tech Lead)',
+                autoriza_despacho_presencial: true
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/v1/tickets/${ticketId}/confirmar-derivacion`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    const r = await res.json();
+                    cerrarModalConfirmarDerivacion();
+                    mostrarToast(`👷 Cuadrilla despachada con éxito para ticket ${r.ticket_codigo}`, 'exito');
+                    cargarTickets();
+                } else {
+                    alert('Error al confirmar derivación.');
+                }
+            } catch (e) {
+                alert('Error de red al despachar cuadrilla: ' + e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚨 Confirmar y Despachar Cuadrilla';
+            }
+        }
+
+
         // Inicializar estado de simulación, sesión TIC y cargar tickets
         actualizarEstadoSimulacion();
         cargarSesionGuardada();
@@ -3055,6 +3346,164 @@ Verifique que los niveles de potencia o navegación vuelvan a parámetros nomina
 
                         <div id="conversorStatus" style="display:none; margin-top:16px; text-align:left;"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventana Modal 1: Confirmación Humana antes de Registrar Ticket (HITL) -->
+    <div id="modalConfirmarRegistro" class="modal-backdrop" onclick="cerrarModalSiClickAfuera(event)">
+        <div class="modal-card" style="max-width:680px;">
+            <div class="modal-header" style="background:#064E3B; border-bottom:2px solid #10B981;">
+                <h3>🛡️ Confirmación Humana antes de Registrar Ticket (HITL)</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalConfirmarRegistro()" title="Cerrar ventana">✕</button>
+            </div>
+            <div class="modal-body" style="padding:18px 22px;">
+                <div class="hitl-alert-box">
+                    <b>Principio de Exceso de Agencia Controlado (OWASP LLM08):</b><br>
+                    El modelo de IA propone la clasificación y solución, pero <b>no se registra en la base de datos ni se compromete el SLA</b> sin la autorización explícita de un técnico u operador humano.
+                </div>
+                
+                <div style="background:#F1F5F9; border-radius:8px; padding:12px 14px; margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-size:12px; color:#64748B;">Código Propuesto:</span>
+                        <strong id="hitlRegCodigo" style="font-family:var(--font-mono); color:#0F172A;"></strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-size:12px; color:#64748B;">Abonado / Docente:</span>
+                        <span id="hitlRegCliente" style="font-size:13px; font-weight:600; color:#1E293B;"></span>
+                    </div>
+                    <div style="font-size:12px; color:#475569; margin-top:6px;">
+                        <b>Problema:</b> <span id="hitlRegProblema"></span>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
+                    <div class="form-group">
+                        <label style="font-size:11.5px; font-weight:700;">Categoría Detectada (Editable)</label>
+                        <select id="hitlRegCategoria" class="form-control" style="font-size:12px;">
+                            <option value="Conectividad y Fibra Óptica">Conectividad y Fibra Óptica</option>
+                            <option value="Equipos de Cliente / ONT">Equipos de Cliente / ONT</option>
+                            <option value="Redes Inalámbricas y Wi-Fi">Redes Inalámbricas y Wi-Fi</option>
+                            <option value="Calidad y Velocidad">Calidad y Velocidad</option>
+                            <option value="Facturacion y Cuentas">Facturacion y Cuentas</option>
+                            <option value="Solicitud No Técnica / Fuera de Alcance">Solicitud No Técnica / Fuera de Alcance</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:11.5px; font-weight:700;">Prioridad ITIL (Editable)</label>
+                        <select id="hitlRegPrioridad" class="form-control" style="font-size:12px;" onchange="actualizarSlaSegunPrioridadHitl()">
+                            <option value="Alta">Alta (Crítico · Cuadrilla inmediata)</option>
+                            <option value="Media">Media (Atención regular de turno)</option>
+                            <option value="Baja">Baja (Consulta / Autoatención)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-size:11.5px; font-weight:700;">Solución / Procedimiento RAG Propuesto</label>
+                    <textarea id="hitlRegSolucion" class="form-control" rows="3" style="font-size:12px;"></textarea>
+                </div>
+
+                <div id="hitlRegCitasContainer" style="margin-bottom:14px; font-size:11.5px; color:#475569;"></div>
+
+                <div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:12px; margin-bottom:16px;">
+                    <div class="form-group">
+                        <label style="font-size:11.5px; font-weight:700;">Técnico / Operador que Autoriza el Alta</label>
+                        <input type="text" id="hitlRegOperador" class="form-control" value="Christian Morales (Tech Lead)" required style="font-size:12px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:11.5px; font-weight:700;">SLA Comprometido (Minutos)</label>
+                        <input type="number" id="hitlRegSla" class="form-control" style="font-size:12px;">
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" class="btn-reset-filters" style="padding:8px 14px; font-size:12px;" onclick="cerrarModalConfirmarRegistro()">❌ Descartar Propuesta</button>
+                    <button type="button" id="btnEjecutarConfirmarRegistro" class="btn-submit" style="background:#10B981; border:none; padding:8px 18px;" onclick="ejecutarConfirmarRegistro()">✅ Confirmar y Registrar en Kanban</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventana Modal 2: Confirmación Humana antes de Enviar Notificación -->
+    <div id="modalConfirmarEnvio" class="modal-backdrop" onclick="cerrarModalSiClickAfuera(event)">
+        <div class="modal-card" style="max-width:620px;">
+            <div class="modal-header" style="background:#1E3A8A; border-bottom:2px solid #3B82F6;">
+                <h3>✉️ Confirmación Humana antes de Enviar Notificación</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalConfirmarEnvio()" title="Cerrar ventana">✕</button>
+            </div>
+            <div class="modal-body" style="padding:18px 22px;">
+                <div class="hitl-alert-box" style="border-left-color:#3B82F6;">
+                    <b>Revisión Humana Obligatoria antes de Comunicación Externa:</b><br>
+                    Verifique el contenido del mensaje antes de remitirlo formalmente al abonado o docente.
+                </div>
+                <input type="hidden" id="hitlEnvioTicketId">
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-size:11.5px; font-weight:700;">Destinatario</label>
+                    <input type="email" id="hitlEnvioEmail" class="form-control" readonly style="font-size:12px; background:#F8FAFC;">
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-size:11.5px; font-weight:700;">Asunto del Mensaje</label>
+                    <input type="text" id="hitlEnvioAsunto" class="form-control" style="font-size:12px;">
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-size:11.5px; font-weight:700;">Cuerpo del Mensaje (Editable)</label>
+                    <textarea id="hitlEnvioMensaje" class="form-control" rows="7" style="font-size:12px;"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:11.5px; font-weight:700;">Operador Responsable del Envío</label>
+                    <input type="text" id="hitlEnvioOperador" class="form-control" value="Christian Morales (Operador Técnico)" style="font-size:12px;">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" class="btn-reset-filters" style="padding:8px 14px; font-size:12px;" onclick="cerrarModalConfirmarEnvio()">Cancelar</button>
+                    <button type="button" id="btnEjecutarConfirmarEnvio" class="btn-submit" style="background:#2563EB; border:none; padding:8px 18px;" onclick="ejecutarConfirmarEnvio()">📤 Confirmar y Enviar al Usuario</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ventana Modal 3: Confirmación Humana antes de Derivar Cuadrilla Presencial -->
+    <div id="modalConfirmarDerivacion" class="modal-backdrop" onclick="cerrarModalSiClickAfuera(event)">
+        <div class="modal-card" style="max-width:620px;">
+            <div class="modal-header" style="background:#78350F; border-bottom:2px solid #F59E0B;">
+                <h3>🚨 Confirmación Humana antes de Derivar Cuadrilla Presencial</h3>
+                <button type="button" class="modal-close" onclick="cerrarModalConfirmarDerivacion()" title="Cerrar ventana">✕</button>
+            </div>
+            <div class="modal-body" style="padding:18px 22px;">
+                <div class="hitl-alert-box" style="border-left-color:#F59E0B;">
+                    <b>Despacho Presencial con Costo Operativo:</b><br>
+                    Despachar personal físico y equipos de fusión óptica compromete recursos según <code>config/tarifas.json</code>. Requiere autorización humana explícita.
+                </div>
+                <input type="hidden" id="hitlDerivacionTicketId">
+                <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; padding:10px 14px; margin-bottom:12px; font-size:12px; color:#92400E;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                        <span>Ticket: <strong id="hitlDerivacionTicketCodigo"></strong></span>
+                        <span>Costo Estimado Cuadrilla: <strong id="hitlDerivacionCosto">$30.00 USD</strong></span>
+                    </div>
+                    <div><b>Motivo de Escalamiento:</b> <span id="hitlDerivacionMotivo"></span></div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                    <div class="form-group">
+                        <label style="font-size:11.5px; font-weight:700;">Cuadrilla Asignada</label>
+                        <input type="text" id="hitlDerivacionCuadrilla" class="form-control" style="font-size:12px;">
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size:11.5px; font-weight:700;">Sector / Campus</label>
+                        <input type="text" id="hitlDerivacionSector" class="form-control" style="font-size:12px;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                    <label style="font-size:11.5px; font-weight:700;">Herramientas Ópticas Requeridas</label>
+                    <div id="hitlDerivacionHerramientas" style="font-size:12px; color:#475569; background:#F8FAFC; border:1px solid #E2E8F0; padding:8px 12px; border-radius:6px;"></div>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label style="font-size:11.5px; font-weight:700;">Operador que Autoriza el Despacho Físico</label>
+                    <input type="text" id="hitlDerivacionOperador" class="form-control" value="Christian Morales (Tech Lead)" style="font-size:12px;">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" class="btn-reset-filters" style="padding:8px 14px; font-size:12px;" onclick="cerrarModalConfirmarDerivacion()">Cancelar</button>
+                    <button type="button" id="btnEjecutarConfirmarDerivacion" class="btn-submit" style="background:#D97706; border:none; padding:8px 18px;" onclick="ejecutarConfirmarDerivacion()">🚨 Confirmar y Despachar Cuadrilla</button>
                 </div>
             </div>
         </div>

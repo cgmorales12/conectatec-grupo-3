@@ -1251,6 +1251,156 @@ def test_herramientas_agente_para_tarifas_y_calendarios():
     assert res2["origen"] == "config/calendario.json"
 
 
+# ============================================================================
+# Pruebas Unitarias de Rúbrica: Confirmación Humana (Human-in-the-Loop)
+# Antes de registrar, enviar o derivar (OWASP LLM08)
+# ============================================================================
+
+def test_hitl_propuesta_y_confirmacion_antes_de_registrar():
+    """
+    Valida el flujo HITL antes de registrar:
+    1. /proponer: Devuelve la propuesta sin escribir en la base de datos.
+    2. /confirmar-registro: El operador aprueba y persiste en SQLite.
+    """
+    payload_prop = {
+        "nombre_cliente": "Docente Titulación",
+        "email_cliente": "docente.titulacion@uniandes.edu.ec",
+        "descripcion_problema": "La fibra óptica de acometida exterior fue cortada por una poda de árboles."
+    }
+
+    # 1. Proponer registro (Fase 1 HITL: Sin guardar en BD)
+    res_prop = client.post("/v1/tickets/proponer", json=payload_prop)
+    assert res_prop.status_code == 200
+    prop = res_prop.json()
+    assert prop["requiere_confirmacion_humana"] is True
+    assert prop["tipo_accion"] == "registro_ticket"
+    assert prop["ticket_codigo_propuesto"].startswith("TCK-")
+    assert prop["prioridad_itil"] in ["Alta", "Media", "Baja"]
+    assert len(prop["solucion_propuesta"]) > 10
+
+    # Verificar que el código propuesto aún NO está en la base de datos
+    res_list = client.get("/v1/tickets")
+    codigos_activos = [t["ticket_codigo"] for t in res_list.json()["tickets"]]
+    assert prop["ticket_codigo_propuesto"] not in codigos_activos, "La propuesta NO debe guardarse en BD antes de la confirmación humana"
+
+    # 2. Confirmar registro (Fase 2 HITL: Autorización explícita del operador)
+    payload_conf = {
+        "ticket_codigo_propuesto": prop["ticket_codigo_propuesto"],
+        "nombre_cliente": prop["nombre_cliente"],
+        "email_cliente": prop["email_cliente"],
+        "descripcion_problema": prop["descripcion_problema"],
+        "categoria": prop["categoria_propuesta"],
+        "impacto": prop["impacto_propuesto"],
+        "urgencia": prop["urgencia_propuesta"],
+        "prioridad": prop["prioridad_itil"],
+        "sla_minutos": prop["sla_minutos"],
+        "descripcion_sla": prop["descripcion_sla"],
+        "solucion_propuesta": prop["solucion_propuesta"],
+        "citas": prop["citas"],
+        "justificacion": "Aprobado por el operador técnico tras verificar coherencia.",
+        "sintomas_detectados": prop["sintomas_detectados"],
+        "operador_confirmador": "Christian Morales (Tech Lead)",
+        "notas_operador": "Verificado visualmente en campus."
+    }
+    res_conf = client.post("/v1/tickets/confirmar-registro", json=payload_conf)
+    assert res_conf.status_code == 201
+    ticket = res_conf.json()
+    assert ticket["ticket_codigo"] == prop["ticket_codigo_propuesto"]
+    assert ticket["confirmado_por"] == "Christian Morales (Tech Lead)"
+    assert ticket["fecha_confirmacion"] is not None
+
+    # Ahora sí debe existir en la lista de tickets
+    res_list_after = client.get("/v1/tickets")
+    codigos_after = [t["ticket_codigo"] for t in res_list_after.json()["tickets"]]
+    assert ticket["ticket_codigo"] in codigos_after
+
+
+def test_hitl_propuesta_y_confirmacion_antes_de_enviar_notificacion():
+    """
+    Valida el flujo HITL antes de enviar:
+    1. /proponer-envio: Genera borrador con citas oficiales antes de remitirlo.
+    2. /confirmar-envio: El operador autoriza el despacho oficial al usuario.
+    """
+    # 1. Crear un ticket base
+    res_crear = client.post("/clasificar", json={
+        "nombre_cliente": "Ing. Fernando Ribera",
+        "email_cliente": "fernando.ribera@uniandes.edu.ec",
+        "descripcion_problema": "Lentitud en navegación y microcortes frecuentes en laboratorio."
+    })
+    assert res_crear.status_code == 201
+    ticket_id = res_crear.json()["id"]
+
+    # 2. Proponer envío (Fase 1 HITL)
+    res_p_env = client.get(f"/v1/tickets/{ticket_id}/proponer-envio")
+    assert res_p_env.status_code == 200
+    p_env = res_p_env.json()
+    assert p_env["requiere_confirmacion_humana"] is True
+    assert p_env["destinatario_email"] == "fernando.ribera@uniandes.edu.ec"
+    assert "ConectaTec" in p_env["asunto_propuesto"]
+    assert len(p_env["mensaje_propuesto"]) > 20
+
+    # 3. Confirmar envío (Fase 2 HITL)
+    payload_c_env = {
+        "ticket_id": ticket_id,
+        "destinatario_email": p_env["destinatario_email"],
+        "asunto": p_env["asunto_propuesto"],
+        "mensaje_final": p_env["mensaje_propuesto"] + "\nNota: Aprobado por Mesa de Ayuda.",
+        "operador_confirmador": "Amalia Iguasnia (QA)"
+    }
+    res_c_env = client.post(f"/v1/tickets/{ticket_id}/confirmar-envio", json=payload_c_env)
+    assert res_c_env.status_code == 200
+    r_env = res_c_env.json()
+    assert r_env["exito"] is True
+    assert r_env["accion_ejecutada"] == "enviado"
+    assert r_env["confirmado_por"] == "Amalia Iguasnia (QA)"
+    assert r_env["ticket_actualizado"]["notificacion_enviada"] is True
+
+
+def test_hitl_propuesta_y_confirmacion_antes_de_derivar_cuadrilla():
+    """
+    Valida el flujo HITL antes de derivar:
+    1. /proponer-derivacion: Calcula herramientas requeridas (fusionadora, OTDR) y costos operativos.
+    2. /confirmar-derivacion: El operador autoriza la orden de trabajo física ODT.
+    """
+    # 1. Crear un ticket con avería de fibra óptica
+    res_crear = client.post("/clasificar", json={
+        "nombre_cliente": "Dra. Geoconda Iguasnia",
+        "email_cliente": "geoconda.iguasnia@uniandes.edu.ec",
+        "descripcion_problema": "Alarma óptica crítica: luz LOS en rojo permanente en la ONT."
+    })
+    assert res_crear.status_code == 201
+    ticket_id = res_crear.json()["id"]
+
+    # 2. Proponer derivación presencial (Fase 1 HITL)
+    res_p_der = client.get(f"/v1/tickets/{ticket_id}/proponer-derivacion")
+    assert res_p_der.status_code == 200
+    p_der = res_p_der.json()
+    assert p_der["requiere_confirmacion_humana"] is True
+    assert p_der["tipo_accion"] == "derivar_cuadrilla"
+    assert "Fusionadora" in " ".join(p_der["herramientas_requeridas"])
+    assert p_der["costo_estimado_usd"] >= 15.00 # Calculado desde config/tarifas.json
+
+    # 3. Confirmar derivación presencial (Fase 2 HITL)
+    payload_c_der = {
+        "ticket_id": ticket_id,
+        "cuadrilla_asignada": p_der["cuadrilla_sugerida"],
+        "sector": p_der["sector"],
+        "motivo": p_der["motivo_derivacion"],
+        "operador_confirmador": "Luis Fernando Ribera (Builder)",
+        "autoriza_despacho_presencial": True
+    }
+    res_c_der = client.post(f"/v1/tickets/{ticket_id}/confirmar-derivacion", json=payload_c_der)
+    assert res_c_der.status_code == 200
+    r_der = res_c_der.json()
+    assert r_der["exito"] is True
+    assert r_der["accion_ejecutada"] == "derivado"
+    assert r_der["confirmado_por"] == "Luis Fernando Ribera (Builder)"
+    assert r_der["ticket_actualizado"]["estado"] == "escalado_cuadrilla"
+    assert r_der["ticket_actualizado"]["cuadrilla_despachada"] is True
+    assert r_der["ticket_actualizado"]["orden_despacho_id"].startswith("ODT-FIBRA-")
+
+
+
 
 
 

@@ -88,6 +88,18 @@ def inicializar_bd():
         cursor.execute("ALTER TABLE tickets ADD COLUMN fecha_eliminacion TEXT")
     if "eliminado_por" not in columnas:
         cursor.execute("ALTER TABLE tickets ADD COLUMN eliminado_por TEXT")
+    if "confirmado_por" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN confirmado_por TEXT")
+    if "fecha_confirmacion" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN fecha_confirmacion TEXT")
+    if "accion_confirmada" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN accion_confirmada TEXT")
+    if "notificacion_enviada" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN notificacion_enviada INTEGER DEFAULT 0")
+    if "cuadrilla_despachada" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN cuadrilla_despachada INTEGER DEFAULT 0")
+    if "orden_despacho_id" not in columnas:
+        cursor.execute("ALTER TABLE tickets ADD COLUMN orden_despacho_id TEXT")
     
     # Sembrar usuario administrador TIC inicial si no existe
     usuario_existente = cursor.execute("SELECT id FROM usuarios_tic WHERE usuario = ?", ("admin.tic@conectatec.local",)).fetchone()
@@ -131,8 +143,10 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
             sla_minutos, descripcion_sla, solucion_propuesta, citas_json,
             estado, requiere_revision_humana, proveedor_ia, modelo_ia,
             conmutado, motivo_conmutacion, latencia_ms, justificacion, sintomas_json,
-            tokens_prompt, tokens_completado, tokens_total, modo_vulnerable, alucinacion_detectada
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            tokens_prompt, tokens_completado, tokens_total, modo_vulnerable, alucinacion_detectada,
+            confirmado_por, fecha_confirmacion, accion_confirmada, notificacion_enviada,
+            cuadrilla_despachada, orden_despacho_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         datos["ticket_codigo"],
         datos["fecha_creacion"],
@@ -160,7 +174,13 @@ def guardar_ticket(datos: Dict[str, Any]) -> int:
         meta.get("tokens_completado"),
         meta.get("tokens_total"),
         modo_vuln,
-        aluc_det
+        aluc_det,
+        datos.get("confirmado_por"),
+        datos.get("fecha_confirmacion"),
+        datos.get("accion_confirmada"),
+        1 if datos.get("notificacion_enviada") else 0,
+        1 if datos.get("cuadrilla_despachada") else 0,
+        datos.get("orden_despacho_id")
     ))
     
     nuevo_id = cursor.lastrowid
@@ -204,6 +224,11 @@ def listar_tickets(incluir_eliminados: bool = False) -> List[Dict[str, Any]]:
             "requiere_revision_humana": bool(t_raw["requiere_revision_humana"]),
             "justificacion": t_raw.get("justificacion") or "Clasificación generada automáticamente según políticas y matriz ITIL.",
             "sintomas_detectados": sintomas_data,
+            "confirmado_por": t_raw.get("confirmado_por"),
+            "fecha_confirmacion": t_raw.get("fecha_confirmacion"),
+            "notificacion_enviada": bool(t_raw.get("notificacion_enviada")),
+            "cuadrilla_despachada": bool(t_raw.get("cuadrilla_despachada")),
+            "orden_despacho_id": t_raw.get("orden_despacho_id"),
             "metadatos_ia": {
                 "proveedor": t_raw["proveedor_ia"],
                 "modelo": t_raw["modelo_ia"],
@@ -291,3 +316,57 @@ def verificar_credenciales_tic(usuario: str, password_plana: str) -> Optional[Di
             "rol": user["rol"]
         }
     return None
+
+
+# ============================================================================
+# Operaciones Human-in-the-Loop (Confirmación Humana antes de Enviar o Derivar)
+# ============================================================================
+
+def confirmar_envio_notificacion(ticket_id: int, operador: str) -> bool:
+    """Registra la confirmación humana y el envío oficial de la notificación al usuario."""
+    conn = _obtener_conexion()
+    cursor = conn.cursor()
+    ahora_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+        UPDATE tickets
+        SET notificacion_enviada = 1,
+            confirmado_por = ?,
+            fecha_confirmacion = ?,
+            accion_confirmada = 'envio_notificacion'
+        WHERE id = ?
+    """, (operador, ahora_iso, ticket_id))
+    afectados = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return afectados > 0
+
+
+def confirmar_derivacion_cuadrilla(ticket_id: int, operador: str, orden_id: str, cuadrilla: str) -> bool:
+    """Registra la autorización humana para el despacho físico de cuadrilla presencial."""
+    conn = _obtener_conexion()
+    cursor = conn.cursor()
+    ahora_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("""
+        UPDATE tickets
+        SET estado = 'escalado_cuadrilla',
+            cuadrilla_despachada = 1,
+            orden_despacho_id = ?,
+            confirmado_por = ?,
+            fecha_confirmacion = ?,
+            accion_confirmada = 'derivacion_cuadrilla'
+        WHERE id = ?
+    """, (orden_id, operador, ahora_iso, ticket_id))
+    afectados = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return afectados > 0
+
+
+def obtener_ticket_limpio_por_id(ticket_id: int) -> Optional[Dict[str, Any]]:
+    """Recupera un ticket por id con todos sus campos formateados como DTO de salida."""
+    todos = listar_tickets(incluir_eliminados=True)
+    for t in todos:
+        if t["id"] == ticket_id:
+            return t
+    return None
+

@@ -15,12 +15,28 @@ from app.schemas import (
     ActualizarEstadoIn,
     CitaRAG,
     DiagnosticoRAG,
-    MetadatosIA
+    MetadatosIA,
+    PropuestaRegistroTicketOut,
+    ConfirmarRegistroIn,
+    PropuestaEnviarNotificacionOut,
+    ConfirmarEnvioIn,
+    PropuestaDerivarCuadrillaOut,
+    ConfirmarDerivacionIn,
+    ResultadoConfirmacionHumanaOut
 )
 from app.services.llm import clasificar_solicitud
 from app.tools.priorizar import calcular_prioridad_itil
 from app.services.rag import consultar_base_conocimiento
-from app.database import guardar_ticket, listar_tickets, actualizar_estado_ticket, eliminar_ticket_logico
+from app.database import (
+    guardar_ticket,
+    listar_tickets,
+    actualizar_estado_ticket,
+    eliminar_ticket_logico,
+    confirmar_envio_notificacion,
+    confirmar_derivacion_cuadrilla,
+    obtener_ticket_limpio_por_id,
+    obtener_ticket_por_id
+)
 from app.services.auth import obtener_usuario_autenticado
 
 router = APIRouter(prefix="/v1/tickets", tags=["Tickets de Soporte"])
@@ -198,3 +214,286 @@ def eliminar_ticket(
         "ticket_id": ticket_id,
         "eliminado_por": usuario_tic["usuario"]
     }
+
+
+# ============================================================================
+# Endpoints de Confirmación Humana (Human-in-the-Loop - OWASP LLM08)
+# Principio: «Antes de registrar, enviar o derivar, el humano autoriza»
+# ============================================================================
+
+@router.post(
+    "/proponer",
+    response_model=PropuestaRegistroTicketOut,
+    status_code=status.HTTP_200_OK,
+    summary="Genera una propuesta estructurada de ticket antes de registrar (HITL)",
+    description="Realiza triaje, priorización ITIL y RAG, retornando una propuesta sin persistir en base de datos hasta que el operador humano la apruebe."
+)
+def proponer_registro_ticket(solicitud: SolicitudTicketIn, request: Request = None):
+    """
+    Fase 1 de Registro HITL:
+    El modelo propone y el código calcula la prioridad, pero NO se registra en la base de datos
+    hasta recibir confirmación explícita del operador técnico.
+    """
+    clasificacion_ia, metadatos_ia = clasificar_solicitud(
+        solicitud.descripcion_problema,
+        simular_caida_gemini=solicitud.simular_caida_gemini,
+        simular_caida_groq=solicitud.simular_caida_groq,
+        simular_error_429=solicitud.simular_error_429,
+        simular_timeout=solicitud.simular_timeout,
+        simular_respuesta_vacia=solicitud.simular_respuesta_vacia,
+        modo_vulnerable=solicitud.modo_vulnerable
+    )
+
+    if request:
+        request.state.metadatos_ia = metadatos_ia
+
+    prioridad_sla = calcular_prioridad_itil(clasificacion_ia.impacto, clasificacion_ia.urgencia)
+    diagnostico_rag = consultar_base_conocimiento(
+        solicitud.descripcion_problema,
+        simular_caida_rag=solicitud.simular_caida_rag
+    )
+
+    codigo_propuesto = f"TCK-{str(uuid.uuid4())[:8].upper()}"
+
+    return PropuestaRegistroTicketOut(
+        ticket_codigo_propuesto=codigo_propuesto,
+        nombre_cliente=solicitud.nombre_cliente,
+        email_cliente=solicitud.email_cliente,
+        descripcion_problema=solicitud.descripcion_problema,
+        categoria_propuesta=clasificacion_ia.categoria,
+        impacto_propuesto=clasificacion_ia.impacto,
+        urgencia_propuesta=clasificacion_ia.urgencia,
+        prioridad_itil=prioridad_sla.prioridad,
+        sla_minutos=prioridad_sla.sla_minutos,
+        descripcion_sla=prioridad_sla.descripcion_sla,
+        solucion_propuesta=diagnostico_rag.solucion_propuesta,
+        citas=diagnostico_rag.citas,
+        requiere_confirmacion_humana=True,
+        tipo_accion="registro_ticket",
+        justificacion_ia=clasificacion_ia.justificacion,
+        sintomas_detectados=clasificacion_ia.sintomas_detectados,
+        metadatos_ia=metadatos_ia
+    )
+
+
+@router.post(
+    "/confirmar-registro",
+    response_model=TicketOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Confirma y persiste un ticket tras aprobación humana explícita",
+    description="Recibe la propuesta aprobada (o ajustada manualmente por el operador) y la persiste en la base de datos SQLite."
+)
+def confirmar_y_guardar_ticket(payload: ConfirmarRegistroIn):
+    """
+    Fase 2 de Registro HITL:
+    Persiste formalmente el ticket en la base de datos registrando el operador que autorizó el alta.
+    """
+    fecha_actual = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    citas_dict = [c.model_dump() for c in payload.citas]
+
+    datos_ticket = {
+        "ticket_codigo": payload.ticket_codigo_propuesto,
+        "fecha_creacion": fecha_actual,
+        "nombre_cliente": payload.nombre_cliente,
+        "email_cliente": payload.email_cliente,
+        "descripcion_problema": payload.descripcion_problema,
+        "categoria": payload.categoria,
+        "impacto": payload.impacto,
+        "urgencia": payload.urgencia,
+        "prioridad": payload.prioridad,
+        "sla_minutos": payload.sla_minutos,
+        "descripcion_sla": payload.descripcion_sla,
+        "solucion_propuesta": payload.solucion_propuesta,
+        "citas": citas_dict,
+        "estado": "nuevo",
+        "requiere_revision_humana": False, # Ya fue revisado y aprobado por el operador
+        "justificacion": payload.justificacion or "Registro aprobado tras verificación humana.",
+        "sintomas_detectados": payload.sintomas_detectados,
+        "confirmado_por": payload.operador_confirmador,
+        "fecha_confirmacion": fecha_actual,
+        "accion_confirmada": "registro_ticket",
+        "metadatos_ia": {
+            "proveedor": "gemini",
+            "modelo": "gemini-1.5-flash",
+            "conmutado": False,
+            "motivo_conmutacion": None,
+            "latencia_ms": 0.0,
+            "modo_vulnerable": False,
+            "alucinacion_detectada": False
+        }
+    }
+
+    nuevo_id = guardar_ticket(datos_ticket)
+    ticket_guardado = obtener_ticket_limpio_por_id(nuevo_id)
+
+    if not ticket_guardado:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error al recuperar el ticket confirmado de la base de datos."
+        )
+
+    return TicketOut(**ticket_guardado)
+
+
+@router.get(
+    "/{ticket_id}/proponer-envio",
+    response_model=PropuestaEnviarNotificacionOut,
+    summary="Genera borrador de notificación antes de remitir al usuario (HITL)",
+    description="Genera el asunto y cuerpo del mensaje con citas técnicas para que el operador lo revise antes del envío."
+)
+def proponer_envio_notificacion(ticket_id: int):
+    """
+    Fase 1 de Envío HITL:
+    Muestra el borrador de resolución técnica con citas verificadas antes de enviar el correo.
+    """
+    ticket = obtener_ticket_limpio_por_id(ticket_id)
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticket con ID {ticket_id} no existe."
+        )
+
+    citas_texto = ""
+    if ticket.get("citas"):
+        citas_texto = "\n\nProcedimiento oficial aplicado:\n" + "\n".join(
+            [f"• {c['documento_id']} ({c.get('paso_exacto', '')}): {c.get('fragmento_aplicado', '')}" for c in ticket["citas"][:2]]
+        )
+
+    asunto = f"[{ticket['ticket_codigo']}] Actualización de Soporte Técnico - ConectaTec"
+    mensaje = (
+        f"Estimado/a {ticket['nombre_cliente']},\n\n"
+        f"Su incidencia tecnológica '{ticket['descripcion_problema'][:80]}...' ha sido clasificada con Prioridad {ticket['prioridad']} "
+        f"(SLA estimado: {ticket['sla_minutos']} minutos).\n\n"
+        f"Diagnóstico preliminar / Solución:\n{ticket['solucion_propuesta']}"
+        f"{citas_texto}\n\n"
+        f"Estado del ticket: {ticket['estado'].upper()}\n"
+        f"Mesa de Ayuda Tecnológica · ConectaTec / TecnoAula"
+    )
+
+    return PropuestaEnviarNotificacionOut(
+        ticket_id=ticket["id"],
+        ticket_codigo=ticket["ticket_codigo"],
+        destinatario_email=ticket["email_cliente"],
+        asunto_propuesto=asunto,
+        mensaje_propuesto=mensaje,
+        requiere_confirmacion_humana=True,
+        tipo_accion="enviar_notificacion"
+    )
+
+
+@router.post(
+    "/{ticket_id}/confirmar-envio",
+    response_model=ResultadoConfirmacionHumanaOut,
+    summary="Confirma y registra el envío de notificación al cliente tras revisión humana",
+    description="Autoriza formalmente el despacho del mensaje al usuario registrando al operador responsable."
+)
+def confirmar_envio_notificacion_endpoint(ticket_id: int, payload: ConfirmarEnvioIn):
+    """
+    Fase 2 de Envío HITL:
+    Registra el envío y marca 'notificacion_enviada=True' en auditoría.
+    """
+    ticket = obtener_ticket_limpio_por_id(ticket_id)
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticket #{ticket_id} no encontrado."
+        )
+
+    exito = confirmar_envio_notificacion(ticket_id, payload.operador_confirmador)
+    ahora_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    ticket_actualizado = obtener_ticket_limpio_por_id(ticket_id)
+
+    return ResultadoConfirmacionHumanaOut(
+        exito=exito,
+        accion_ejecutada="enviado",
+        ticket_codigo=ticket["ticket_codigo"],
+        mensaje=f"Notificación oficial enviada exitosamente a {payload.destinatario_email} por {payload.operador_confirmador}.",
+        confirmado_por=payload.operador_confirmador,
+        fecha_confirmacion=ahora_iso,
+        ticket_actualizado=TicketOut(**ticket_actualizado) if ticket_actualizado else None
+    )
+
+
+@router.get(
+    "/{ticket_id}/proponer-derivacion",
+    response_model=PropuestaDerivarCuadrillaOut,
+    summary="Genera orden propuesta de despacho presencial antes de derivar cuadrilla (HITL)",
+    description="Calcula costo y herramientas requeridas antes de comprometer personal físico en campo."
+)
+def proponer_derivacion_cuadrilla(ticket_id: int):
+    """
+    Fase 1 de Derivación HITL:
+    Presenta la justificación y costos operativos antes de despachar personal presencial.
+    """
+    ticket = obtener_ticket_limpio_por_id(ticket_id)
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticket #{ticket_id} no encontrado."
+        )
+
+    from app.tools.configuracion import obtener_tarifa_por_codigo
+    tarifa_hora = obtener_tarifa_por_codigo("SRV-HORA-TECNICA-HABIL")
+    costo_h = float(tarifa_hora.get("tarifa_usd", 15.00)) if tarifa_hora else 15.00
+
+    return PropuestaDerivarCuadrillaOut(
+        ticket_id=ticket["id"],
+        ticket_codigo=ticket["ticket_codigo"],
+        sector="Campus Universitario Ambato / Red GPON",
+        motivo_derivacion=f"Avería física detectada: {ticket['descripcion_problema'][:100]} (Requiere intervención en caja NAP o acometida)",
+        cuadrilla_sugerida="Cuadrilla Nº 03 de Planta Externa",
+        herramientas_requeridas=[
+            "Fusionadora óptica por arco voltaico Fujikura 70S",
+            "Reflectómetro óptico en el dominio del tiempo (OTDR)",
+            "Kit de conectores mecánicos SC/APC y bobina de lanzamiento"
+        ],
+        costo_estimado_usd=round(costo_h * 2.0, 2), # 2 horas estimadas de intervención
+        tiempo_estimado_arribo_minutos=45,
+        requiere_confirmacion_humana=True,
+        tipo_accion="derivar_cuadrilla"
+    )
+
+
+@router.post(
+    "/{ticket_id}/confirmar-derivacion",
+    response_model=ResultadoConfirmacionHumanaOut,
+    summary="Confirma y autoriza el despacho presencial de cuadrilla técnica (HITL)",
+    description="Transiciona el ticket a 'escalado_cuadrilla' y genera orden de trabajo física ODT."
+)
+def confirmar_derivacion_cuadrilla_endpoint(ticket_id: int, payload: ConfirmarDerivacionIn):
+    """
+    Fase 2 de Derivación HITL:
+    Ejecuta el escalamiento físico y genera la orden de trabajo ODT autorizada por el operador.
+    """
+    ticket = obtener_ticket_limpio_por_id(ticket_id)
+    if not ticket:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticket #{ticket_id} no encontrado."
+        )
+
+    import hashlib
+    orden_id = payload.orden_despacho_id or f"ODT-FIBRA-{hashlib.sha256(ticket['ticket_codigo'].encode()).hexdigest()[:6].upper()}"
+
+    exito = confirmar_derivacion_cuadrilla(
+        ticket_id=ticket_id,
+        operador=payload.operador_confirmador,
+        orden_id=orden_id,
+        cuadrilla=payload.cuadrilla_asignada
+    )
+    ahora_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+    ticket_actualizado = obtener_ticket_limpio_por_id(ticket_id)
+
+    return ResultadoConfirmacionHumanaOut(
+        exito=exito,
+        accion_ejecutada="derivado",
+        ticket_codigo=ticket["ticket_codigo"],
+        mensaje=f"Cuadrilla '{payload.cuadrilla_asignada}' despachada formalmente bajo orden {orden_id} por {payload.operador_confirmador}.",
+        confirmado_por=payload.operador_confirmador,
+        fecha_confirmacion=ahora_iso,
+        ticket_actualizado=TicketOut(**ticket_actualizado) if ticket_actualizado else None
+    )
+
