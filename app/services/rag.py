@@ -73,13 +73,16 @@ def consultar_base_conocimiento(texto_problema: str, simular_caida_rag: bool = F
     if any(termino in texto_lower for termino in ["los roja", "corte de fibra", "rotura", "mordido", "fibra rota", "los parpadea"]):
         requiere_cuadrilla = True
 
-    # Si no hay coincidencias con ningún manual y no es corte óptico, responder fuera de alcance
+    # Si no hay coincidencias con ningún manual y no es corte óptico, responder fuera de alcance (Abstención y Orientación)
     if not puntajes and not requiere_cuadrilla:
         return DiagnosticoRAG(
             solucion_propuesta=(
+                "No dispongo de un procedimiento técnico registrado para esta situación en los 15 manuales oficiales de ConectaTec. "
                 "La consulta no describe ninguna avería técnica ni falla en la infraestructura de Internet o telecomunicaciones. "
                 "No se requiere despacho de cuadrilla ni manipulación de equipos. "
-                "Si experimenta problemas de conectividad o luces anómalas en el módem/ONT, por favor descríbalos detalladamente."
+                "Orientación al usuario: Si su solicitud corresponde a trámites administrativos o académicos (como notas, matrículas o certificaciones), "
+                "por favor acuda a Secretaría General o al portal institucional de autoservicio. "
+                "Si experimenta problemas de conectividad o luces anómalas en el módem/ONT (POWER, PON, LOS, LAN), por favor descríbalos detalladamente."
             ),
             citas=[],
             requiere_visita_campo=False

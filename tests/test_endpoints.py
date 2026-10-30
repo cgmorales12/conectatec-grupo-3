@@ -859,6 +859,60 @@ def test_mock_garantia_cero_consumo_api_y_cero_red(monkeypatch):
     assert ticket["metadatos_ia"]["tokens_total"] == 0
 
 
+def test_abstencion_ante_preguntas_sin_respuesta_en_fuentes_lo_dice_y_orienta():
+    """
+    Valida el requerimiento de la rúbrica oficial:
+    «Abstención implementada y probada: Ante preguntas sin respuesta en las fuentes,
+    el sistema lo dice y orienta.»
+
+    Verifica:
+    1. Pregunta sin procedimiento en fuentes (Pregunta #15 eval/preguntas.json: Examen Complexivo).
+    2. El sistema lo dice explícitamente: no inventa manuales (citas vacías, DOC-99 prohibido).
+    3. El sistema orienta: guía al usuario al canal universitario/administrativo correspondiente.
+    4. El endpoint conversacional POST /chat aplica el protocolo oficial de abstención con orientación.
+    """
+    from app.services.rag import consultar_base_conocimiento
+
+    # 1. Prueba directa sobre el motor RAG
+    pregunta_sin_fuente = "¿Cuál es la nota mínima para exonerarse del examen complexivo de software en UNIANDES?"
+    diagnostico_rag = consultar_base_conocimiento(pregunta_sin_fuente)
+
+    assert len(diagnostico_rag.citas) == 0, "No debe inventar citas para preguntas fuera de fuentes"
+    assert "No dispongo de un procedimiento técnico registrado" in diagnostico_rag.solucion_propuesta
+    assert "Orientación al usuario" in diagnostico_rag.solucion_propuesta
+    assert "Secretaría General" in diagnostico_rag.solucion_propuesta
+
+    # 2. Prueba de Endpoint POST /clasificar
+    payload = {
+        "nombre_cliente": "Estudiante de Grado",
+        "email_cliente": "estudiante@uniandes.edu.ec",
+        "descripcion_problema": "¿Cuánto cuesta el almuerzo en el comedor central de la universidad?",
+        "simular_caida_gemini": True,
+        "simular_caida_groq": True
+    }
+    resp = client.post("/clasificar", json=payload)
+    assert resp.status_code == 201
+    ticket = resp.json()
+
+    assert ticket["categoria"] == "Solicitud No Técnica / Fuera de Alcance"
+    assert len(ticket["citas"]) == 0
+    assert "no describe ninguna avería técnica" in ticket["solucion_propuesta"].lower() or "no dispongo de un procedimiento" in ticket["solucion_propuesta"].lower()
+    assert "orientación" in ticket["solucion_propuesta"].lower() or "secretaría" in ticket["solucion_propuesta"].lower()
+
+    # 3. Prueba de Endpoint Conversacional POST /chat
+    resp_chat = client.post("/chat", json={
+        "mensaje": "¿Dónde puedo pagar la matrícula del nuevo semestre?",
+        "simular_caida_gemini": True,
+        "simular_caida_groq": True
+    })
+    assert resp_chat.status_code == 200
+    texto_chat = resp_chat.text
+    # El sistema lo dice (no dispone de información/procedimiento) y orienta (hacia la oficina/departamento correspondiente)
+    assert any(k in texto_chat.lower() for k in ["no dispongo", "abstención", "no tengo información"])
+    assert any(k in texto_chat.lower() for k in ["orientación", "recomiendo", "contacto", "institucional", "secretaría"])
+
+
+
 
 
 

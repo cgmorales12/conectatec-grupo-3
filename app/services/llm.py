@@ -691,9 +691,12 @@ class ClienteLLM:
             )
         else:
             texto_base = (
-                "Asistente Virtual de Triaje ConectaTec:\n\n"
-                "He recibido su solicitud técnica. Para asistirle de la forma más rápida y precisa, "
-                "indíquenos el estado de las luces de su ONT (POWER, PON, LOS, LAN) o detalle los síntomas observados."
+                "Asistente Virtual de Triaje ConectaTec (Protocolo Oficial de Abstención):\n\n"
+                "No dispongo de un procedimiento técnico registrado para esta situación en los 15 manuales oficiales del ISP.\n\n"
+                "Orientación al usuario:\n"
+                "1. Si su consulta corresponde a trámites académicos, notas, horarios o costos universitarios, por favor acuda a Secretaría General o al portal institucional.\n"
+                "2. Si experimenta una avería de conectividad o red en el campus, indíquenos los síntomas observados y el estado de los indicadores LED de su ONT (POWER, PON, LOS, LAN) para guiarle con la ficha técnica correspondiente.\n"
+                "3. Si el problema persiste o es un caso no previsto, he registrado su consulta y un operador de Nivel 2 de la mesa de ayuda le atenderá oportunamente."
             )
 
         palabras = texto_base.split(" ")
