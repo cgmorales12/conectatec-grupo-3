@@ -1,22 +1,29 @@
 # config/parametros.yaml · Parámetros de negocio desacoplados del código
 # Proyecto: ConectaTec / TecnoAula — Triaje Inteligente (Caso N.º 03 · Grupo 3 UNIANDES)
 # Valores versionados en Git. Las API Keys y secretos sensibles van exclusivamente en .env
+# Principio de Arquitectura: «El modelo propone, el código dispone, la configuración gobierna».
+# Tarifas, umbrales, salario básico o calendarios: NUNCA en el código ni en el prompt.
 
-# 1. Umbral de Confianza para Clasificación de Incidencias (Estación 4)
+# 1. Umbrales Deterministas de Clasificación e Inferencia
 # Calibrado en el taller del 29-oct-2026: 0 errores silenciosos y <= 25% a revisión humana
 umbral_confianza: 0.85
+limite_fichas_token_bucket: 10
+tasa_recarga_segundos: 6.0
 
 # 2. Control de Agentes de Alcance Controlado (Patrón ReAct)
 max_iteraciones_agente: 6
 herramientas_permitidas:
   - buscar_procedimiento_rag
   - calcular_prioridad_itil
+  - consultar_estado_nodo
   - registrar_ticket_kanban
   - escalar_cuadrilla_presencial
+  - consultar_tarifas_repuestos
+  - consultar_calendario_soporte
 
 herramientas_requieren_confirmacion:
-  - crear_ticket_kanban
-  - despachar_cuadrilla_presencial
+  - registrar_ticket_kanban
+  - escalar_cuadrilla_presencial
 
 # 3. Parámetros de Recuperación RAG (ChromaDB)
 top_k_rag: 5
@@ -30,3 +37,16 @@ sla_horas:
   P3: 24
   P4: 72
 
+# 5. Salario Básico Unificado (SBU - Ecuador 2026, Ministerio del Trabajo)
+# Base legal para cálculo de penalidades contractuales y costos de mano de obra
+salario_basico_unificado: 482.00
+salario_basico_moneda: "USD"
+salario_basico_pais: "Ecuador"
+salario_basico_ano: 2026
+porcentaje_penalizacion_sla_por_hora: 0.02 # 2% de 1 SBU por hora de exceso no justificada
+
+# 6. Catálogo de Rutas de Archivos de Configuración Desacoplados
+archivos_configuracion:
+  matriz_prioridad: "config/matriz_prioridad.json"
+  tarifas: "config/tarifas.json"
+  calendario: "config/calendario.json"

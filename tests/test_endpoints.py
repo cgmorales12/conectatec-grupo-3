@@ -4,6 +4,7 @@ Cumple: Pruebas deterministas que pasan 100% sin internet ni consumo de API Keys
 Rubro: «Pruebas con un mock del modelo: pytest prueba el endpoint sin gastar API.»
 """
 
+import os
 import pytest
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
@@ -1082,6 +1083,173 @@ def test_agente_endpoint_escenarios_camino_feliz_y_fuera_de_alcance():
     datos_tools = resp_tools.json()
     assert datos_tools["max_iteraciones"] == 6
     assert "buscar_procedimiento_rag" in datos_tools["herramientas_permitidas"]
+
+
+# ============================================================================
+# Pruebas Unitarias de Rúbrica: Parámetros en config/ (Tarifas, Umbrales, SBU, Calendario)
+# ============================================================================
+
+def test_parametros_en_config_desacoplados_de_codigo_y_prompts():
+    """
+    Valida el requerimiento de rúbrica:
+    «Parámetros en config/: Tarifas, umbrales, salario básico o calendarios: nunca en el código ni en el prompt».
+    """
+    raiz = os.path.normpath(os.path.join(os.path.dirname(__file__), ".."))
+    dir_config = os.path.join(raiz, "config")
+
+    # 1. Verificar existencia de los 4 archivos de configuración
+    archivos_esperados = [
+        "parametros.yaml",
+        "tarifas.json",
+        "calendario.json",
+        "matriz_prioridad.json"
+    ]
+    for archivo in archivos_esperados:
+        ruta = os.path.join(dir_config, archivo)
+        assert os.path.exists(ruta), f"El archivo de configuración {archivo} debe existir en config/"
+        assert os.path.getsize(ruta) > 20, f"El archivo {archivo} no debe estar vacío"
+
+    # 2. Verificar que los prompts NUNCA contengan tarifas ni salario básico quemados
+    dir_prompts = os.path.join(raiz, "app", "prompts")
+    for nombre_p in os.listdir(dir_prompts):
+        if nombre_p.endswith(".md"):
+            ruta_p = os.path.join(dir_prompts, nombre_p)
+            with open(ruta_p, "r", encoding="utf-8") as f:
+                contenido_p = f.read().lower()
+                assert "$482" not in contenido_p, f"El prompt {nombre_p} no debe tener el salario básico quemado"
+                assert "482.00" not in contenido_p, f"El prompt {nombre_p} no debe tener el salario básico quemado"
+                assert "$45" not in contenido_p, f"El prompt {nombre_p} no debe tener precios de ONT quemados"
+                assert "$38.50" not in contenido_p, f"El prompt {nombre_p} no debe tener tarifas quemadas"
+
+    # 3. Verificar que config/parametros.yaml gobierna umbrales y SBU
+    from app.tools.configuracion import cargar_parametros_yaml, obtener_salario_basico
+    params = cargar_parametros_yaml()
+    assert params["umbral_confianza"] == 0.85
+    assert params["max_iteraciones_agente"] == 6
+    assert params["top_k_rag"] == 5
+    assert params["salario_basico_unificado"] == 482.00
+    assert params["salario_basico_moneda"] == "USD"
+    assert params["salario_basico_pais"] == "Ecuador"
+    assert params["salario_basico_ano"] == 2026
+
+
+def test_tarifas_oficiales_y_calculo_presupuesto_determinista():
+    """
+    Valida que el tarifario oficial se lea de config/tarifas.json y que el cálculo
+    de presupuesto sea 100% determinista, aritmético y con costo cero de tokens.
+    """
+    # 1. Endpoint GET /v1/config/tarifas
+    res_t = client.get("/v1/config/tarifas")
+    assert res_t.status_code == 200
+    data_t = res_t.json()
+    assert data_t["origen"] == "config/tarifas.json"
+    items = data_t["items"]
+    assert len(items) >= 8
+
+    # Verificar ítems clave del tarifario
+    codigos = [it["codigo"] for it in items]
+    assert "EQ-ONT-GPON-W6" in codigos
+    assert "SRV-HORA-TECNICA-HABIL" in codigos
+    assert "MAT-DROP-OPTICO-M" in codigos
+
+    # 2. Endpoint POST /v1/config/presupuesto (1 ONT $45 + 2 horas técnicas $15 = $75 + IVA 15% = $86.25)
+    payload_presupuesto = {
+        "items": [
+            {"codigo": "EQ-ONT-GPON-W6", "cantidad": 1.0},
+            {"codigo": "SRV-HORA-TECNICA-HABIL", "cantidad": 2.0}
+        ],
+        "iva_porcentaje": 0.15
+    }
+    res_p = client.post("/v1/config/presupuesto", json=payload_presupuesto)
+    assert res_p.status_code == 200
+    p = res_p.json()
+    assert p["subtotal_usd"] == 75.00
+    assert p["iva_usd"] == 11.25
+    assert p["total_usd"] == 86.25
+    assert p["moneda"] == "USD"
+    assert p["origen_tarifas"] == "config/tarifas.json"
+    assert len(p["items_detalle"]) == 2
+    assert p["items_detalle"][0]["encontrado_en_catalogo"] is True
+
+
+def test_salario_basico_y_penalizacion_sla_determinista():
+    """
+    Valida la lectura del Salario Básico Unificado desde config/parametros.yaml
+    y el cálculo determinista de penalización legal por incumplimiento de SLA.
+    """
+    # 1. Endpoint GET /v1/config/salario-basico
+    res_sbu = client.get("/v1/config/salario-basico")
+    assert res_sbu.status_code == 200
+    sbu = res_sbu.json()
+    assert sbu["salario_basico_unificado"] == 482.00
+    assert sbu["moneda"] == "USD"
+    assert sbu["pais"] == "Ecuador"
+    assert sbu["ano"] == 2026
+    assert sbu["porcentaje_penalizacion_por_hora"] == 0.02
+    assert sbu["origen_configuracion"] == "config/parametros.yaml"
+
+    # 2. Endpoint GET /v1/config/penalizacion-sla (3 horas de retraso)
+    # SBU: $482.00 * 0.02 = $9.64/hora -> 3 horas = $28.92
+    res_pen = client.get("/v1/config/penalizacion-sla?horas_retraso=3.0")
+    assert res_pen.status_code == 200
+    pen = res_pen.json()
+    assert pen["horas_retraso"] == 3.0
+    assert pen["salario_basico_unificado"] == 482.00
+    assert pen["costo_penalizacion_por_hora_usd"] == 9.64
+    assert pen["monto_penalizacion_total_usd"] == 28.92
+    assert "Ecuador 2026" in pen["justificacion"]
+    assert pen["origen_regla"] == "config/parametros.yaml"
+
+
+def test_calendario_operativo_feriados_ecuador_2026():
+    """
+    Valida la detección de feriados nacionales obligatorios y horarios de turno
+    según config/calendario.json.
+    """
+    # 1. Año Nuevo (2026-01-01) debe ser feriado nacional no laborable
+    res_fer1 = client.get("/v1/config/calendario?fecha=2026-01-01")
+    assert res_fer1.status_code == 200
+    d1 = res_fer1.json()
+    assert d1["es_habil"] is False
+    assert "Feriado nacional obligatorio: Ano Nuevo" in d1["motivo"]
+    assert d1["guardia_noc_24_7_activa"] is True
+
+    # 2. Día del Trabajo (2026-05-01) debe ser feriado nacional
+    res_fer2 = client.get("/v1/config/calendario?fecha=2026-05-01")
+    assert res_fer2.status_code == 200
+    d2 = res_fer2.json()
+    assert d2["es_habil"] is False
+    assert "Dia Internacional del Trabajo" in d2["motivo"]
+
+
+def test_herramientas_agente_para_tarifas_y_calendarios():
+    """
+    Valida que el Agente ReAct pueda ejecutar determinísticamente las nuevas herramientas
+    consultar_tarifas_repuestos y consultar_calendario_soporte con contratos Pydantic V2.
+    """
+    from app.agente import agente_soporte
+
+    # 1. Invocación determinista de consultar_tarifas_repuestos
+    ok1, res1, msg1 = agente_soporte.ejecutar_herramienta(
+        "consultar_tarifas_repuestos",
+        {"codigo_o_categoria": "EQ-ONT-GPON-W6"}
+    )
+    assert ok1 is True
+    assert res1["total_encontrados"] == 1
+    assert res1["items"][0]["codigo"] == "EQ-ONT-GPON-W6"
+    assert res1["items"][0]["tarifa_usd"] == 45.00
+    assert res1["origen"] == "config/tarifas.json"
+
+    # 2. Invocación determinista de consultar_calendario_soporte
+    ok2, res2, msg2 = agente_soporte.ejecutar_herramienta(
+        "consultar_calendario_soporte",
+        {"fecha_iso": "2026-12-25"}
+    )
+    assert ok2 is True
+    assert res2["es_habil"] is False
+    assert "Navidad" in res2["motivo"]
+    assert res2["origen"] == "config/calendario.json"
+
 
 
 

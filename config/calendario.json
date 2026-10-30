@@ -1,0 +1,106 @@
+{
+  "version": "1.0.0",
+  "zona_horaria": "America/Guayaquil",
+  "ano_vigencia": 2026,
+  "normativa_referencia": "Ley Organica de Servicio Publico y Codigo del Trabajo del Ecuador (Regimen de Feriados Nacionales)",
+  "horarios_atencion": {
+    "jornada_regular_semana": {
+      "nombre": "Atencion Regular de Lunes a Viernes",
+      "dias": ["lunes", "martes", "miercoles", "jueves", "viernes"],
+      "dias_semana_iso": [1, 2, 3, 4, 5],
+      "hora_inicio": "08:00",
+      "hora_fin": "18:00",
+      "horas_habiles_por_dia": 10.0
+    },
+    "jornada_sabado": {
+      "nombre": "Atencion Parcial Sabados",
+      "dias": ["sabado"],
+      "dias_semana_iso": [6],
+      "hora_inicio": "08:00",
+      "hora_fin": "13:00",
+      "horas_habiles_por_dia": 5.0
+    },
+    "domingo": {
+      "nombre": "Domingo Inhabil para Cuadrillas Regulares",
+      "dias": ["domingo"],
+      "dias_semana_iso": [7],
+      "es_laborable": false
+    },
+    "guardia_noc_emergencias": {
+      "nombre": "Guardia NOC y Despacho Critico P1",
+      "cobertura": "24/7 los 365 dias del ano",
+      "aplica_para_prioridad": ["Alta", "P1"],
+      "ininterrumpido": true
+    }
+  },
+  "feriados_nacionales_ecuador_2026": [
+    {
+      "fecha": "2026-01-01",
+      "nombre": "Ano Nuevo",
+      "inamovible": true
+    },
+    {
+      "fecha": "2026-02-16",
+      "nombre": "Carnaval (Lunes)",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-02-17",
+      "nombre": "Carnaval (Martes)",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-04-03",
+      "nombre": "Viernes Santo",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-05-01",
+      "nombre": "Dia Internacional del Trabajo",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-05-25",
+      "nombre": "Batalla de Pichincha (Descanso obligatorio trasladado)",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-08-10",
+      "nombre": "Primer Grito de la Independencia",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-10-09",
+      "nombre": "Independencia de Guayaquil",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-11-02",
+      "nombre": "Dia de los Difuntos",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-11-03",
+      "nombre": "Independencia de Cuenca",
+      "inamovible": false
+    },
+    {
+      "fecha": "2026-12-25",
+      "nombre": "Navidad",
+      "inamovible": true
+    }
+  ],
+  "reglas_computo_sla": {
+    "prioridad_critica": {
+      "prioridades": ["Alta", "P1"],
+      "modo_computo": "continuo_24_7",
+      "descripcion": "El reloj SLA avanza ininterrumpidamente 24 horas al dia sin pausar por feriados ni fines de semana"
+    },
+    "prioridad_regular": {
+      "prioridades": ["Media", "Baja", "P2", "P3", "P4"],
+      "modo_computo": "horas_habiles",
+      "descripcion": "El reloj SLA se computa solo dentro del horario laboral y se pausa en feriados nacionales y domingos"
+    }
+  }
+}
+

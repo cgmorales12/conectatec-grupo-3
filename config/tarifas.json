@@ -1,0 +1,119 @@
+{
+  "version": "1.0.0",
+  "moneda": "USD",
+  "pais": "Ecuador",
+  "vigencia": "2026-Q4",
+  "normativa_referencia": "Regulacion ARCOTEL y Tarifario Oficial ConectaTec ISP",
+  "catalogo": {
+    "equipos_cpe": [
+      {
+        "codigo": "EQ-ONT-GPON-W6",
+        "nombre": "Terminal Optico ONT GPON Wi-Fi 6 Doble Banda (2.4/5 GHz)",
+        "categoria": "equipos_cpe",
+        "tarifa_usd": 45.00,
+        "unidad": "unidad",
+        "garantia_meses": 12,
+        "descripcion": "Equipo terminal de cliente para enlaces FTTH Gigabit"
+      },
+      {
+        "codigo": "EQ-ROUTER-MESH-GB",
+        "nombre": "Nodo Router Mesh Gigabit para Extension de Cobertura",
+        "categoria": "equipos_cpe",
+        "tarifa_usd": 38.50,
+        "unidad": "unidad",
+        "garantia_meses": 12,
+        "descripcion": "Repetidor en malla EasyMesh para cobertura en domicilios amplios"
+      },
+      {
+        "codigo": "EQ-POWER-12V-15A",
+        "nombre": "Adaptador de Corriente Switching 12V 1.5A para ONT",
+        "categoria": "equipos_cpe",
+        "tarifa_usd": 6.00,
+        "unidad": "unidad",
+        "garantia_meses": 6,
+        "descripcion": "Fuente de alimentacion regulada anti-picos para ONT"
+      }
+    ],
+    "materiales_planta_externa": [
+      {
+        "codigo": "MAT-DROP-OPTICO-M",
+        "nombre": "Cable Drop Optico Monomodo 1 Hilo G.657A2 Autosoportado",
+        "categoria": "materiales_planta_externa",
+        "tarifa_usd": 0.45,
+        "unidad": "metro",
+        "garantia_meses": 24,
+        "descripcion": "Cable de acometida exterior con mensajero de acero"
+      },
+      {
+        "codigo": "MAT-CONECTOR-SCAPC",
+        "nombre": "Conector Mecanico Rapido SC/APC de Ensamblado en Campo",
+        "categoria": "materiales_planta_externa",
+        "tarifa_usd": 2.50,
+        "unidad": "unidad",
+        "garantia_meses": 12,
+        "descripcion": "Conector de insercion rapida con pulido en angulo verde SC/APC"
+      },
+      {
+        "codigo": "MAT-PATCHCORD-OPT-3M",
+        "nombre": "Patch Cord Monomodo Simplex SC/APC a SC/APC de 3 metros",
+        "categoria": "materiales_planta_externa",
+        "tarifa_usd": 4.50,
+        "unidad": "unidad",
+        "garantia_meses": 12,
+        "descripcion": "Cordon de conexion interna entre roseta optica y ONT"
+      },
+      {
+        "codigo": "MAT-UTP-CAT6-EXT-M",
+        "nombre": "Cable de Red UTP Categoria 6 Chaqueta Doble Exterior",
+        "categoria": "materiales_planta_externa",
+        "tarifa_usd": 0.65,
+        "unidad": "metro",
+        "garantia_meses": 24,
+        "descripcion": "Cable LAN blindado resistente a intemperie y rayos UV"
+      }
+    ],
+    "mano_de_obra_y_servicios": [
+      {
+        "codigo": "SRV-HORA-TECNICA-HABIL",
+        "nombre": "Hora Tecnica Cuadrilla Presencial (Jornada Habil)",
+        "categoria": "mano_de_obra_y_servicios",
+        "tarifa_usd": 15.00,
+        "unidad": "hora",
+        "descripcion": "Mano de obra certificada en horario de lunes a viernes"
+      },
+      {
+        "codigo": "SRV-HORA-TECNICA-EXTRA",
+        "nombre": "Hora Tecnica Cuadrilla (Horario Extraordinario o Feriado)",
+        "categoria": "mano_de_obra_y_servicios",
+        "tarifa_usd": 22.50,
+        "unidad": "hora",
+        "descripcion": "Recargo legal de jornada nocturna o no laborable"
+      },
+      {
+        "codigo": "SRV-FUSION-FIBRA-HILO",
+        "nombre": "Empalme de Fibra Optica por Fusion Termica de Precision",
+        "categoria": "mano_de_obra_y_servicios",
+        "tarifa_usd": 8.00,
+        "unidad": "fusion",
+        "descripcion": "Fusion por arco voltaico en manga o caja NAP con manguito termorretractil"
+      },
+      {
+        "codigo": "SRV-VISITA-GARANTIA",
+        "nombre": "Visita Tecnica de Diagnostico en Garantia de Servicio",
+        "categoria": "mano_de_obra_y_servicios",
+        "tarifa_usd": 0.00,
+        "unidad": "visita",
+        "descripcion": "Cero costo para el cliente ante fallas en la red del ISP"
+      },
+      {
+        "codigo": "SRV-VISITA-DANO-CLIENTE",
+        "nombre": "Visita Tecnica por Danos Imputables al Abonado",
+        "categoria": "mano_de_obra_y_servicios",
+        "tarifa_usd": 12.50,
+        "unidad": "visita",
+        "descripcion": "Averias provocadas por manipulacion indebida o mascotas en domicilio"
+      }
+    ]
+  }
+}
+

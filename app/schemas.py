@@ -340,3 +340,89 @@ class ResultadoConversionOut(BaseModel):
     contenido_markdown: str
     guardado_en_raw: bool
     mensaje: str
+
+
+# ============================================================================
+# Esquemas de Parámetros Desacoplados (Tarifas, SBU, Calendarios)
+# ============================================================================
+
+class TarifaItemOut(BaseModel):
+    """Ítem individual del tarifario oficial de equipos y mano de obra."""
+    model_config = ConfigDict(extra="forbid")
+
+    codigo: str
+    nombre: str
+    categoria: str
+    tarifa_usd: float
+    unidad: str
+    garantia_meses: Optional[int] = None
+    descripcion: Optional[str] = None
+
+
+class ItemPresupuestoIn(BaseModel):
+    """Línea de ítem para cálculo de presupuesto técnico."""
+    model_config = ConfigDict(extra="forbid")
+
+    codigo: str = Field(..., description="Código unívoco del ítem en config/tarifas.json")
+    cantidad: float = Field(1.0, ge=0.01, description="Cantidad solicitada")
+
+
+class PresupuestoIn(BaseModel):
+    """Solicitud de cálculo de presupuesto determinista."""
+    model_config = ConfigDict(extra="forbid")
+
+    items: List[ItemPresupuestoIn]
+    iva_porcentaje: float = Field(0.15, description="Porcentaje de IVA legal (0.15 = 15% Ecuador 2026)")
+
+
+class PresupuestoCalculadoOut(BaseModel):
+    """Resultado del cálculo determinista de presupuesto."""
+    model_config = ConfigDict(extra="forbid")
+
+    items_detalle: List[dict]
+    subtotal_usd: float
+    iva_porcentaje: float
+    iva_usd: float
+    total_usd: float
+    moneda: str
+    origen_tarifas: str
+
+
+class SalarioBasicoOut(BaseModel):
+    """Datos oficiales del Salario Básico Unificado desde config/parametros.yaml."""
+    model_config = ConfigDict(extra="forbid")
+
+    salario_basico_unificado: float
+    moneda: str
+    pais: str
+    ano: int
+    porcentaje_penalizacion_por_hora: float
+    origen_configuracion: str
+
+
+class PenalizacionSLAOut(BaseModel):
+    """Cálculo determinista de penalización por exceso de SLA según SBU."""
+    model_config = ConfigDict(extra="forbid")
+
+    horas_retraso: float
+    salario_basico_unificado: float
+    porcentaje_aplicado_por_hora: float
+    costo_penalizacion_por_hora_usd: float
+    monto_penalizacion_total_usd: float
+    moneda: str
+    justificacion: str
+    origen_regla: str
+
+
+class ConsultaCalendarioOut(BaseModel):
+    """Consulta de turno de soporte y días feriados desde config/calendario.json."""
+    model_config = ConfigDict(extra="forbid")
+
+    fecha: str
+    hora: str
+    es_habil: bool
+    jornada: Optional[str] = None
+    horario_vigente: Optional[str] = None
+    motivo: str
+    guardia_noc_24_7_activa: bool
+

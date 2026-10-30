@@ -14,7 +14,12 @@ from app.schemas import (
     SolicitudTicketIn,
     TicketOut,
     SolicitudAnalizarIn,
-    ResultadoAnalizarOut
+    ResultadoAnalizarOut,
+    SalarioBasicoOut,
+    PresupuestoIn,
+    PresupuestoCalculadoOut,
+    ConsultaCalendarioOut,
+    PenalizacionSLAOut
 )
 from app.agente import (
     SolicitudAgenteIn,
@@ -26,6 +31,14 @@ from app.services.llm import (
     cliente_llm,
     generar_flujo_chat_streaming,
     analizar_incidencia_tecnica
+)
+from app.tools.configuracion import (
+    cargar_parametros_yaml,
+    obtener_salario_basico,
+    listar_todas_las_tarifas,
+    calcular_presupuesto_reparacion,
+    es_horario_laborable_habil,
+    calcular_penalizacion_sla_por_horas
 )
 from app.routers.tickets import clasificar_y_crear_ticket
 
@@ -187,3 +200,84 @@ def resolver_con_agente(solicitud: SolicitudAgenteIn):
     Garantiza contratos Pydantic V2 en cada herramienta y corte determinista por MAX_ITER.
     """
     return agente_soporte.resolver(solicitud)
+
+
+# ============================================================================
+# Endpoints de Parámetros Desacoplados (Tarifas, Umbrales, Salario, Calendario)
+# ============================================================================
+
+@router.get(
+    "/v1/config/parametros",
+    summary="Consulta los parámetros y umbrales vigentes desacoplados",
+    description="Retorna la configuración leída en tiempo de ejecución desde config/parametros.yaml."
+)
+def consultar_parametros_desacoplados():
+    """Retorna los umbrales de confianza, límites ReAct y referencias configuradas."""
+    return cargar_parametros_yaml()
+
+
+@router.get(
+    "/v1/config/salario-basico",
+    response_model=SalarioBasicoOut,
+    summary="Consulta el Salario Básico Unificado (SBU) desde config/parametros.yaml",
+    description="Demuestra que el salario básico nunca está en el código ni en prompts."
+)
+def consultar_salario_basico():
+    """Retorna el SBU oficial y factor de penalización leídos desde config/parametros.yaml."""
+    return obtener_salario_basico()
+
+
+@router.get(
+    "/v1/config/tarifas",
+    summary="Consulta el tarifario oficial de equipos, materiales y horas técnicas",
+    description="Retorna el catálogo oficial leído desde config/tarifas.json."
+)
+def consultar_tarifario_oficial(categoria: str = None):
+    """Retorna los ítems y precios unitarios del catálogo oficial."""
+    return {
+        "categoria_filtro": categoria,
+        "items": listar_todas_las_tarifas(categoria=categoria),
+        "origen": "config/tarifas.json"
+    }
+
+
+@router.post(
+    "/v1/config/presupuesto",
+    response_model=PresupuestoCalculadoOut,
+    summary="Cálculo determinista de presupuesto técnico sin LLM",
+    description="Calcula costo de repuestos y mano de obra leyendo config/tarifas.json con cero tokens."
+)
+def calcular_presupuesto_endpoint(payload: PresupuestoIn):
+    """Calcula matemáticamente el presupuesto a partir de los ítems y cantidades solicitadas."""
+    items_dicts = [{"codigo": it.codigo, "cantidad": it.cantidad} for it in payload.items]
+    return calcular_presupuesto_reparacion(items_dicts, iva_porcentaje=payload.iva_porcentaje)
+
+
+@router.get(
+    "/v1/config/calendario",
+    response_model=ConsultaCalendarioOut,
+    summary="Consulta disponibilidad de soporte, turnos y feriados nacionales",
+    description="Verifica si una fecha u horario es hábil según config/calendario.json."
+)
+def consultar_calendario_endpoint(fecha: str = None):
+    """Verifica si la fecha indicada es hábil o feriado nacional en Ecuador."""
+    from datetime import datetime
+    dt = None
+    if fecha:
+        try:
+            dt = datetime.fromisoformat(fecha.strip()[:10])
+        except Exception:
+            dt = None
+    return es_horario_laborable_habil(dt)
+
+
+@router.get(
+    "/v1/config/penalizacion-sla",
+    response_model=PenalizacionSLAOut,
+    summary="Cálculo matemático de penalización por mora SLA según SBU",
+    description="Calcula la penalización legal sin LLM usando el SBU de config/parametros.yaml."
+)
+def calcular_penalizacion_sla_endpoint(horas_retraso: float = 1.0):
+    """Calcula la penalización legal basada en el salario básico oficial."""
+    return calcular_penalizacion_sla_por_horas(horas_retraso)
+

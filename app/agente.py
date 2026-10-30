@@ -19,6 +19,14 @@ from pydantic import BaseModel, Field, ConfigDict, ValidationError
 from app.tools.priorizar import calcular_prioridad_itil
 from app.services.rag import consultar_base_conocimiento
 from app.schemas import CitaRAG, PrioridadSLA
+from app.tools.configuracion import (
+    listar_todas_las_tarifas,
+    obtener_tarifa_por_codigo,
+    calcular_presupuesto_reparacion,
+    es_horario_laborable_habil,
+    es_feriado_nacional,
+    obtener_salario_basico
+)
 
 logger = logging.getLogger("conectatec.agente")
 
@@ -187,6 +195,52 @@ class ResultadoEscalarCuadrillaPresencial(BaseModel):
     requiere_confirmacion_humana: bool
 
 
+# Tool 6: Consulta de Tarifario Oficial Desacoplado (config/tarifas.json)
+class ParamsConsultarTarifasRepuestos(BaseModel):
+    """Contrato estricto de entrada para consultar_tarifas_repuestos."""
+    model_config = ConfigDict(extra="forbid")
+
+    codigo_o_categoria: Optional[str] = Field(
+        None,
+        max_length=50,
+        description="Código de ítem (ej: EQ-ONT-GPON-W6) o categoría (equipos_cpe, materiales_planta_externa, mano_de_obra_y_servicios)"
+    )
+
+
+class ResultadoConsultarTarifasRepuestos(BaseModel):
+    """Contrato de salida para consultar_tarifas_repuestos."""
+    model_config = ConfigDict(extra="forbid")
+
+    items: List[Dict[str, Any]]
+    total_encontrados: int
+    moneda: str
+    origen: str
+
+
+# Tool 7: Consulta de Calendario Operativo y Feriados (config/calendario.json)
+class ParamsConsultarCalendarioSoporte(BaseModel):
+    """Contrato estricto de entrada para consultar_calendario_soporte."""
+    model_config = ConfigDict(extra="forbid")
+
+    fecha_iso: Optional[str] = Field(
+        None,
+        max_length=15,
+        description="Fecha en formato YYYY-MM-DD para verificar turno hábil o feriado nacional"
+    )
+
+
+class ResultadoConsultarCalendarioSoporte(BaseModel):
+    """Contrato de salida para consultar_calendario_soporte."""
+    model_config = ConfigDict(extra="forbid")
+
+    fecha: str
+    es_habil: bool
+    motivo: str
+    guardia_noc_24_7_activa: bool
+    origen: str
+
+
+
 # ============================================================================
 # 3. Implementaciones Deterministas de las Herramientas (Pure Python)
 # ============================================================================
@@ -308,6 +362,45 @@ def tool_escalar_cuadrilla_presencial(params: ParamsEscalarCuadrillaPresencial) 
     )
 
 
+def tool_consultar_tarifas_repuestos(params: ParamsConsultarTarifasRepuestos) -> ResultadoConsultarTarifasRepuestos:
+    """Implementación determinista: consulta tarifas oficiales desde config/tarifas.json (0 tokens)."""
+    filtro = (params.codigo_o_categoria or "").strip()
+    if filtro:
+        item = obtener_tarifa_por_codigo(filtro)
+        if item:
+            items = [item]
+        else:
+            items = listar_todas_las_tarifas(categoria=filtro)
+    else:
+        items = listar_todas_las_tarifas()
+
+    return ResultadoConsultarTarifasRepuestos(
+        items=items,
+        total_encontrados=len(items),
+        moneda="USD",
+        origen="config/tarifas.json"
+    )
+
+
+def tool_consultar_calendario_soporte(params: ParamsConsultarCalendarioSoporte) -> ResultadoConsultarCalendarioSoporte:
+    """Implementación determinista: evalúa turnos y feriados desde config/calendario.json (0 tokens)."""
+    dt = None
+    if params.fecha_iso:
+        try:
+            dt = datetime.fromisoformat(params.fecha_iso.strip()[:10])
+        except Exception:
+            dt = None
+
+    info = es_horario_laborable_habil(dt)
+    return ResultadoConsultarCalendarioSoporte(
+        fecha=info["fecha"],
+        es_habil=info["es_habil"],
+        motivo=info["motivo"],
+        guardia_noc_24_7_activa=info.get("guardia_noc_24_7_activa", True),
+        origen="config/calendario.json"
+    )
+
+
 # ============================================================================
 # 4. Catálogo y Registro Cerrado de Herramientas (Whitelist)
 # ============================================================================
@@ -342,8 +435,21 @@ CATALOGO_HERRAMIENTAS = {
         "funcion": tool_escalar_cuadrilla_presencial,
         "nivel": 2,
         "descripcion": "Despacha cuadrilla con fusionadora óptica (requiere confirmación)"
+    },
+    "consultar_tarifas_repuestos": {
+        "esquema": ParamsConsultarTarifasRepuestos,
+        "funcion": tool_consultar_tarifas_repuestos,
+        "nivel": 1,
+        "descripcion": "Consulta tarifas de equipos, repuestos y horas técnicas desde config/tarifas.json"
+    },
+    "consultar_calendario_soporte": {
+        "esquema": ParamsConsultarCalendarioSoporte,
+        "funcion": tool_consultar_calendario_soporte,
+        "nivel": 1,
+        "descripcion": "Verifica si una fecha/hora es laborable o feriado desde config/calendario.json"
     }
 }
+
 
 
 # ============================================================================
