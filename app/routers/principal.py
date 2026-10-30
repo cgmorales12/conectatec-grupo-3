@@ -16,6 +16,12 @@ from app.schemas import (
     SolicitudAnalizarIn,
     ResultadoAnalizarOut
 )
+from app.agente import (
+    SolicitudAgenteIn,
+    RespuestaAgenteOut,
+    agente_soporte,
+    CONFIG_AGENTE
+)
 from app.services.llm import (
     cliente_llm,
     generar_flujo_chat_streaming,
@@ -136,3 +142,48 @@ def analizar_problema_tecnico(solicitud: SolicitudAnalizarIn, request: Request =
     if request and getattr(resultado, "metadatos_ia", None):
         request.state.metadatos_ia = resultado.metadatos_ia
     return resultado
+
+
+@router.get(
+    "/v1/agente/herramientas",
+    summary="Catálogo de herramientas permitidas y límites del agente",
+    description="Consulta la lista blanca de herramientas y el tope máximo de iteraciones del bucle ReAct."
+)
+def consultar_herramientas_agente():
+    """Retorna las herramientas autorizadas, nivel de riesgo y tope de iteraciones."""
+    from app.agente import CATALOGO_HERRAMIENTAS
+    herramientas_info = {
+        nombre: {
+            "nivel": datos["nivel"],
+            "descripcion": datos["descripcion"],
+            "esquema_pydantic": datos["esquema"].__name__
+        }
+        for nombre, datos in CATALOGO_HERRAMIENTAS.items()
+    }
+    return {
+        "max_iteraciones": CONFIG_AGENTE["max_iteraciones_agente"],
+        "herramientas_permitidas": CONFIG_AGENTE["herramientas_permitidas"],
+        "herramientas_requieren_confirmacion": CONFIG_AGENTE["herramientas_requieren_confirmacion"],
+        "catalogo": herramientas_info
+    }
+
+
+@router.post(
+    "/v1/agente/resolver",
+    response_model=RespuestaAgenteOut,
+    status_code=status.HTTP_200_OK,
+    summary="Resolución agéntica con herramientas deterministas y límite ReAct",
+    description="Ejecuta el agente de software autónomo controlado sobre la incidencia con tope de iteraciones y esquemas Pydantic."
+)
+@router.post(
+    "/agente/resolver",
+    response_model=RespuestaAgenteOut,
+    status_code=status.HTTP_200_OK,
+    include_in_schema=False
+)
+def resolver_con_agente(solicitud: SolicitudAgenteIn):
+    """
+    Ejecuta el ciclo ReAct: Observar -> Pensar -> Actuar -> Verificar.
+    Garantiza contratos Pydantic V2 en cada herramienta y corte determinista por MAX_ITER.
+    """
+    return agente_soporte.resolver(solicitud)

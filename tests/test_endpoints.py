@@ -912,6 +912,179 @@ def test_abstencion_ante_preguntas_sin_respuesta_en_fuentes_lo_dice_y_orienta():
     assert any(k in texto_chat.lower() for k in ["orientación", "recomiendo", "contacto", "institucional", "secretaría"])
 
 
+# ============================================================================
+# Pruebas Unitarias del Agente de Alcance Controlado (Rúbrica Módulo 3 Clase 3)
+# «Agente con las herramientas del caso: Cada herramienta con esquema Pydantic,
+#  implementación determinista y límite de iteraciones.»
+# ============================================================================
+
+def test_agente_herramientas_esquemas_pydantic_extra_forbid():
+    """
+    Valida que todas las herramientas del catálogo tengan contrato Pydantic V2
+    con extra='forbid' para mitigar inyección de parámetros espurios (ASI02).
+    """
+    from pydantic import BaseModel, ValidationError
+    from app.agente import (
+        CATALOGO_HERRAMIENTAS,
+        ParamsBuscarProcedimientoRAG,
+        ParamsCalcularPrioridadITIL,
+        ParamsConsultarEstadoNodo,
+        ParamsRegistrarTicketKanban,
+        ParamsEscalarCuadrillaPresencial
+    )
+
+    # 1. Comprobar que todas las herramientas tienen su esquema Pydantic
+    for nombre, tool in CATALOGO_HERRAMIENTAS.items():
+        esquema = tool["esquema"]
+        assert issubclass(esquema, BaseModel), f"La herramienta {nombre} debe tener un esquema BaseModel"
+        assert esquema.model_config.get("extra") == "forbid", f"La herramienta {nombre} debe tener extra='forbid'"
+
+    # 2. Comprobar que extra='forbid' rechaza parámetros no autorizados
+    with pytest.raises(ValidationError):
+        ParamsBuscarProcedimientoRAG(consulta="luz roja huawei", parametro_espurio="intento_inyeccion")
+
+    with pytest.raises(ValidationError):
+        ParamsCalcularPrioridadITIL(impacto="Alto", urgencia="Alta", parametro_maligno=123)
+
+    with pytest.raises(ValidationError):
+        ParamsConsultarEstadoNodo(nodo_id="NODO-CENTRAL", drop_database=True)
+
+
+def test_agente_implementacion_determinista_herramientas():
+    """
+    Valida que las herramientas del caso se ejecuten de forma 100% determinista,
+    sin invocar modelos de lenguaje probabilísticos (0 costo de API).
+    """
+    from app.agente import (
+        tool_buscar_procedimiento_rag,
+        tool_calcular_prioridad_itil,
+        tool_consultar_estado_nodo,
+        tool_escalar_cuadrilla_presencial,
+        ParamsBuscarProcedimientoRAG,
+        ParamsCalcularPrioridadITIL,
+        ParamsConsultarEstadoNodo,
+        ParamsEscalarCuadrillaPresencial
+    )
+
+    # 1. Búsqueda RAG determinista
+    res_rag = tool_buscar_procedimiento_rag(ParamsBuscarProcedimientoRAG(consulta="luz LOS parpadea en rojo"))
+    assert res_rag.encontrado is True
+    assert res_rag.documento_id in ["DOC-01", "DOC-09"]
+    assert res_rag.paso_exacto is not None
+
+    # 2. Priorización ITIL determinista (0 tokens)
+    res_prio = tool_calcular_prioridad_itil(ParamsCalcularPrioridadITIL(impacto="Alto", urgencia="Alta"))
+    assert res_prio.prioridad == "Alta"
+    assert res_prio.sla_minutos in [15, 120]
+
+    # 3. Telemetría de nodo determinista
+    res_nodo = tool_consultar_estado_nodo(ParamsConsultarEstadoNodo(nodo_id="NODO-CENTRAL"))
+    assert res_nodo.estado == "operativo"
+    assert res_nodo.potencia_optica_dbm < 0
+
+    # 4. Despacho de cuadrilla determinista
+    res_cuadrilla = tool_escalar_cuadrilla_presencial(ParamsEscalarCuadrillaPresencial(
+        ticket_codigo="TCK-TEST-001",
+        sector="Campus Matriz",
+        motivo_escalado="Corte de acometida exterior",
+        requiere_fusionadora=True
+    ))
+    assert res_cuadrilla.orden_despacho_id.startswith("ODT-FIBRA-")
+    assert res_cuadrilla.requiere_confirmacion_humana is True
+
+
+def test_agente_limite_iteraciones_corte_forzoso():
+    """
+    Valida el requerimiento:
+    «Límite de iteraciones: Si el agente alcanza MAX_ITER sin resolver,
+    el bucle se detiene por decreto de código, preserva el SLA y deriva a revisión humana.»
+    """
+    from app.agente import AgenteTriajeTecnico, SolicitudAgenteIn
+
+    agente = AgenteTriajeTecnico(max_iteraciones=4)
+
+    # Prueba con simulación de condición de bucle no convergente
+    solicitud = SolicitudAgenteIn(
+        solicitud="Incidencia ambigua para probar el límite estricto de iteraciones",
+        max_iteraciones=4,
+        forzar_bucle_infinito=True
+    )
+    resultado = agente.resolver(solicitud)
+
+    # Debe cortar forzosamente al llegar a 4 sin caerse
+    assert resultado.limite_alcanzado is True
+    assert resultado.iteraciones_ejecutadas == 4
+    assert resultado.requiere_revision_humana is True
+    assert "Límite máximo de iteraciones alcanzado" in resultado.motivo_revision
+    assert len(resultado.audit_trail) == 4
+
+
+def test_agente_rechazo_herramientas_prohibidas_whitelist():
+    """
+    Valida que el agente bloquee cualquier intento de ejecutar herramientas no autorizadas
+    fuera de la lista blanca (ASI02: Tool Misuse Mitigation).
+    """
+    from app.agente import agente_soporte
+
+    # Intentar ejecutar una herramienta destructiva no autorizada
+    ok, resultado, msg = agente_soporte.ejecutar_herramienta(
+        "eliminar_ticket_base_datos",
+        {"ticket_id": 999}
+    )
+    assert ok is False
+    assert resultado["error"] == "herramienta_prohibida"
+    assert "RECHAZO DE SEGURIDAD" in msg
+
+    # Intentar ejecutar comandos del sistema
+    ok2, resultado2, msg2 = agente_soporte.ejecutar_herramienta(
+        "ejecutar_comando_bash",
+        {"cmd": "rm -rf /"}
+    )
+    assert ok2 is False
+    assert resultado2["error"] == "herramienta_prohibida"
+
+
+def test_agente_endpoint_escenarios_camino_feliz_y_fuera_de_alcance():
+    """
+    Valida el endpoint HTTP POST /v1/agente/resolver en dos escenarios del Plan de Calidad:
+    1. Camino Feliz (A): Resuelve con citas RAG y prioridad ITIL.
+    2. Fuera de Alcance (B): Se abstiene y orienta deterministamente.
+    """
+    # 1. Camino Feliz: Avería de router con luz roja
+    resp_a = client.post("/v1/agente/resolver", json={
+        "solicitud": "La luz LOS de la ONT Huawei parpadea en rojo y no tengo internet",
+        "nombre_cliente": "Docente Aula 4",
+        "email_cliente": "docente.aula4@uniandes.edu.ec"
+    })
+    assert resp_a.status_code == 200
+    res_data_a = resp_a.json()
+    assert res_data_a["exito"] is True
+    assert len(res_data_a["citas"]) > 0
+    assert res_data_a["prioridad"] == "Alta"
+    assert res_data_a["limite_alcanzado"] is False
+    assert res_data_a["iteraciones_ejecutadas"] <= 6
+
+    # 2. Fuera de Alcance: Pregunta sobre examen complexivo (eval/preguntas.json #15)
+    resp_b = client.post("/v1/agente/resolver", json={
+        "solicitud": "¿Cuál es la nota mínima para exonerarse del examen complexivo de software?",
+        "nombre_cliente": "Estudiante Titulación"
+    })
+    assert resp_b.status_code == 200
+    res_data_b = resp_b.json()
+    assert res_data_b["exito"] is True
+    assert len(res_data_b["citas"]) == 0
+    assert "No dispongo de un procedimiento técnico registrado" in res_data_b["diagnostico_final"]
+    assert "Secretaría General" in res_data_b["diagnostico_final"]
+
+    # 3. Consulta de herramientas disponibles
+    resp_tools = client.get("/v1/agente/herramientas")
+    assert resp_tools.status_code == 200
+    datos_tools = resp_tools.json()
+    assert datos_tools["max_iteraciones"] == 6
+    assert "buscar_procedimiento_rag" in datos_tools["herramientas_permitidas"]
+
+
+
 
 
 
