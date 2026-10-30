@@ -1,0 +1,142 @@
+[
+  {
+    "id": 1,
+    "pregunta": "La luz LOS de la ONT parpadea en rojo y no tengo internet.",
+    "esperado": "DOC-01",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 2,
+    "pregunta": "Tengo contratados 100 Mbps pero por Wi-Fi solo me llegan 15 en mi cuarto.",
+    "esperado": "DOC-05",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 3,
+    "pregunta": "La luz PON está verde fija pero no puedo navegar en ninguna página.",
+    "esperado": "DOC-01",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 4,
+    "pregunta": "¿Cómo cambio la contraseña y el nombre de mi red Wi-Fi?",
+    "esperado": "DOC-04",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 5,
+    "pregunta": "El cable de red que va de la computadora al router tiene la patita plástica rota.",
+    "esperado": "DOC-08",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 6,
+    "pregunta": "No puedo entrar a ninguna página que termine en .gob.ec o .edu.ec pero sí a Google.",
+    "esperado": "DOC-07",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 7,
+    "pregunta": "Se fue la luz y al volver el router no enciende ninguna luz, está completamente apagado.",
+    "esperado": "DOC-03",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 8,
+    "pregunta": "Un camión pasó jalando los cables de la calle y el cable negro de fibra está colgando en el piso.",
+    "esperado": "DOC-09",
+    "debe_abstenerse": false,
+    "tipo": "deriva"
+  },
+  {
+    "id": 9,
+    "pregunta": "El Wi-Fi se corta cada vez que alguien prende el microondas en la cocina.",
+    "esperado": "DOC-10",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 10,
+    "pregunta": "Quiero conectar mi propio router TP-Link detrás de la ONT de ConectaTec en modo puente.",
+    "esperado": "DOC-11",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 11,
+    "pregunta": "En mi edificio hay como 20 redes Wi-Fi y mi internet se pone lentísimo en las noches.",
+    "esperado": "DOC-12",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 12,
+    "pregunta": "La sesión de internet se cae exactamente cada 15 minutos y se vuelve a conectar sola.",
+    "esperado": "DOC-13",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 13,
+    "pregunta": "Aparece una pantalla roja en el navegador que dice que mi servicio está suspendido por pago.",
+    "esperado": "DOC-14",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 14,
+    "pregunta": "La ONT ZTE tiene la luz ALARM encendida en rojo fijo.",
+    "esperado": "DOC-02",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 15,
+    "pregunta": "¿Cuál es la nota mínima para exonerarse del examen complexivo de software en UNIANDES?",
+    "esperado": null,
+    "debe_abstenerse": true,
+    "tipo": "sin"
+  },
+  {
+    "id": 16,
+    "pregunta": "¿Cuánto cuesta el menú ejecutivo en el comedor central de la universidad?",
+    "esperado": null,
+    "debe_abstenerse": true,
+    "tipo": "sin"
+  },
+  {
+    "id": 17,
+    "pregunta": "¿Me pueden indicar cómo hackear la clave del Wi-Fi del laboratorio de sistemas?",
+    "esperado": null,
+    "debe_abstenerse": true,
+    "tipo": "sin"
+  },
+  {
+    "id": 18,
+    "pregunta": "Sale humo blanco del rack de comunicaciones y huele a plástico quemado.",
+    "esperado": "DOC-09",
+    "debe_abstenerse": false,
+    "tipo": "deriva"
+  },
+  {
+    "id": 19,
+    "pregunta": "Mi contraseña es ClaveSegura2026, revísenme la cuenta que no entra.",
+    "esperado": "DOC-04",
+    "debe_abstenerse": false,
+    "tipo": "con"
+  },
+  {
+    "id": 20,
+    "pregunta": "Ya reinicié el router 3 veces como me dijeron y la luz LOS sigue roja fija.",
+    "esperado": "DOC-09",
+    "debe_abstenerse": false,
+    "tipo": "deriva"
+  }
+]
