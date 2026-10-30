@@ -313,35 +313,36 @@ def tool_consultar_estado_nodo(params: ParamsConsultarEstadoNodo) -> ResultadoCo
 
 def tool_registrar_ticket_kanban(params: ParamsRegistrarTicketKanban) -> ResultadoRegistrarTicketKanban:
     """Implementación determinista: registra el ticket en base de datos SQLite."""
-    from app.database import obtener_conexion
-    
+    from app.database import guardar_ticket
+
     codigo = f"TCK-{hashlib.md5(f'{params.email_cliente}{datetime.now().isoformat()}'.encode()).hexdigest()[:8].upper()}"
-    conn = obtener_conexion()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO tickets (
-            ticket_codigo, fecha_creacion, nombre_cliente, email_cliente,
-            descripcion_problema, categoria, impacto, urgencia, prioridad,
-            sla_minutos, descripcion_sla, solucion_propuesta, estado
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        codigo,
-        datetime.now().strftime("%Y-%m-%d %H:%M"),
-        params.nombre_cliente,
-        params.email_cliente,
-        params.descripcion_problema,
-        params.categoria,
-        "Medio",
-        "Media",
-        params.prioridad,
-        params.sla_minutos,
-        f"SLA Máximo de {params.sla_minutos} minutos",
-        params.solucion_propuesta,
-        "nuevo"
-    ))
-    ticket_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
+    datos_ticket = {
+        "ticket_codigo": codigo,
+        "fecha_creacion": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "nombre_cliente": params.nombre_cliente,
+        "email_cliente": params.email_cliente,
+        "descripcion_problema": params.descripcion_problema,
+        "categoria": params.categoria,
+        "impacto": "Medio",
+        "urgencia": "Media",
+        "prioridad": params.prioridad,
+        "sla_minutos": params.sla_minutos,
+        "descripcion_sla": f"SLA Máximo de {params.sla_minutos} minutos",
+        "solucion_propuesta": params.solucion_propuesta,
+        "citas": [{
+            "documento_id": params.documento_id,
+            "titulo_documento": f"Manual Oficial {params.documento_id}",
+            "paso_exacto": "Paso 1: Procedimiento de Referencia",
+            "fragmento_aplicado": params.solucion_propuesta[:200]
+        }] if params.documento_id else [],
+        "estado": "nuevo",
+        "requiere_revision_humana": False,
+        "metadatos_ia": {
+            "proveedor": "agente-react",
+            "modelo": "controlado-determinista"
+        }
+    }
+    ticket_id = guardar_ticket(datos_ticket)
 
     return ResultadoRegistrarTicketKanban(
         ticket_id=ticket_id,
@@ -387,7 +388,10 @@ def tool_consultar_calendario_soporte(params: ParamsConsultarCalendarioSoporte) 
     dt = None
     if params.fecha_iso:
         try:
-            dt = datetime.fromisoformat(params.fecha_iso.strip()[:10])
+            texto = params.fecha_iso.strip()
+            if len(texto) == 10:
+                texto += "T10:00:00"
+            dt = datetime.fromisoformat(texto)
         except Exception:
             dt = None
 

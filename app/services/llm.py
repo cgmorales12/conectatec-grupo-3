@@ -95,6 +95,40 @@ def anonimizar_datos_sensibles(texto: str) -> str:
     return PATRON_PASSWORD.sub(r'\1: [CONFIDENCIAL_REMOVIDO]', texto)
 
 
+def construir_prompt_triaje(
+    texto_usuario: str,
+    version_prompt: str = "v3",
+    anonimizar: bool = True
+) -> Dict[str, str]:
+    """
+    Construye de forma determinista el prompt estructurado para el triaje de incidentes.
+
+    Aplica las 4 capas de seguridad y optimización:
+    1. Sanitización de contraseñas/credenciales según Art. 23 LOPDP Ecuador.
+    2. Carga del System Prompt versionado bajo método R.E.C.E.T.A. (v1, v2 o v3).
+    3. Aislamiento semántico estricto con etiquetas XML <solicitud>...</solicitud> (OWASP LLM01).
+    4. Garantía de estabilidad de prefijo para Context Caching de Gemini (sin timestamps efímeros).
+
+    Retorna un diccionario estructurado con:
+    - 'texto_original': texto ingresado por el usuario.
+    - 'texto_seguro': texto tras anonimización LOPDP.
+    - 'prompt_sistema': directiva base del analista senior.
+    - 'prompt_completo': cadena final enviada al LLM con delimitación XML.
+    - 'version_prompt': versión del system prompt utilizada.
+    """
+    texto_seguro = anonimizar_datos_sensibles(texto_usuario) if anonimizar else texto_usuario
+    prompt_sistema = cargar_prompt_sistema(version_prompt)
+    prompt_completo = f"{prompt_sistema}\n\n<solicitud>\n{texto_seguro}\n</solicitud>"
+
+    return {
+        "texto_original": texto_usuario,
+        "texto_seguro": texto_seguro,
+        "prompt_sistema": prompt_sistema,
+        "prompt_completo": prompt_completo,
+        "version_prompt": version_prompt
+    }
+
+
 # ============================================================================
 # Excepciones Específicas de Resiliencia del Proveedor LLM
 # ============================================================================
@@ -158,6 +192,15 @@ class ClienteLLM:
         """Carga y retorna el texto del system prompt activo."""
         return cargar_prompt_sistema(self.version_prompt)
 
+    def construir_prompt(self, texto_usuario: str, anonimizar: bool = True) -> str:
+        """Construye el prompt delimitado bajo la versión activa del sistema."""
+        datos = construir_prompt_triaje(
+            texto_usuario=texto_usuario,
+            version_prompt=self.version_prompt,
+            anonimizar=anonimizar
+        )
+        return datos["prompt_completo"]
+
     def cambiar_proveedor(self, nuevo_proveedor: str) -> str:
         """
         Permite cambiar dinámicamente el proveedor de inferencia activo (ej. 'gemini', 'groq', 'conmutador-local-offline').
@@ -215,12 +258,10 @@ class ClienteLLM:
             )
             return clasificacion, metadatos
 
-        # Capa 1: Sanitización LOPDP
-        texto_seguro = anonimizar_datos_sensibles(texto_usuario)
-
-        # Capa 2: Delimitación semántica anti-inyección con System Prompt versionado
-        prompt_sistema = self.obtener_prompt_sistema()
-        prompt_usuario = f"{prompt_sistema}\n\n<solicitud>\n{texto_seguro}\n</solicitud>"
+        # Capa 1 y 2: Sanitización LOPDP y Delimitación semántica anti-inyección con System Prompt versionado
+        info_prompt = construir_prompt_triaje(texto_usuario, version_prompt=self.version_prompt)
+        texto_seguro = info_prompt["texto_seguro"]
+        prompt_usuario = info_prompt["prompt_completo"]
 
         motivo_fallo = None
 

@@ -155,7 +155,20 @@ def obtener_todos_los_tickets():
     tickets_out = []
     
     for t in tickets_db:
-        citas_obj = [CitaRAG(**c) for c in t["citas"]]
+        citas_obj = []
+        for c in t.get("citas", []):
+            try:
+                citas_obj.append(CitaRAG(**c))
+            except Exception:
+                doc_id = c.get("documento_id", "DOC-01") if isinstance(c, dict) else "DOC-01"
+                citas_obj.append(CitaRAG(
+                    documento_id=doc_id,
+                    titulo_documento=c.get("titulo_documento", f"Manual Oficial {doc_id}") if isinstance(c, dict) else f"Manual Oficial {doc_id}",
+                    paso_exacto=c.get("paso_exacto", "Paso de Referencia") if isinstance(c, dict) else "Paso de Referencia",
+                    fragmento_aplicado=c.get("fragmento_aplicado", "Procedimiento técnico registrado") if isinstance(c, dict) else "Procedimiento técnico registrado",
+                    vigencia=c.get("vigencia") if isinstance(c, dict) else None,
+                    url=c.get("url") if isinstance(c, dict) else None
+                ))
         metadatos_obj = MetadatosIA(**t["metadatos_ia"])
         t_dict = dict(t)
         t_dict["citas"] = citas_obj

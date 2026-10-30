@@ -19,6 +19,9 @@ def _obtener_conexion():
     conn.row_factory = sqlite3.Row
     return conn
 
+# Alias público de conexión para herramientas del agente y tareas administrativas
+obtener_conexion = _obtener_conexion
+
 def inicializar_bd():
     """Crea la tabla de tickets si no existe y aplica migraciones automáticas."""
     conn = _obtener_conexion()

@@ -42,7 +42,7 @@ Los resultados consolidados corresponden a la ejecución contra el conjunto dora
 | **Cinta de Triaje** | Errores silenciosos | **0 estricto** | **0** | ✅ Cumplida | Ningún caso crítico o de riesgo fue procesado como automático inadvertidamente. |
 | **Cinta de Triaje** | Tasa de revisión humana | $\le 45.0\%$ | **40.0%** (8/20) | ✅ Cumplida | El 60% restante se resolvió automáticamente o se derivó según SLA sin saturar al técnico. |
 | **Agente ReAct** | Tasa de tareas cumplidas | $\ge 90.0\%$ | **100.0%** (5/5) | ✅ Superada | Supera camino feliz, corte forzoso por `MAX_ITER`, abstención, rechazo de tools y HITL. |
-| **Pruebas Unitarias** | Pytest sin API externa | $100.0\%$ | **100.0%** (42/42) | ✅ Cumplida | 42 pruebas deterministas ejecutadas en 13.08s con **$0.00 de costo de inferencia**. |
+| **Pruebas Unitarias** | Pytest sin API externa | $100.0\%$ | **100.0%** (69/69) | ✅ Cumplida | 69 pruebas (42 endpoints, 16 herramientas agente, 11 construcción de prompt) en 10.33s con **$0.00 de costo de inferencia**. |
 
 ---
 
@@ -202,3 +202,4 @@ Ante preguntas técnicas del docente evaluador **Heyler Fabio Guaza**, el equipo
 > **Respuesta:** Implementando dos compuertas arquitectónicas (ADR-012):
 > 1. **Lista Blanca Inviolable (Whitelist):** El agente ReAct solo puede invocar las herramientas registradas en `CATALOGO_HERRAMIENTAS`. Intentos de ejecutar comandos shell o borrar la base de datos son interceptados con rechazo de seguridad en código determinista.
 > 2. **Compuerta Human-in-the-Loop (HITL):** Antes de registrar un ticket en Kanban, enviar un correo oficial al docente o despachar una cuadrilla física con fusionadora óptica, el sistema genera una orden propuesta y **pausa la ejecución** hasta recibir la aprobación firmada del operador humano.
+
