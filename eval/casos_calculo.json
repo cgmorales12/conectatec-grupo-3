@@ -1,0 +1,149 @@
+[
+  {
+    "id": "CALC-01",
+    "tipo": "prioridad_itil",
+    "descripcion": "Cálculo de Prioridad y SLA para corte masivo crítico (Impacto Alto x Urgencia Alta)",
+    "entrada": {
+      "impacto": "Alto",
+      "urgencia": "Alta"
+    },
+    "esperado": {
+      "prioridad": "Alta",
+      "sla_minutos_posibles": [15, 120],
+      "descripcion_contiene": "inmediata"
+    }
+  },
+  {
+    "id": "CALC-02",
+    "tipo": "prioridad_itil",
+    "descripcion": "Cálculo de Prioridad y SLA para degradación de enlace (Impacto Medio x Urgencia Media)",
+    "entrada": {
+      "impacto": "Medio",
+      "urgencia": "Media"
+    },
+    "esperado": {
+      "prioridad": "Media",
+      "sla_minutos_posibles": [240, 480],
+      "descripcion_contiene": "horas"
+    }
+  },
+  {
+    "id": "CALC-03",
+    "tipo": "prioridad_itil",
+    "descripcion": "Cálculo de Prioridad y SLA para consulta informativa (Impacto Bajo x Urgencia Baja)",
+    "entrada": {
+      "impacto": "Bajo",
+      "urgencia": "Baja"
+    },
+    "esperado": {
+      "prioridad": "Baja",
+      "sla_minutos_posibles": [480, 1440, 2880],
+      "descripcion_contiene": "horas"
+    }
+  },
+  {
+    "id": "CALC-04",
+    "tipo": "presupuesto_reparacion",
+    "descripcion": "Cálculo determinista de presupuesto: Reemplazo de ONT GPON ($45) + 2 Horas Técnicas ($15 c/u)",
+    "entrada": {
+      "items": [
+        {"codigo": "EQ-ONT-GPON-W6", "cantidad": 1.0},
+        {"codigo": "SRV-HORA-TECNICA-HABIL", "cantidad": 2.0}
+      ],
+      "iva_porcentaje": 0.15
+    },
+    "esperado": {
+      "subtotal_usd": 75.00,
+      "iva_usd": 11.25,
+      "total_usd": 86.25,
+      "moneda": "USD"
+    }
+  },
+  {
+    "id": "CALC-05",
+    "tipo": "presupuesto_reparacion",
+    "descripcion": "Cálculo determinista de presupuesto: 10m de cable drop óptico ($0.45/m) + 2 conectores SC/APC ($2.50 c/u) + 1 empalme fusión ($8.00)",
+    "entrada": {
+      "items": [
+        {"codigo": "MAT-DROP-OPTICO-M", "cantidad": 10.0},
+        {"codigo": "MAT-CONECTOR-SCAPC", "cantidad": 2.0},
+        {"codigo": "SRV-FUSION-FIBRA-HILO", "cantidad": 1.0}
+      ],
+      "iva_porcentaje": 0.15
+    },
+    "esperado": {
+      "subtotal_usd": 17.50,
+      "iva_usd": 2.63,
+      "total_usd": 20.13,
+      "moneda": "USD"
+    }
+  },
+  {
+    "id": "CALC-06",
+    "tipo": "penalizacion_sla_sbu",
+    "descripcion": "Penalización contractual por 1.0 hora de retraso basada en SBU Ecuador 2026 ($482.00 a razón de 2% por hora)",
+    "entrada": {
+      "horas_retraso": 1.0
+    },
+    "esperado": {
+      "salario_basico_unificado": 482.00,
+      "costo_penalizacion_por_hora_usd": 9.64,
+      "monto_penalizacion_total_usd": 9.64,
+      "moneda": "USD"
+    }
+  },
+  {
+    "id": "CALC-07",
+    "tipo": "penalizacion_sla_sbu",
+    "descripcion": "Penalización contractual por 3.0 horas de retraso basada en SBU Ecuador 2026 ($482.00 a razón de 2% por hora)",
+    "entrada": {
+      "horas_retraso": 3.0
+    },
+    "esperado": {
+      "salario_basico_unificado": 482.00,
+      "costo_penalizacion_por_hora_usd": 9.64,
+      "monto_penalizacion_total_usd": 28.92,
+      "moneda": "USD"
+    }
+  },
+  {
+    "id": "CALC-08",
+    "tipo": "calendario_feriado",
+    "descripcion": "Detección de feriado nacional obligatorio en Ecuador: Año Nuevo (2026-01-01)",
+    "entrada": {
+      "fecha": "2026-01-01"
+    },
+    "esperado": {
+      "es_habil": false,
+      "motivo_contiene": "Ano Nuevo",
+      "guardia_noc_24_7_activa": true
+    }
+  },
+  {
+    "id": "CALC-09",
+    "tipo": "calendario_feriado",
+    "descripcion": "Detección de feriado nacional obligatorio en Ecuador: Día del Trabajo (2026-05-01)",
+    "entrada": {
+      "fecha": "2026-05-01"
+    },
+    "esperado": {
+      "es_habil": false,
+      "motivo_contiene": "Dia Internacional del Trabajo",
+      "guardia_noc_24_7_activa": true
+    }
+  },
+  {
+    "id": "CALC-10",
+    "tipo": "calendario_feriado",
+    "descripcion": "Detección de feriado nacional obligatorio en Ecuador: Navidad (2026-12-25)",
+    "entrada": {
+      "fecha": "2026-12-25"
+    },
+    "esperado": {
+      "es_habil": false,
+      "motivo_contiene": "Navidad",
+      "guardia_noc_24_7_activa": true
+    }
+  }
+]
+

@@ -1,0 +1,354 @@
+{
+  "timestamp": "2026-10-30 00:39:33",
+  "duracion_segundos": 20.78,
+  "aprobado_global": true,
+  "metricas": {
+    "rag_hit_5": 1.0,
+    "abstencion_tasa": 1.0,
+    "calculos_tasa": 1.0,
+    "flujo_errores_silenciosos": 0,
+    "flujo_tasa_revision": 0.4,
+    "agente_cumplimiento": 1.0
+  },
+  "detalles": {
+    "rag": {
+      "total_preguntas": 20,
+      "total_con_manual": 17,
+      "aciertos_rag": 17,
+      "tasa_rag": 1.0,
+      "total_abstencion": 3,
+      "aciertos_abstencion": 3,
+      "tasa_abstencion": 1.0,
+      "detalles": [
+        {
+          "id": 1,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-01",
+          "obtenido": [
+            "DOC-11",
+            "DOC-01",
+            "DOC-01",
+            "DOC-03",
+            "DOC-03"
+          ],
+          "exito": true
+        },
+        {
+          "id": 2,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-05",
+          "obtenido": [
+            "DOC-06",
+            "DOC-06",
+            "DOC-05",
+            "DOC-04",
+            "DOC-06"
+          ],
+          "exito": true
+        },
+        {
+          "id": 3,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-01",
+          "obtenido": [
+            "DOC-14",
+            "DOC-14",
+            "DOC-14",
+            "DOC-01",
+            "DOC-14"
+          ],
+          "exito": true
+        },
+        {
+          "id": 4,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-04",
+          "obtenido": [
+            "DOC-04",
+            "DOC-04",
+            "DOC-04",
+            "DOC-04",
+            "DOC-12"
+          ],
+          "exito": true
+        },
+        {
+          "id": 5,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-08",
+          "obtenido": [
+            "DOC-08",
+            "DOC-08",
+            "DOC-09",
+            "DOC-01",
+            "DOC-09"
+          ],
+          "exito": true
+        },
+        {
+          "id": 6,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-07",
+          "obtenido": [
+            "DOC-07",
+            "DOC-07",
+            "DOC-14",
+            "DOC-07",
+            "DOC-14"
+          ],
+          "exito": true
+        },
+        {
+          "id": 7,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-03",
+          "obtenido": [
+            "DOC-03",
+            "DOC-03",
+            "DOC-03",
+            "DOC-03",
+            "DOC-03"
+          ],
+          "exito": true
+        },
+        {
+          "id": 8,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-09",
+          "obtenido": [
+            "DOC-09",
+            "DOC-09",
+            "DOC-03",
+            "DOC-06",
+            "DOC-08"
+          ],
+          "exito": true
+        },
+        {
+          "id": 9,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-10",
+          "obtenido": [
+            "DOC-13",
+            "DOC-10",
+            "DOC-04",
+            "DOC-10",
+            "DOC-12"
+          ],
+          "exito": true
+        },
+        {
+          "id": 10,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-11",
+          "obtenido": [
+            "DOC-11",
+            "DOC-11",
+            "DOC-03",
+            "DOC-11",
+            "DOC-08"
+          ],
+          "exito": true
+        },
+        {
+          "id": 11,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-12",
+          "obtenido": [
+            "DOC-04",
+            "DOC-12",
+            "DOC-06",
+            "DOC-12",
+            "DOC-11"
+          ],
+          "exito": true
+        },
+        {
+          "id": 12,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-13",
+          "obtenido": [
+            "DOC-13",
+            "DOC-13",
+            "DOC-13",
+            "DOC-13",
+            "DOC-13"
+          ],
+          "exito": true
+        },
+        {
+          "id": 13,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-14",
+          "obtenido": [
+            "DOC-14",
+            "DOC-14",
+            "DOC-14",
+            "DOC-14",
+            "DOC-14"
+          ],
+          "exito": true
+        },
+        {
+          "id": 14,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-02",
+          "obtenido": [
+            "DOC-09",
+            "DOC-01",
+            "DOC-02",
+            "DOC-01",
+            "DOC-02"
+          ],
+          "exito": true
+        },
+        {
+          "id": 15,
+          "tipo": "abstencion",
+          "esperado": "ABSTENCIÓN",
+          "obtenido": "ABSTENIDO",
+          "exito": true
+        },
+        {
+          "id": 16,
+          "tipo": "abstencion",
+          "esperado": "ABSTENCIÓN",
+          "obtenido": "ABSTENIDO",
+          "exito": true
+        },
+        {
+          "id": 17,
+          "tipo": "abstencion",
+          "esperado": "ABSTENCIÓN",
+          "obtenido": "ABSTENIDO",
+          "exito": true
+        },
+        {
+          "id": 18,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-09",
+          "obtenido": [
+            "DOC-09",
+            "DOC-09",
+            "DOC-09",
+            "DOC-09",
+            "DOC-09"
+          ],
+          "exito": true
+        },
+        {
+          "id": 19,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-04",
+          "obtenido": [
+            "DOC-04",
+            "DOC-14",
+            "DOC-14",
+            "DOC-03",
+            "DOC-14"
+          ],
+          "exito": true
+        },
+        {
+          "id": 20,
+          "tipo": "recuperacion_rag",
+          "esperado": "DOC-09",
+          "obtenido": [
+            "DOC-03",
+            "DOC-03",
+            "DOC-09",
+            "DOC-03",
+            "DOC-09"
+          ],
+          "exito": true
+        }
+      ]
+    },
+    "calculos": {
+      "total_casos_calculo": 10,
+      "aciertos": 10,
+      "tasa": 1.0,
+      "detalles": [
+        {
+          "id": "CALC-01",
+          "tipo": "prioridad_itil",
+          "exito": true,
+          "obtenido": "Alta (15m)"
+        },
+        {
+          "id": "CALC-02",
+          "tipo": "prioridad_itil",
+          "exito": true,
+          "obtenido": "Media (240m)"
+        },
+        {
+          "id": "CALC-03",
+          "tipo": "prioridad_itil",
+          "exito": true,
+          "obtenido": "Baja (1440m)"
+        },
+        {
+          "id": "CALC-04",
+          "tipo": "presupuesto_reparacion",
+          "exito": true,
+          "obtenido": "$86.25 USD"
+        },
+        {
+          "id": "CALC-05",
+          "tipo": "presupuesto_reparacion",
+          "exito": true,
+          "obtenido": "$20.12 USD"
+        },
+        {
+          "id": "CALC-06",
+          "tipo": "penalizacion_sla_sbu",
+          "exito": true,
+          "obtenido": "$9.64 USD"
+        },
+        {
+          "id": "CALC-07",
+          "tipo": "penalizacion_sla_sbu",
+          "exito": true,
+          "obtenido": "$28.92 USD"
+        },
+        {
+          "id": "CALC-08",
+          "tipo": "calendario_feriado",
+          "exito": true,
+          "obtenido": "Feriado: Ano Nuevo"
+        },
+        {
+          "id": "CALC-09",
+          "tipo": "calendario_feriado",
+          "exito": true,
+          "obtenido": "Feriado: Dia Internacional del Trabajo"
+        },
+        {
+          "id": "CALC-10",
+          "tipo": "calendario_feriado",
+          "exito": true,
+          "obtenido": "Feriado: Navidad"
+        }
+      ]
+    },
+    "flujo": {
+      "total_casos_flujo": 20,
+      "automaticos": 9,
+      "revision": 8,
+      "derivados": 3,
+      "pct_revision": 0.4,
+      "pct_automatico": 0.45,
+      "errores_silenciosos": 0
+    },
+    "agente": {
+      "total_escenarios": 5,
+      "aciertos": 5,
+      "tasa": 1.0,
+      "camino_feliz": true,
+      "fuera_de_alcance": true,
+      "corte_tope": true,
+      "rechazo_prohibida": true,
+      "guardrail_hitl": true
+    }
+  }
+}
