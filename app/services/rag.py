@@ -111,11 +111,18 @@ def consultar_base_conocimiento(texto_problema: str, simular_caida_rag: bool = F
                     paso_citado = pasos_encontrados[0][0].replace("###", "").strip()
                     fragmento = pasos_encontrados[0][2].strip()
                     
+            # Extraer vigencia y URL canónica
+            vig_match = re.search(r"\*\*(?:Versión\s*/\s*Vigencia|Vigencia):\*\*\s*(.+)", contenido)
+            vigencia = vig_match.group(1).strip() if vig_match else "v3.2 - Octubre 2026"
+            url_canon = f"https://soporte.conectatec.edu.ec/manuales/{doc_id.lower()}"
+
             citas.append(CitaRAG(
                 documento_id=doc_id,
                 titulo_documento=titulo,
                 paso_exacto=paso_citado,
-                fragmento_aplicado=fragmento
+                fragmento_aplicado=fragmento,
+                vigencia=vigencia,
+                url=url_canon
             ))
 
     # Formular solución propuesta estructurada

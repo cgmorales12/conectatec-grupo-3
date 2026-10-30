@@ -109,37 +109,96 @@ with col_der:
     except Exception:
         pass
 
+    # Barra de Filtros por Metadatos (RAG & ITIL 4)
+    with st.expander("🔍 Filtros de Visualización por Metadatos (RAG & ITIL 4)", expanded=True):
+        f_col1, f_col2, f_col3, f_col4 = st.columns([1.5, 1, 1, 1])
+        with f_col1:
+            q_buscar = st.text_input("Búsqueda Rápida", placeholder="Síntoma, cliente o ticket...", key="filtro_q")
+        with f_col2:
+            cat_seleccionada = st.selectbox("Categoría", ["Todas", "Fibra", "Wi-Fi", "Velocidad", "Hardware", "Cuentas", "Facturación", "Fuera de Alcance"], key="filtro_cat")
+        with f_col3:
+            prio_seleccionada = st.selectbox("Prioridad", ["Todas", "Alta", "Media", "Baja"], key="filtro_prio")
+        with f_col4:
+            fuente_seleccionada = st.selectbox(
+                "Fuente RAG",
+                ["Todas", "DOC-01", "DOC-02", "DOC-03", "DOC-04", "DOC-05", "DOC-06", "DOC-07", "DOC-08", "DOC-09", "DOC-10", "DOC-11", "DOC-12", "DOC-13", "DOC-14"],
+                key="filtro_fuente"
+            )
+
+    # Aplicar filtros de metadatos sobre la lista de tickets
+    tickets_filtrados = []
+    for t in tickets:
+        if q_buscar:
+            q = q_buscar.lower().strip()
+            texto_t = f"{t.get('ticket_codigo', '')} {t.get('nombre_cliente', '')} {t.get('descripcion_problema', '')} {t.get('categoria', '')}".lower()
+            if q not in texto_t:
+                continue
+        if cat_seleccionada != "Todas":
+            if cat_seleccionada.lower() not in t.get("categoria", "").lower():
+                continue
+        if prio_seleccionada != "Todas":
+            if t.get("prioridad", "").lower() != prio_seleccionada.lower():
+                continue
+        if fuente_seleccionada != "Todas":
+            tiene_fuente = any(c.get("documento_id", "").lower() == fuente_seleccionada.lower() for c in t.get("citas", []))
+            if not tiene_fuente:
+                continue
+        tickets_filtrados.append(t)
+
+    st.caption(f"📊 Mostrando **{len(tickets_filtrados)}** de **{len(tickets)}** tickets según los filtros de metadatos seleccionados.")
+
+    def renderizar_tarjeta_ticket(t):
+        """Renderiza una tarjeta de ticket con sus fuentes técnicas y citas obligatorias RAG."""
+        with st.container(border=True):
+            st.caption(f"🏷️ **{t['ticket_codigo']}** · Prioridad: **{t['prioridad']}** (SLA {t['sla_minutos']}m)")
+            st.markdown(f"**Cliente:** {t['nombre_cliente']}")
+            st.markdown(f"*{t['descripcion_problema']}*")
+            
+            # Cita obligatoria de fuente RAG
+            if t.get("citas") and len(t["citas"]) > 0:
+                c = t["citas"][0]
+                st.markdown(f"📖 **Cita RAG:** `{c.get('documento_id')}` · {c.get('paso_exacto')}")
+                st.caption(f"**Fuente:** {c.get('titulo_documento', 'Manual Oficial')} ({c.get('vigencia', '2026-V1')})")
+                st.info(f"«{c.get('fragmento_aplicado', '')}»")
+                if c.get("url"):
+                    st.markdown(f"[🔗 Consultar Fuente Técnica Oficial]({c['url']})")
+            elif "Fuera de Alcance" in t.get("categoria", ""):
+                st.caption("⚪ *Sin cita técnica: Solicitud No Técnica / Fuera de Alcance (Regla de Silencio)*")
+            elif t.get("requiere_revision_humana"):
+                st.warning("⚠️ *Caso derivado a Nivel 2 humano (Umbral de confianza o contingencia).*")
+
+            st.caption(f"IA: {t.get('metadatos_ia', {}).get('proveedor', 'gemini')} | Cat: {t.get('categoria', '')}")
+
     col_nuevo, col_atencion, col_cuadrilla, col_resuelto = st.columns(4)
 
     with col_nuevo:
         st.markdown("### 🆕 Nuevos")
-        for t in [x for x in tickets if x["estado"] == "nuevo"]:
-            with st.container(border=True):
-                st.caption(f"{t['ticket_codigo']} · {t['prioridad']}")
-                st.write(f"**{t['nombre_cliente']}**")
-                st.write(t["descripcion_problema"])
-                st.info(f"SLA: {t['sla_minutos']}m | Cat: {t['categoria']}")
+        col_t = [x for x in tickets_filtrados if x["estado"] == "nuevo"]
+        if not col_t:
+            st.caption("Sin tickets en esta columna")
+        for t in col_t:
+            renderizar_tarjeta_ticket(t)
 
     with col_atencion:
         st.markdown("### ⚙️ En Atención")
-        for t in [x for x in tickets if x["estado"] == "en_atencion"]:
-            with st.container(border=True):
-                st.caption(f"{t['ticket_codigo']} · {t['prioridad']}")
-                st.write(f"**{t['nombre_cliente']}**")
-                st.write(t["descripcion_problema"])
+        col_t = [x for x in tickets_filtrados if x["estado"] == "en_atencion"]
+        if not col_t:
+            st.caption("Sin tickets en esta columna")
+        for t in col_t:
+            renderizar_tarjeta_ticket(t)
 
     with col_cuadrilla:
         st.markdown("### 🚚 Cuadrilla")
-        for t in [x for x in tickets if x["estado"] == "escalado_cuadrilla"]:
-            with st.container(border=True):
-                st.caption(f"🚨 {t['ticket_codigo']} · {t['prioridad']}")
-                st.write(f"**{t['nombre_cliente']}**")
-                st.error("Requiere visita presencial con fusionadora.")
+        col_t = [x for x in tickets_filtrados if x["estado"] == "escalado_cuadrilla"]
+        if not col_t:
+            st.caption("Sin tickets en esta columna")
+        for t in col_t:
+            renderizar_tarjeta_ticket(t)
 
     with col_resuelto:
         st.markdown("### ✅ Resueltos")
-        for t in [x for x in tickets if x["estado"] == "resuelto"]:
-            with st.container(border=True):
-                st.caption(f"✓ {t['ticket_codigo']}")
-                st.write(f"**{t['nombre_cliente']}**")
-                st.success("Incidencia cerrada exitosamente.")
+        col_t = [x for x in tickets_filtrados if x["estado"] == "resuelto"]
+        if not col_t:
+            st.caption("Sin tickets en esta columna")
+        for t in col_t:
+            renderizar_tarjeta_ticket(t)

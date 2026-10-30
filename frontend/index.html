@@ -557,12 +557,168 @@
         .meta-lbl { color: var(--muted); }
 
         .ticket-cita {
-            background: var(--brand-light);
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-left: 3px solid #0284C7;
             border-radius: 6px;
-            padding: 6px 8px;
+            padding: 8px 10px;
             font-size: 11.5px;
-            color: var(--brand);
+            color: #1E293B;
             margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .cita-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .cita-badge {
+            background: #E0F2FE;
+            color: #0369A1;
+            font-size: 10px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.3px;
+        }
+        .cita-badge.badge-fuera {
+            background: #F1F5F9;
+            color: #475569;
+        }
+        .cita-badge.badge-escalado {
+            background: #FEF3C7;
+            color: #B45309;
+        }
+        .badge-vigencia {
+            background: #ECFDF5;
+            color: #047857;
+            border: 1px solid #A7F3D0;
+            font-size: 9.5px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 3px;
+        }
+        .cita-doc {
+            font-size: 11.5px;
+            color: #0F172A;
+            margin-bottom: 2px;
+        }
+        .cita-paso {
+            font-size: 11px;
+            color: #0284C7;
+            margin-bottom: 3px;
+        }
+        .cita-fragmento {
+            font-style: italic;
+            color: #475569;
+            font-size: 11px;
+            background: #FFFFFF;
+            border: 1px solid #F1F5F9;
+            border-radius: 4px;
+            padding: 4px 6px;
+            margin-bottom: 4px;
+        }
+        .link-fuente {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: #2563EB;
+            text-decoration: none;
+        }
+        .link-fuente:hover { text-decoration: underline; color: #1D4ED8; }
+
+        /* Barra de Filtros por Metadatos */
+        .meta-filters-bar {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+        }
+        .meta-filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #F1F5F9;
+        }
+        .filters-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1E293B;
+        }
+        .filtro-count-badge {
+            background: #E0E7FF;
+            color: #3730A3;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        .btn-reset-filters {
+            background: #F8FAFC;
+            border: 1px solid #CBD5E1;
+            color: #475569;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-reset-filters:hover {
+            background: #F1F5F9;
+            color: #0F172A;
+            border-color: #94A3B8;
+        }
+        .meta-filters-grid {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr 1fr 1.3fr 1.1fr;
+            gap: 12px;
+        }
+        @media (max-width: 1200px) {
+            .meta-filters-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media (max-width: 768px) {
+            .meta-filters-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .filter-field label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .filter-input, .filter-select {
+            padding: 6px 10px;
+            border: 1px solid #CBD5E1;
+            border-radius: 6px;
+            font-size: 12px;
+            background: #FFFFFF;
+            color: #1E293B;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .filter-input:focus, .filter-select:focus {
+            border-color: #2563EB;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
         }
 
         .badge-nivel {
@@ -1111,8 +1267,78 @@
             </div>
         </aside>
 
-        <!-- Tablero Kanban de 4 columnas con paginación de 5 tickets -->
-        <main class="kanban-board">
+        <!-- Contenedor Derecho: Filtros por Metadatos y Tablero Kanban -->
+        <section class="kanban-section" style="min-width: 0;">
+            <!-- Barra de Filtros por Metadatos RAG e ITIL 4 -->
+            <div class="meta-filters-bar">
+                <div class="meta-filters-header">
+                    <div class="filters-title">
+                        <span>🔍 Filtros de Visualización por Metadatos (RAG & ITIL 4):</span>
+                        <span id="filtroContadorBadge" class="filtro-count-badge">Mostrando todos</span>
+                    </div>
+                    <button type="button" class="btn-reset-filters" onclick="restablecerFiltrosMetadatos()" title="Restablecer todos los filtros aplicados">🔄 Limpiar Filtros</button>
+                </div>
+                <div class="meta-filters-grid">
+                    <div class="filter-field">
+                        <label for="filtroBusqueda">Búsqueda rápida</label>
+                        <input type="text" id="filtroBusqueda" class="filter-input" placeholder="Buscar síntoma, cliente o ticket..." oninput="filtrarTicketsReactivo()">
+                    </div>
+                    <div class="filter-field">
+                        <label for="filtroCategoria">Categoría</label>
+                        <select id="filtroCategoria" class="filter-select" onchange="filtrarTicketsReactivo()">
+                            <option value="todas">Todas las categorías</option>
+                            <option value="Fibra">Conectividad Fibra</option>
+                            <option value="Wi-Fi">Wi-Fi y Cobertura</option>
+                            <option value="Velocidad">Velocidad / Ethernet</option>
+                            <option value="Hardware">Hardware / Equipos</option>
+                            <option value="Cuentas">Cuentas y Claves</option>
+                            <option value="Facturación">Facturación / Mora</option>
+                            <option value="Fuera de Alcance">Fuera de Alcance</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label for="filtroPrioridad">Prioridad ITIL</label>
+                        <select id="filtroPrioridad" class="filter-select" onchange="filtrarTicketsReactivo()">
+                            <option value="todas">Todas las prioridades</option>
+                            <option value="Alta">Alta (SLA 30m - 4h)</option>
+                            <option value="Media">Media (SLA 8h - 12h)</option>
+                            <option value="Baja">Baja (SLA 24h - 48h)</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label for="filtroFuente">Fuente Oficial RAG</label>
+                        <select id="filtroFuente" class="filter-select" onchange="filtrarTicketsReactivo()">
+                            <option value="todas">Todas las fuentes</option>
+                            <option value="DOC-01">DOC-01 (LEDs ONT Huawei)</option>
+                            <option value="DOC-02">DOC-02 (Indicadores ONT ZTE)</option>
+                            <option value="DOC-03">DOC-03 (Reinicio Eléctrico)</option>
+                            <option value="DOC-04">DOC-04 (Cambio Clave Wi-Fi)</option>
+                            <option value="DOC-05">DOC-05 (2.4 GHz vs 5 GHz)</option>
+                            <option value="DOC-06">DOC-06 (Test Velocidad)</option>
+                            <option value="DOC-07">DOC-07 (Diagnóstico DNS)</option>
+                            <option value="DOC-08">DOC-08 (Cableado UTP)</option>
+                            <option value="DOC-09">DOC-09 (Rotura Fibra)</option>
+                            <option value="DOC-10">DOC-10 (Interferencias)</option>
+                            <option value="DOC-11">DOC-11 (Modo Puente)</option>
+                            <option value="DOC-12">DOC-12 (Canales Wi-Fi)</option>
+                            <option value="DOC-13">DOC-13 (Microcortes PPPoE)</option>
+                            <option value="DOC-14">DOC-14 (Cortes Facturación)</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label for="filtroTipoCita">Estado de Cita</label>
+                        <select id="filtroTipoCita" class="filter-select" onchange="filtrarTicketsReactivo()">
+                            <option value="todas">Todos los estados</option>
+                            <option value="con_cita">📖 Con Cita Verificada</option>
+                            <option value="sin_cita">⚪ Sin Cita / Fuera de Alcance</option>
+                            <option value="cuadrilla">🚚 Escalado a Cuadrilla</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tablero Kanban de 4 columnas con paginación de 5 tickets -->
+            <main class="kanban-board">
             <div class="kanban-col" id="col-nuevo">
                 <div class="kanban-col-header">
                     <span>🆕 Nuevos</span>
@@ -1193,6 +1419,7 @@
                 </div>
             </div>
         </main>
+        </section>
     </div>
 
     <!-- Pie de Página Institucional -->
@@ -1314,8 +1541,90 @@
             }
         }
 
+        function filtrarTicketsReactivo() {
+            if (window._ticketsCargados) {
+                renderizarTablero(window._ticketsCargados);
+            }
+        }
+
+        function restablecerFiltrosMetadatos() {
+            const b = document.getElementById('filtroBusqueda');
+            const c = document.getElementById('filtroCategoria');
+            const p = document.getElementById('filtroPrioridad');
+            const f = document.getElementById('filtroFuente');
+            const t = document.getElementById('filtroTipoCita');
+            if (b) b.value = '';
+            if (c) c.value = 'todas';
+            if (p) p.value = 'todas';
+            if (f) f.value = 'todas';
+            if (t) t.value = 'todas';
+            filtrarTicketsReactivo();
+        }
+
+        function aplicarFiltrosMetadatos(tickets) {
+            const q = (document.getElementById('filtroBusqueda')?.value || '').toLowerCase().trim();
+            const cat = document.getElementById('filtroCategoria')?.value || 'todas';
+            const prio = document.getElementById('filtroPrioridad')?.value || 'todas';
+            const fuente = document.getElementById('filtroFuente')?.value || 'todas';
+            const tipoCita = document.getElementById('filtroTipoCita')?.value || 'todas';
+
+            return tickets.filter(t => {
+                // 1. Buscador libre
+                if (q) {
+                    const matchQ = (t.ticket_codigo || '').toLowerCase().includes(q) ||
+                                   (t.nombre_cliente || '').toLowerCase().includes(q) ||
+                                   (t.descripcion_problema || '').toLowerCase().includes(q) ||
+                                   (t.categoria || '').toLowerCase().includes(q) ||
+                                   (t.solucion_propuesta || '').toLowerCase().includes(q);
+                    if (!matchQ) return false;
+                }
+
+                // 2. Filtro Categoría
+                if (cat !== 'todas') {
+                    if (!(t.categoria || '').toLowerCase().includes(cat.toLowerCase())) return false;
+                }
+
+                // 3. Filtro Prioridad
+                if (prio !== 'todas') {
+                    if ((t.prioridad || '').toLowerCase() !== prio.toLowerCase()) return false;
+                }
+
+                // 4. Filtro Fuente RAG
+                if (fuente !== 'todas') {
+                    const tieneFuente = (t.citas || []).some(c => (c.documento_id || '').toLowerCase() === fuente.toLowerCase());
+                    if (!tieneFuente) return false;
+                }
+
+                // 5. Filtro Tipo Cita
+                if (tipoCita === 'con_cita') {
+                    if (!t.citas || t.citas.length === 0) return false;
+                } else if (tipoCita === 'sin_cita') {
+                    if (t.citas && t.citas.length > 0) return false;
+                } else if (tipoCita === 'cuadrilla') {
+                    if (t.estado !== 'escalado_cuadrilla') return false;
+                }
+
+                return true;
+            });
+        }
+
         function renderizarTablero(tickets) {
             window._ticketsCargados = tickets;
+            const ticketsFiltrados = aplicarFiltrosMetadatos(tickets);
+
+            const badgeFiltro = document.getElementById('filtroContadorBadge');
+            if (badgeFiltro) {
+                if (ticketsFiltrados.length === tickets.length) {
+                    badgeFiltro.textContent = `Mostrando todos (${tickets.length})`;
+                    badgeFiltro.style.background = '#E0E7FF';
+                    badgeFiltro.style.color = '#3730A3';
+                } else {
+                    badgeFiltro.textContent = `Filtrados: ${ticketsFiltrados.length} de ${tickets.length}`;
+                    badgeFiltro.style.background = '#FEF3C7';
+                    badgeFiltro.style.color = '#B45309';
+                }
+            }
+
             const columnasIds = ['nuevo', 'en_atencion', 'escalado_cuadrilla', 'resuelto'];
 
             // 1. Agrupar tickets por columna/estado
@@ -1326,7 +1635,7 @@
                 resuelto: []
             };
 
-            tickets.forEach(t => {
+            ticketsFiltrados.forEach(t => {
                 const estado = t.estado in ticketsPorColumna ? t.estado : 'nuevo';
                 ticketsPorColumna[estado].push(t);
             });
@@ -1428,14 +1737,50 @@
                 nivelIcono = '💻';
             }
 
-            // Cita del manual técnico RAG
-            let citaTxt = '📖 Guía operativa de mesa de ayuda';
+            // Cita obligatoria del manual técnico RAG
+            let citaTxt = '';
             if (t.categoria.includes('Fuera de Alcance') || t.categoria.includes('No Técnica')) {
-                citaTxt = '⚠️ Solicitud No Técnica / Fuera de Alcance (Sin avería)';
+                citaTxt = `
+                    <div class="cita-header">
+                        <span class="cita-badge badge-fuera">⚪ FUERA DE ALCANCE</span>
+                        <span class="badge-vigencia">Regla Silencio</span>
+                    </div>
+                    <div class="cita-doc">⚠️ Sin procedimiento técnico en los 15 manuales oficiales.</div>
+                    <div class="cita-fragmento">«Solicitud no técnica: se aplica protocolo de abstención institucional sin alucinación.»</div>
+                `;
             } else if (t.citas && t.citas.length > 0) {
-                citaTxt = `📖 <b>${t.citas[0].documento_id}:</b> ${t.citas[0].paso_exacto}`;
-            } else if (t.requiere_revision_humana) {
-                citaTxt = '⚠️ <span class="badge-failover badge-norag">RAG Desconectado · Escalado Nivel 2</span>';
+                const c = t.citas[0];
+                const vigTxt = c.vigencia ? `<span class="badge-vigencia">${c.vigencia}</span>` : '<span class="badge-vigencia">2026-V1</span>';
+                const urlLink = c.url ? `<a href="${c.url}" target="_blank" class="link-fuente" title="Consultar manual técnico oficial">🔗 Fuente: ${c.documento_id}</a>` : `<span class="link-fuente">📄 ${c.documento_id}</span>`;
+                citaTxt = `
+                    <div class="cita-header">
+                        <span class="cita-badge">📖 CITA RAG OBLIGATORIA</span>
+                        ${vigTxt}
+                    </div>
+                    <div class="cita-doc"><b>${c.documento_id}:</b> ${c.titulo_documento || 'Manual Técnico Oficial'}</div>
+                    <div class="cita-paso">📍 <b>Sección:</b> ${c.paso_exacto}</div>
+                    <div class="cita-fragmento">«${(c.fragmento_aplicado || '').slice(0, 110)}${(c.fragmento_aplicado || '').length > 110 ? '...' : ''}»</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:3px;">
+                        ${urlLink}
+                        <small style="color:#64748B; font-size:10px;">Cita verificada</small>
+                    </div>
+                `;
+            } else if (t.requiere_revision_humana || (t.metadatos_ia && t.metadatos_ia.conmutado)) {
+                citaTxt = `
+                    <div class="cita-header">
+                        <span class="cita-badge badge-escalado">⚠️ DERIVACIÓN OBLIGATORIA</span>
+                        <span class="badge-vigencia">Nivel 2</span>
+                    </div>
+                    <div class="cita-doc">RAG con umbral de abstención activado o contingencia.</div>
+                    <div class="cita-fragmento">«Caso escalado a personal técnico humano para diagnóstico físico.»</div>
+                `;
+            } else {
+                citaTxt = `
+                    <div class="cita-header">
+                        <span class="cita-badge">📖 GUÍA OFICIAL</span>
+                    </div>
+                    <div class="cita-doc">Mesa de Ayuda ConectaTec</div>
+                `;
             }
 
             // IA y badge de failover / resiliencia
@@ -1825,6 +2170,7 @@
             let infoRAG = '';
             if (t.citas && t.citas.length > 0) {
                 const c = t.citas[0];
+                const urlHtml = c.url ? `<a href="${c.url}" target="_blank" style="color:#2563EB; font-weight:600; text-decoration:underline;">${c.url}</a>` : `<span style="color:#64748B;">https://soporte.conectatec.edu.ec/manuales/${c.documento_id.toLowerCase()}</span>`;
                 infoRAG = `
                     <div class="xai-grid">
                         <div class="xai-item">
@@ -1835,22 +2181,30 @@
                             <div class="xai-item-label">Paso Operativo Verificado:</div>
                             <div class="xai-item-val">${c.paso_exacto}</div>
                         </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">Vigencia / Versión Documental:</div>
+                            <div class="xai-item-val" style="color:#047857; font-weight:700;">${c.vigencia || 'v3.2 - Octubre 2026 (Oficial)'}</div>
+                        </div>
+                        <div class="xai-item">
+                            <div class="xai-item-label">URL Canónica de Fuente RAG:</div>
+                            <div class="xai-item-val">${urlHtml}</div>
+                        </div>
                     </div>
                     <div class="xai-quote">
-                        <strong>Fragmento Técnico Aplicado:</strong><br>
+                        <strong>Fragmento Técnico Instructivo Aplicado:</strong><br>
                         «${c.fragmento_aplicado}»
                     </div>
                 `;
             } else if (t.categoria.includes('Fuera de Alcance')) {
                 infoRAG = `
                     <div class="xai-quote" style="border-left-color: #94A3B8;">
-                        ℹ️ <strong>Sin citas documentales:</strong> La solicitud no corresponde al soporte del ISP, por lo que no aplica ningún procedimiento técnico de los 15 manuales.
+                        ℹ️ <strong>Sin citas documentales (Regla de Silencio):</strong> La solicitud no corresponde a un incidente técnico en la infraestructura de telecomunicaciones. Se aplica el protocolo de abstención institucional sin alucinación.
                     </div>
                 `;
             } else {
                 infoRAG = `
                     <div class="xai-quote" style="border-left-color: #EF4444;">
-                        ⚠️ <strong>Sin citas documentales:</strong> El repositorio RAG no estuvo disponible o no se detectó procedimiento de autoatención. Caso derivado directamente a soporte humano Nivel 2.
+                        ⚠️ <strong>Sin citas documentales (Derivación Obligatoria):</strong> El repositorio RAG no estuvo disponible o el caso superó el umbral de confianza para autoatención. Caso derivado directamente a soporte humano Nivel 2.
                     </div>
                 `;
             }

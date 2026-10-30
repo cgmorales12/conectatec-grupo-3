@@ -179,6 +179,8 @@ class CitaRAG(BaseModel):
     titulo_documento: str = Field(..., description="Título oficial del manual técnico")
     paso_exacto: str = Field(..., description="Paso o sección citada (ej. Paso 2)")
     fragmento_aplicado: str = Field(..., description="Texto instructivo para el cliente")
+    vigencia: Optional[str] = Field(None, description="Versión o vigencia del documento")
+    url: Optional[str] = Field(None, description="URL canónica oficial del procedimiento en la base de conocimiento")
 
 
 class DiagnosticoRAG(BaseModel):
