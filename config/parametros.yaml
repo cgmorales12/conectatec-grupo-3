@@ -1,0 +1,32 @@
+# config/parametros.yaml · Parámetros de negocio desacoplados del código
+# Proyecto: ConectaTec / TecnoAula — Triaje Inteligente (Caso N.º 03 · Grupo 3 UNIANDES)
+# Valores versionados en Git. Las API Keys y secretos sensibles van exclusivamente en .env
+
+# 1. Umbral de Confianza para Clasificación de Incidencias (Estación 4)
+# Calibrado en el taller del 29-oct-2026: 0 errores silenciosos y <= 25% a revisión humana
+umbral_confianza: 0.85
+
+# 2. Control de Agentes de Alcance Controlado (Patrón ReAct)
+max_iteraciones_agente: 6
+herramientas_permitidas:
+  - buscar_procedimiento_rag
+  - calcular_prioridad_itil
+  - registrar_ticket_kanban
+  - escalar_cuadrilla_presencial
+
+herramientas_requieren_confirmacion:
+  - crear_ticket_kanban
+  - despachar_cuadrilla_presencial
+
+# 3. Parámetros de Recuperación RAG (ChromaDB)
+top_k_rag: 5
+similitud_minima_corte: 0.70
+modelo_embedding: "intfloat/multilingual-e5-small"
+
+# 4. Parámetros de SLAs ITIL (Horas de resolución máxima)
+sla_horas:
+  P1: 1
+  P2: 4
+  P3: 24
+  P4: 72
+
