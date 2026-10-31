@@ -833,7 +833,7 @@ class ClienteLLM:
                 sintomas_detectados=["Sin incidencia técnica identificable"],
                 justificacion="El reporte no describe ninguna avería, falla técnica ni problema en el servicio de Internet."
             )
-        if any(k in t for k in ["los roja", "fibra rota", "corte total", "sin servicio", "no navego", "luz roja"]):
+        if any(k in t for k in ["los roja", "fibra rota", "corte total", "sin servicio", "no navego", "luz roja"]) or ("los" in t and "roj" in t) or ("los" in t and "parpade" in t):
             return ClasificacionIA(
                 categoria="Conectividad y Fibra Óptica",
                 impacto="Alto",

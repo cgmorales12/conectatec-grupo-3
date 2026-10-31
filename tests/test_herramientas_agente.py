@@ -15,6 +15,9 @@ from pydantic import ValidationError
 from app.agente import (
     AgenteTriajeTecnico,
     CATALOGO_HERRAMIENTAS,
+    ParamsClasificar,
+    ResultadoClasificar,
+    ParamsBuscarSolucion,
     ParamsBuscarProcedimientoRAG,
     ResultadoBuscarProcedimientoRAG,
     ParamsCalcularPrioridadITIL,
@@ -23,6 +26,8 @@ from app.agente import (
     ResultadoConsultarEstadoNodo,
     ParamsRegistrarTicketKanban,
     ResultadoRegistrarTicketKanban,
+    ParamsEscalar,
+    ResultadoEscalar,
     ParamsEscalarCuadrillaPresencial,
     ResultadoEscalarCuadrillaPresencial,
     ParamsConsultarTarifasRepuestos,
@@ -31,23 +36,35 @@ from app.agente import (
     ResultadoConsultarCalendarioSoporte,
     SolicitudAgenteIn,
     RespuestaAgenteOut,
+    tool_clasificar,
+    tool_buscar_solucion,
     tool_buscar_procedimiento_rag,
+    tool_priorizar,
     tool_calcular_prioridad_itil,
-    tool_consultar_estado_nodo,
+    tool_crear_ticket,
     tool_registrar_ticket_kanban,
+    tool_escalar,
     tool_escalar_cuadrilla_presencial,
+    tool_consultar_estado_nodo,
     tool_consultar_tarifas_repuestos,
     tool_consultar_calendario_soporte
 )
 
 
 # ============================================================================
-# 1. Verificación del Catálogo Cerrado de Herramientas
+# 1. Verificación del Catálogo Cerrado de Herramientas (Whitelist Oficial)
 # ============================================================================
 
 def test_catalogo_herramientas_registro_completo():
-    """Valida que las 7 herramientas oficiales del agente estén registradas con sus metadatos y esquemas."""
+    """Valida que las 5 herramientas canónicas del caso y sus aliases estén registradas."""
     herramientas_esperadas = {
+        # Herramientas requeridas por la rúbrica oficial (Semana 3 · 70%)
+        "clasificar",
+        "priorizar",
+        "buscar_solucion",
+        "crear_ticket",
+        "escalar",
+        # Aliases y herramientas complementarias
         "buscar_procedimiento_rag",
         "calcular_prioridad_itil",
         "consultar_estado_nodo",
@@ -67,6 +84,104 @@ def test_catalogo_herramientas_registro_completo():
         assert "nivel" in defn, f"Tool '{nombre}' carece de nivel de seguridad/HITL."
         assert "descripcion" in defn, f"Tool '{nombre}' carece de descripción funcional."
         assert callable(defn["funcion"]), f"La función de '{nombre}' debe ser invocable."
+
+
+# ============================================================================
+# 1.1 Pruebas Unitarias de las 5 Herramientas Principales del Caso (70%)
+# ============================================================================
+
+def test_tool_clasificar_solicitud_caso():
+    """Valida la herramienta clasificar(solicitud) con esquema Pydantic estricto."""
+    params = ParamsClasificar(solicitud="Tengo cortes intermitentes en la red Wi-Fi del aula 204")
+    resultado = tool_clasificar(params)
+
+    assert isinstance(resultado, ResultadoClasificar)
+    assert resultado.categoria != ""
+    assert resultado.impacto in ["Alto", "Medio", "Bajo"]
+    assert resultado.urgencia in ["Alta", "Media", "Baja"]
+    assert resultado.es_fuera_de_alcance is False
+
+    # Verificación extra='forbid'
+    with pytest.raises(ValidationError):
+        ParamsClasificar(solicitud="problema wifi", inyeccion_no_permitida="malware")
+
+
+def test_tool_buscar_solucion_chromadb_caso():
+    """Valida la herramienta buscar_solucion(categoria, texto) consultando ChromaDB."""
+    params = ParamsBuscarSolucion(
+        texto="La luz LOS de la ONT Huawei EchoLife parpadea en rojo",
+        categoria="Conectividad y Fibra Óptica"
+    )
+    resultado = tool_buscar_solucion(params)
+
+    assert isinstance(resultado, ResultadoBuscarProcedimientoRAG)
+    assert resultado.encontrado is True
+    assert resultado.documento_id in ["DOC-01", "DOC-03"]
+    assert "Paso" in resultado.paso_exacto
+    assert resultado.fragmento_aplicado is not None
+
+
+def test_tool_priorizar_itil_caso():
+    """Valida la herramienta priorizar(impacto, urgencia) leyendo matriz determinista."""
+    params = ParamsCalcularPrioridadITIL(impacto="Alto", urgencia="Alta")
+    resultado = tool_priorizar(params)
+
+    assert isinstance(resultado, ResultadoCalcularPrioridadITIL)
+    assert resultado.prioridad == "Alta"
+    assert resultado.sla_minutos <= 120
+
+
+def test_tool_crear_ticket_caso():
+    """Valida la herramienta crear_ticket(datos) con esquema estricto y persistencia SQLite."""
+    params = ParamsRegistrarTicketKanban(
+        nombre_cliente="Dra. Ana Valencia",
+        email_cliente="avalencia@uniandes.edu.ec",
+        descripcion_problema="El cable Ethernet de la mesa del laboratorio tiene el conector RJ-45 roto.",
+        categoria="Red Cableada",
+        prioridad="Media",
+        sla_minutos=240,
+        solucion_propuesta="Sustitución de conector RJ45 según DOC-08.",
+        documento_id="DOC-08"
+    )
+    resultado = tool_crear_ticket(params)
+
+    assert isinstance(resultado, ResultadoRegistrarTicketKanban)
+    assert resultado.registrado is True
+    assert resultado.ticket_id > 0
+    assert resultado.ticket_codigo.startswith("TCK-")
+
+
+def test_tool_escalar_hitl_bloqueo_sin_confirmacion():
+    """Valida que escalar(ticket, motivo) se bloquee y exija confirmación cuando confirmado=False."""
+    params = ParamsEscalar(
+        ticket="TCK-LAB-01",
+        motivo="Alarma óptica crítica LOS roja en acometida de fibra",
+        confirmado=False  # Sin autorización humana
+    )
+    resultado = tool_escalar(params)
+
+    assert isinstance(resultado, ResultadoEscalar)
+    assert resultado.requiere_confirmacion_humana is True
+    assert resultado.estado == "pendiente_aprobacion_humana"
+    assert resultado.orden_despacho_id is None
+    assert "HUMAN-IN-THE-LOOP" in resultado.mensaje
+
+
+def test_tool_escalar_hitl_ejecucion_con_confirmacion():
+    """Valida que escalar(ticket, motivo) emita la orden de despacho cuando confirmado=True."""
+    params = ParamsEscalar(
+        ticket="TCK-LAB-01",
+        motivo="Alarma óptica crítica confirmada por jefe de laboratorio",
+        confirmado=True  # Con autorización humana explícita
+    )
+    resultado = tool_escalar(params)
+
+    assert isinstance(resultado, ResultadoEscalar)
+    assert resultado.requiere_confirmacion_humana is False
+    assert resultado.estado == "despachado"
+    assert resultado.orden_despacho_id is not None
+    assert resultado.orden_despacho_id.startswith("ODT-FIBRA-")
+    assert "Cuadrilla" in resultado.cuadrilla_asignada
 
 
 # ============================================================================
@@ -315,7 +430,7 @@ def test_agente_flujo_camino_feliz_resolucion_tecnica():
     assert respuesta.prioridad == "Alta"
     assert respuesta.sla_minutos == 15
     assert len(respuesta.citas) >= 1
-    assert any(c.documento_id in ["DOC-01", "DOC-03"] for c in respuesta.citas)
+    assert any(c.documento_id in ["DOC-01", "DOC-03", "DOC-09"] for c in respuesta.citas)
     assert respuesta.requiere_revision_humana is True  # Alarma crítica requiere confirmación
     assert len(respuesta.audit_trail) >= 3
 

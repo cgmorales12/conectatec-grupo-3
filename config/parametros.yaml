@@ -13,17 +13,25 @@ tasa_recarga_segundos: 6.0
 # 2. Control de Agentes de Alcance Controlado (Patrón ReAct)
 max_iteraciones_agente: 6
 herramientas_permitidas:
-  - buscar_procedimiento_rag
+  - clasificar
+  - clasificar_solicitud
+  - priorizar
   - calcular_prioridad_itil
-  - consultar_estado_nodo
+  - buscar_solucion
+  - buscar_procedimiento_rag
+  - crear_ticket
   - registrar_ticket_kanban
+  - escalar
   - escalar_cuadrilla_presencial
+  - consultar_estado_nodo
   - consultar_tarifas_repuestos
   - consultar_calendario_soporte
 
 herramientas_requieren_confirmacion:
-  - registrar_ticket_kanban
+  - escalar
   - escalar_cuadrilla_presencial
+  - crear_ticket
+  - registrar_ticket_kanban
 
 # 3. Parámetros de Recuperación RAG (ChromaDB)
 top_k_rag: 5
