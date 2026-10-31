@@ -14,8 +14,8 @@
 
 ### 2.1. Clonar el Repositorio
 ```bash
-git clone https://github.com/cgmorales12/conectatec-mvp.git
-cd conectatec-mvp
+git clone https://github.com/cgmorales12/conectatec-grupo-3.git
+cd conectatec-grupo-3
 ```
 
 ### 2.2. Instalar Dependencias

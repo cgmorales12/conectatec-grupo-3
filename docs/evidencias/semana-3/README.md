@@ -8,7 +8,7 @@
 3. **Amalia Geoconda Iguasnia Escobar** (QA Lead / Seguridad y Requerimientos — GitHub: `Geocoiguasnia76`)  
 **Docente Evaluador:** Heyler Fabio Guaza (Ing. Informático · Mg. en Ciberseguridad · OPD · Abogado)  
 **Periodo de Evaluación:** Semana 3 — Recuperación RAG con Citas Obligatorias, Guardrails de Abstención, Resistencia a Inyección OWASP y Pruebas Unitarias Pytest  
-**Repositorio GitHub:** `https://github.com/cgmorales12/conectatec-mvp`  
+**Repositorio GitHub:** `https://github.com/cgmorales12/conectatec-grupo-3`  
 
 ---
 

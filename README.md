@@ -2,7 +2,7 @@
 > **Mesa de Ayuda Inteligente y Triaje Automatizado de Incidentes ISP con RAG y Agente ReAct**  
 > **Seminario de Titulación:** Ingeniería de Software con IA Generativa — Universidad Regional Autónoma de Los Andes (UNIANDES)  
 > **Docente Evaluador:** Ing. Heyler Fabio Guaza (Mg. en Ciberseguridad · OPD · Abogado)  
-> **Repositorio Oficial:** `https://github.com/cgmorales12/conectatec-mvp`  
+> **Repositorio Oficial:** `https://github.com/cgmorales12/conectatec-grupo-3`  
 
 ---
 
@@ -89,8 +89,8 @@ CONECTATEC-MVP/
 
 ### 3.2. Clonar el Repositorio
 ```bash
-git clone https://github.com/cgmorales12/conectatec-mvp.git
-cd conectatec-mvp
+git clone https://github.com/cgmorales12/conectatec-grupo-3.git
+cd conectatec-grupo-3
 ```
 
 ### 3.3. Instalar Dependencias

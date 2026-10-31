@@ -8,7 +8,7 @@
 2. **Luis Fernando Ribera Alajo** (Builder / Arquitectura — GitHub: `fernandolribera`)  
 3. **Amalia Geoconda Iguasnia Escobar** (QA / Seguridad y Requerimientos — GitHub: `Geocoiguasnia76`)  
 **Docente Evaluador:** Heyler Fabio Guaza (Ing. Informático · Mg. en Ciberseguridad · OPD · Abogado)  
-**Repositorio GitHub:** `https://github.com/cgmorales12/conectatec-mvp`  
+**Repositorio GitHub:** `https://github.com/cgmorales12/conectatec-grupo-3`  
 **Archivo del Sistema:** `docs/06-rag.md`  
 
 ---

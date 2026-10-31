@@ -40,18 +40,18 @@ PALABRAS_CLAVE_MANUALES = {
 URLS_REALES_MANUALES = {
     "DOC-01": "https://support.huawei.com/carrier/",
     "DOC-02": "https://support.zte.com.cn/",
-    "DOC-03": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-03_reinicio_electrico_equipos.md",
-    "DOC-04": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-04_cambio_clave_wifi.md",
+    "DOC-03": "https://github.com/cgmorales12/conectatec-grupo-3/blob/main/data/raw/DOC-03_reinicio_electrico_equipos.md",
+    "DOC-04": "https://github.com/cgmorales12/conectatec-grupo-3/blob/main/data/raw/DOC-04_cambio_clave_wifi.md",
     "DOC-05": "https://www.wi-fi.org/discover-wi-fi",
     "DOC-06": "https://www.speedtest.net/about/knowledge",
     "DOC-07": "https://datatracker.ietf.org/doc/html/rfc1035",
     "DOC-08": "https://tiaonline.org/",
-    "DOC-09": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-09_rotura_fibra_optica.md",
+    "DOC-09": "https://github.com/cgmorales12/conectatec-grupo-3/blob/main/data/raw/DOC-09_rotura_fibra_optica.md",
     "DOC-10": "https://www.tp-link.com/support/faq/",
     "DOC-11": "https://help.mikrotik.com/docs/",
-    "DOC-12": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-12_canales_wifi_saturacion.md",
-    "DOC-13": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-13_intermitencia_pppoe.md",
-    "DOC-14": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-14_facturacion_cortes_mora.md",
+    "DOC-12": "https://github.com/cgmorales12/conectatec-grupo-3/blob/main/data/raw/DOC-12_canales_wifi_saturacion.md",
+    "DOC-13": "https://github.com/cgmorales12/conectatec-grupo-3/blob/main/data/raw/DOC-13_intermitencia_pppoe.md",
+    "DOC-14": "https://github.com/cgmorales12/conectatec-grupo-3/blob/main/data/raw/DOC-14_facturacion_cortes_mora.md",
     "DOC-15": "https://www.axelos.com/certifications/itil-service-management"
 }
 
@@ -61,7 +61,7 @@ def _resolver_url_manual(doc_id: str, url_meta: Optional[str] = None) -> str:
         return URLS_REALES_MANUALES[doc_id]
     if url_meta and "conectatec.edu.ec" not in url_meta and "conectatec.local" not in url_meta:
         return url_meta
-    return f"https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/{doc_id.lower()}.md"
+    return f"https://github.com/cgmorales12/conectatec-grupo-3/blob/main/data/raw/{doc_id.lower()}.md"
 
 
 # Términos que disparan orden de trabajo presencial (cuadrilla de planta externa)
