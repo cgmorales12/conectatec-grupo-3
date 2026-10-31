@@ -12,13 +12,13 @@ from datetime import datetime
 API_BASE_URL = "http://localhost:8000"
 
 st.set_page_config(
-    page_title="ConectaTec · Tablero de Triaje ISP",
+    page_title="ConectaTec - Grupo 3 · Tablero de Triaje ISP",
     page_icon="⚡",
     layout="wide"
 )
 
 # Cabecera Institucional
-st.title("⚡ ConectaTec · Triaje Inteligente de Soporte ISP")
+st.title("⚡ ConectaTec — Grupo 3 · Triaje Inteligente de Soporte ISP")
 st.caption("Caso N.º 03 · Grupo 3 UNIANDES | Christian Morales · Fernando Ribera · Geoconda Iguasnia")
 
 # Verificación de salud y estado del proveedor LLM

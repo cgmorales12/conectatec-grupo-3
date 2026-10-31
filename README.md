@@ -1,14 +1,24 @@
-# ConectaTec · Triaje Inteligente de Incidentes ISP
-**Caso N.º 03 · Grupo 3 — Seminario de Titulación en Ingeniería de Software con IA Generativa**  
-**Universidad Regional Autónoma de Los Andes (UNIANDES) — Octubre 2026**  
-**Docente Evaluador:** Ing. Heyler Fabio Guaza  
+# ⚡ ConectaTec — Grupo 3 (Caso N.º 03 · UNIANDES)
+> **Mesa de Ayuda Inteligente y Triaje Automatizado de Incidentes ISP con RAG y Agente ReAct**  
+> **Seminario de Titulación:** Ingeniería de Software con IA Generativa — Universidad Regional Autónoma de Los Andes (UNIANDES)  
+> **Docente Evaluador:** Ing. Heyler Fabio Guaza (Mg. en Ciberseguridad · OPD · Abogado)  
+> **Repositorio Oficial:** `https://github.com/cgmorales12/conectatec-mvp`  
 
 ---
 
 ## 👥 Integrantes del Grupo 3
-1. **Christian Guillermo Morales González** (Tech Lead / Coordinador — GitHub: `cgmorales12`)
-2. **Luis Fernando Ribera Alajo** (Builder / Arquitectura — GitHub: `fernandolribera`)
-3. **Amalia Geoconda Iguasnia Escobar** (QA / Seguridad y Requerimientos — GitHub: `Geocoiguasnia76`)
+| Integrante | Rol en el Proyecto | Usuario GitHub |
+| :--- | :--- | :--- |
+| **Christian Guillermo Morales González** | Tech Lead / Coordinador | [`cgmorales12`](https://github.com/cgmorales12) |
+| **Luis Fernando Ribera Alajo** | Builder / Arquitectura RAG & DB | [`fernandolribera`](https://github.com/fernandolribera) |
+| **Amalia Geoconda Iguasnia Escobar** | QA / Seguridad & Requerimientos | [`Geocoiguasnia76`](https://github.com/Geocoiguasnia76) |
+
+---
+
+## 🎯 Identificación del Caso de Estudio
+* **Número de Caso Asignado:** **Caso N.º 03**
+* **Nombre del Equipo:** **Grupo 3**
+* **Sistema:** **ConectaTec / TecnoAula — Triaje de Soporte Tecnológico**
 
 ---
 
