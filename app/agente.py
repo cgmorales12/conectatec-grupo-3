@@ -13,6 +13,7 @@ Cumple con la rúbrica oficial de la Semana 3:
 """
 
 import os
+import re
 import json
 import logging
 import hashlib
@@ -102,6 +103,12 @@ class ParamsClasificar(BaseModel):
         description="Texto de la incidencia o reporte a clasificar"
     )
     simular_caida_llm: Optional[bool] = False
+    simular_caida_gemini: Optional[bool] = False
+    simular_caida_groq: Optional[bool] = False
+    simular_error_429: Optional[bool] = False
+    simular_timeout: Optional[bool] = False
+    simular_respuesta_vacia: Optional[bool] = False
+    modo_vulnerable: Optional[bool] = False
 
 
 class ResultadoClasificar(BaseModel):
@@ -115,6 +122,9 @@ class ResultadoClasificar(BaseModel):
     es_fuera_de_alcance: bool
     requiere_revision_humana: bool
     proveedor: str
+    justificacion: Optional[str] = None
+    sintomas_detectados: List[str] = Field(default_factory=list)
+    metadatos_ia: Optional[Dict[str, Any]] = None
 
 
 # Tool 2: priorizar(impacto, urgencia)
@@ -355,8 +365,12 @@ def tool_clasificar(params: ParamsClasificar) -> ResultadoClasificar:
     from app.services.llm import clasificar_solicitud
     clasif, meta = clasificar_solicitud(
         params.solicitud,
-        simular_caida_gemini=bool(params.simular_caida_llm),
-        simular_caida_groq=bool(params.simular_caida_llm)
+        simular_caida_gemini=bool(params.simular_caida_gemini or params.simular_caida_llm),
+        simular_caida_groq=bool(params.simular_caida_groq or params.simular_caida_llm),
+        simular_error_429=bool(params.simular_error_429),
+        simular_timeout=bool(params.simular_timeout),
+        simular_respuesta_vacia=bool(params.simular_respuesta_vacia),
+        modo_vulnerable=bool(params.modo_vulnerable)
     )
     es_fuera = (
         getattr(clasif, "es_fuera_de_alcance", False) or
@@ -369,8 +383,11 @@ def tool_clasificar(params: ParamsClasificar) -> ResultadoClasificar:
         urgencia=clasif.urgencia,  # type: ignore
         descripcion_problema=params.solicitud,
         es_fuera_de_alcance=es_fuera,
-        requiere_revision_humana=clasif.impacto == "Alto" or clasif.urgencia == "Alta",
-        proveedor=meta.proveedor
+        requiere_revision_humana=clasif.impacto == "Alto" or clasif.urgencia == "Alta" or meta.conmutado,
+        proveedor=meta.proveedor,
+        justificacion=clasif.justificacion,
+        sintomas_detectados=clasif.sintomas_detectados or [],
+        metadatos_ia=meta.model_dump()
     )
 
 
@@ -680,6 +697,16 @@ CATALOGO_HERRAMIENTAS = {
 # 5. Esquemas del Flujo ReAct del Agente
 # ============================================================================
 
+class DecisionCognitivaAgente(BaseModel):
+    """Contrato del razonamiento cognitivo del modelo para el paso ReAct."""
+    model_config = ConfigDict(extra="ignore")
+
+    pensamiento: str = Field(..., description="Razonamiento sobre el estado actual y la necesidad diagnóstica")
+    accion: str = Field(..., description="Nombre de la herramienta a invocar o 'finalizar'")
+    argumentos: Dict[str, Any] = Field(default_factory=dict, description="Argumentos para la herramienta")
+    es_final: bool = Field(False, description="Indica si la resolución está completa")
+
+
 class PasoAgente(BaseModel):
     """Paso individual auditado dentro del ciclo ReAct."""
     model_config = ConfigDict(extra="forbid")
@@ -792,11 +819,177 @@ class AgenteTriajeTecnico:
         except Exception as ex:
             return False, {"error": "falla_ejecucion", "detalle": str(ex)}, f"Excepción en ejecución de '{nombre_tool}': {str(ex)}"
 
+    def _consultar_razonamiento_llm(
+        self,
+        texto_usuario: str,
+        estado: Dict[str, Any]
+    ) -> Optional[DecisionCognitivaAgente]:
+        """
+        Consulta al LLM (Gemini / Groq) para que razone sobre las observaciones
+        y decida dinámicamente qué herramienta invocar según la necesidad diagnóstica.
+        """
+        try:
+            from app.services.llm import cliente_llm
+            key_gemini = os.environ.get("GEMINI_API_KEY") or getattr(cliente_llm, "gemini_api_key", None)
+            key_groq = os.environ.get("GROQ_API_KEY") or getattr(cliente_llm, "groq_api_key", None)
+
+            # Si no hay claves reales configuradas en entorno, derivar al evaluador cognitivo de estado
+            if not key_gemini and not key_groq:
+                return None
+            if key_gemini in ["tu_clave_de_gemini_aqui", ""] and key_groq in ["tu_clave_de_groq_aqui", ""]:
+                return None
+
+            prompt_agente = (
+                "Eres el motor cognitivo de un Agente ReAct de Triaje Técnico (TecnoAula / ConectaTec Grupo 3 UNIANDES).\n"
+                "Tu objetivo es resolver la incidencia del usuario decidiendo qué herramienta técnica invocar en cada paso.\n\n"
+                "SOLICITUD DEL USUARIO:\n"
+                f"<solicitud>{texto_usuario}</solicitud>\n\n"
+                "ESTADO OBSERVADO HASTA EL MOMENTO:\n"
+                f"- Clasificación previa: {json.dumps(estado.get('clasificacion'), ensure_ascii=False)}\n"
+                f"- Solución RAG en manuales: {json.dumps(estado.get('solucion_rag'), ensure_ascii=False)}\n"
+                f"- Prioridad ITIL calculada: {json.dumps(estado.get('prioridad_itil'), ensure_ascii=False)}\n"
+                f"- Requiere cuadrilla presencial: {estado.get('requiere_cuadrilla')}\n"
+                f"- Escalamiento presencial: {json.dumps(estado.get('escalamiento'), ensure_ascii=False)}\n"
+                f"- Herramientas ya ejecutadas: {estado.get('herramientas_ejecutadas', [])}\n\n"
+                "CATÁLOGO DE HERRAMIENTAS PERMITIDAS:\n"
+                "1. 'clasificar': Extrae categoría, impacto y urgencia de la solicitud. Args: {'solicitud': str}\n"
+                "2. 'buscar_solucion': Búsqueda semántica en ChromaDB sobre los 15 manuales. Args: {'texto': str, 'categoria': str}\n"
+                "3. 'priorizar': Calcula deterministamente prioridad ITIL y SLA (0 tokens). Args: {'impacto': str, 'urgencia': str}\n"
+                "4. 'escalar': Deriva a cuadrilla técnica si hay daño físico o LOS roja (requiere HITL). Args: {'ticket': str, 'motivo': str, 'confirmado': bool}\n"
+                "5. 'consultar_estado_nodo': Telemetría óptica de nodos de campus. Args: {'nodo_id': str}\n"
+                "6. 'consultar_tarifas_repuestos': Tarifas oficiales desde config/tarifas.json. Args: {'codigo_o_categoria': str}\n"
+                "7. 'consultar_calendario_soporte': Turnos y feriados desde config/calendario.json. Args: {'fecha_iso': str}\n"
+                "8. 'finalizar': Cuando la información técnica y de SLA esté completa para responder. Args: {}\n\n"
+                "REGLAS DE DECISIÓN COGNITIVA:\n"
+                "- Si falta clasificar la solicitud, decide 'clasificar'.\n"
+                "- Si ya fue clasificada pero no se ha consultado ChromaDB, decide 'buscar_solucion'.\n"
+                "- Si ya se tiene impacto y urgencia pero no SLA, decide 'priorizar'.\n"
+                "- Si se detectó rotura de fibra o LOS roja y no se ha derivado, decide 'escalar' con confirmado=false.\n"
+                "- Si el diagnóstico y la solución ya están listos, decide 'finalizar' con es_final=true.\n\n"
+                "RESPONDE ÚNICAMENTE CON UN OBJETO JSON VÁLIDO CON ESTA ESTRUCTURA:\n"
+                "{\n"
+                '  "pensamiento": "Razonamiento conciso sobre el estado actual y por qué se toma esta decisión",\n'
+                '  "accion": "nombre_herramienta | finalizar",\n'
+                '  "argumentos": { ... },\n'
+                '  "es_final": false\n'
+                "}"
+            )
+
+            resp_txt = None
+            if key_gemini and key_gemini != "tu_clave_de_gemini_aqui":
+                resp_txt = cliente_llm._generar_con_gemini(prompt_agente, key_gemini)
+            elif key_groq and key_groq != "tu_clave_de_groq_aqui":
+                resp_txt = cliente_llm._generar_con_groq([
+                    {"role": "system", "content": "Eres un orquestador ReAct cognitivo que responde exclusivamente en JSON."},
+                    {"role": "user", "content": prompt_agente}
+                ], key_groq)
+
+            if not resp_txt:
+                return None
+
+            limpio = re.sub(r"^```json\s*", "", resp_txt.strip(), flags=re.IGNORECASE)
+            limpio = re.sub(r"^```\s*", "", limpio)
+            limpio = re.sub(r"\s*```$", "", limpio).strip()
+
+            datos = json.loads(limpio)
+            return DecisionCognitivaAgente(**datos)
+        except Exception as e:
+            logger.debug("Inferencia LLM de decisión agéntica derivada a evaluador de estado: %s", e)
+            return None
+
+    def _decidir_por_estado_cognitivo(
+        self,
+        texto_usuario: str,
+        estado: Dict[str, Any]
+    ) -> Tuple[str, Dict[str, Any], str, bool]:
+        """
+        Razonador cognitivo determinista basado en el ESTADO DE INFORMACIÓN (no en el número de vuelta).
+        Evalúa dinámicamente qué pieza diagnóstica falta para completar la atención.
+        """
+        # 1. ¿Falta clasificar la solicitud técnica?
+        if not estado.get("clasificado"):
+            pensamiento = (
+                "Observo que la incidencia aún no ha sido clasificada técnicamente. "
+                "Decido invocar 'clasificar' para extraer de manera estructurada su categoría, nivel de impacto y urgencia."
+            )
+            return "clasificar", {"solicitud": texto_usuario}, pensamiento, False
+
+        # 2. ¿Falta buscar la solución técnica en los 15 manuales en ChromaDB?
+        if not estado.get("solucion_rag"):
+            categoria = estado.get("categoria") or "Conectividad y Red"
+            pensamiento = (
+                f"Habiendo determinado la categoría '{categoria}', decido invocar 'buscar_solucion' "
+                f"en la base vectorial ChromaDB sobre los 15 manuales técnicos oficiales para recuperar el procedimiento exacto."
+            )
+            return "buscar_solucion", {"texto": texto_usuario, "categoria": categoria}, pensamiento, False
+
+        # 3. ¿Falta calcular la prioridad determinista ITIL y SLA?
+        if not estado.get("priorizado"):
+            impacto = estado.get("impacto") or "Medio"
+            urgencia = estado.get("urgencia") or "Media"
+            pensamiento = (
+                f"Con impacto operativo '{impacto}' y urgencia '{urgencia}', decido invocar 'priorizar' "
+                f"para calcular matemáticamente la prioridad ITIL y el SLA desde config/matriz_prioridad.json (0 tokens)."
+            )
+            return "priorizar", {"impacto": impacto, "urgencia": urgencia}, pensamiento, False
+
+        # 4. ¿Se requiere cuadrilla presencial por alarma física o corte de fibra y aún no se ha escalado?
+        if estado.get("requiere_cuadrilla") and not estado.get("escalado"):
+            ticket_id = f"TCK-{hashlib.md5(texto_usuario.encode()).hexdigest()[:6].upper()}"
+            pensamiento = (
+                "Se ha diagnosticado una alarma física crítica en fibra óptica (luz LOS roja o daño en acometida). "
+                "Decido invocar 'escalar' con compuerta Human-in-the-Loop (confirmado=False) para pausar la acción "
+                "y exigir la autorización previa del operador técnico antes del despacho."
+            )
+            return "escalar", {
+                "ticket": ticket_id,
+                "motivo": "Alarma óptica crítica LOS roja detectada en enlace GPON",
+                "confirmado": False
+            }, pensamiento, False
+
+        # 5. Todo el estado diagnóstico y resolutivo está satisfecho
+        pensamiento = (
+            "Se han completado todas las etapas de diagnóstico requeridas: clasificación técnica, "
+            "búsqueda semántica en ChromaDB, cálculo matricial ITIL y evaluación de despacho presencial. "
+            "Decido finalizar el triaje agéntico satisfactoriamente."
+        )
+        return "finalizar", {}, pensamiento, True
+
+    def _decidir_siguiente_paso(
+        self,
+        texto_usuario: str,
+        estado_actual: Dict[str, Any],
+        historial_pasos: List[PasoAgente]
+    ) -> Tuple[str, Dict[str, Any], str, bool]:
+        """
+        El modelo decide dinámicamente qué herramienta invocar y con qué argumentos,
+        en función del estado cognitivo acumulado y los requerimientos de la incidencia.
+        
+        Elimina por completo el guion estático por número de iteración (vuelta 1 busca, vuelta 2 prioriza).
+        
+        Retorna:
+            (nombre_herramienta, argumentos, pensamiento, es_final)
+        """
+        # 1. Intentar decisión dinámica mediante el modelo generativo (Gemini / Groq)
+        decision_llm = self._consultar_razonamiento_llm(texto_usuario, estado_actual)
+        if decision_llm:
+            nombre_tool = decision_llm.accion.strip()
+            if decision_llm.es_final or nombre_tool in ["finalizar", "terminar", "completado", "none"]:
+                return "finalizar", {}, decision_llm.pensamiento, True
+            if nombre_tool in self.herramientas_permitidas:
+                # Evitar bucles infinitos invocando repetidamente la misma herramienta
+                if nombre_tool not in estado_actual.get("herramientas_ejecutadas", []):
+                    return nombre_tool, decision_llm.argumentos, decision_llm.pensamiento, False
+            logger.warning("El modelo sugirió herramienta '%s' redundante o no permitida. Derivando a razonador de estado.", nombre_tool)
+
+        # 2. Razonador Cognitivo Basado en Estado (Respaldo determinista / sin conexión a internet)
+        return self._decidir_por_estado_cognitivo(texto_usuario, estado_actual)
+
     def resolver(self, solicitud_in: SolicitudAgenteIn) -> RespuestaAgenteOut:
         """
         Ejecuta el ciclo ReAct:
         OBSERVAR -> PENSAR -> ACTUAR -> VERIFICAR
-        Con corte determinista al alcanzar MAX_ITER.
+        Con decisión cognitiva dinámica y corte determinista al alcanzar MAX_ITER.
         """
         texto_usuario = solicitud_in.solicitud.strip()
         limite_max = solicitud_in.max_iteraciones or self.max_iteraciones
@@ -841,7 +1034,22 @@ class AgenteTriajeTecnico:
                 )]
             )
 
-        # Inicio del Bucle ReAct
+        # Estado cognitivo acumulado del agente (determina las decisiones)
+        estado_actual: Dict[str, Any] = {
+            "clasificado": False,
+            "categoria": "Conectividad y Red",
+            "impacto": "Medio",
+            "urgencia": "Media",
+            "clasificacion": None,
+            "solucion_rag": None,
+            "priorizado": False,
+            "prioridad_itil": None,
+            "requiere_cuadrilla": False,
+            "escalado": False,
+            "escalamiento": None,
+            "herramientas_ejecutadas": []
+        }
+
         iteracion = 1
         diagnostico_actual = ""
         prioridad_actual = "Media"
@@ -875,41 +1083,38 @@ class AgenteTriajeTecnico:
                 audit_trail=audit_trail
             )
 
+        # Bucle ReAct Autónomo Guiado por Razonamiento Cognitivo
         while iteracion <= limite_max and not resuelto:
             # FASE 1: OBSERVAR
             audit_trail.append(PasoAgente(
                 iteracion=iteracion,
                 fase="OBSERVAR",
-                observacion=f"Iteración {iteracion}: Evaluando estado de la incidencia y requerimientos de información."
+                observacion=(
+                    f"Iteración {iteracion}: Evaluando estado cognitivo actual. "
+                    f"Herramientas previas: {estado_actual['herramientas_ejecutadas'] or 'Ninguna'}."
+                )
             ))
 
-            # FASE 2: PENSAR (Decisión determinista de la siguiente herramienta)
-            if iteracion == 1:
-                # Paso 1: Clasificar la solicitud como herramienta de agente
-                nombre_tool = "clasificar"
-                args = {"solicitud": texto_usuario}
-            elif iteracion == 2:
-                # Paso 2: Buscar solución en base RAG (ChromaDB)
-                nombre_tool = "buscar_solucion"
-                args = {"texto": texto_usuario, "categoria": categoria_actual}
-            elif iteracion == 3:
-                # Paso 3: Calcular prioridad ITIL con la matriz determinista
-                nombre_tool = "priorizar"
-                args = {"impacto": impacto_actual, "urgencia": urgencia_actual}
-            elif iteracion == 4 and requiere_cuadrilla:
-                # Paso 4 (si aplica): Escalar cuadrilla con compuerta HITL
-                nombre_tool = "escalar"
-                args = {
-                    "ticket": f"TCK-{hashlib.md5(texto_usuario.encode()).hexdigest()[:6].upper()}",
-                    "motivo": "Alarma óptica crítica LOS roja detectada en enlace GPON",
-                    "confirmado": False  # Se detiene deterministamente para requerir confirmación humana
-                }
-            else:
+            # FASE 2: PENSAR (El modelo decide de forma dinámica según necesidad diagnóstica)
+            nombre_tool, args, pensamiento, es_final = self._decidir_siguiente_paso(
+                texto_usuario, estado_actual, audit_trail
+            )
+
+            audit_trail.append(PasoAgente(
+                iteracion=iteracion,
+                fase="PENSAR",
+                herramienta_invocada=nombre_tool if not es_final else None,
+                argumentos_enviados=args if not es_final else None,
+                observacion=f"Pensamiento cognitivo: {pensamiento}"
+            ))
+
+            if es_final or nombre_tool in ["finalizar", "terminar"]:
                 resuelto = True
                 break
 
             # FASE 3: ACTUAR (Ejecución bajo whitelist, HITL y Pydantic)
             ok, res_tool, obs_act = self.ejecutar_herramienta(nombre_tool, args)
+            estado_actual["herramientas_ejecutadas"].append(nombre_tool)
 
             audit_trail.append(PasoAgente(
                 iteracion=iteracion,
@@ -921,7 +1126,10 @@ class AgenteTriajeTecnico:
             ))
 
             # FASE 4: VERIFICAR
-            if nombre_tool == "clasificar":
+            if nombre_tool in ["clasificar", "clasificar_solicitud"]:
+                estado_actual["clasificado"] = True
+                estado_actual["clasificacion"] = res_tool
+
                 if res_tool.get("es_fuera_de_alcance"):
                     resuelto = True
                     diagnostico_actual = (
@@ -930,21 +1138,45 @@ class AgenteTriajeTecnico:
                     )
                     prioridad_actual = "Baja"
                     sla_actual = 2880
+                    audit_trail.append(PasoAgente(
+                        iteracion=iteracion,
+                        fase="VERIFICAR",
+                        herramienta_invocada=nombre_tool,
+                        resultado_obtenido=res_tool,
+                        observacion="Verificación: Solicitud fuera de alcance técnico confirmada. Se activa abstención oficial inmediata."
+                    ))
                     break
+
                 categoria_actual = res_tool.get("categoria", categoria_actual)
+                estado_actual["categoria"] = categoria_actual
                 imp = res_tool.get("impacto")
                 urg = res_tool.get("urgencia")
                 if imp in ["Alto", "Medio", "Bajo"]:
                     impacto_actual = imp
+                    estado_actual["impacto"] = imp
                 if urg in ["Alta", "Media", "Baja"]:
                     urgencia_actual = urg
+                    estado_actual["urgencia"] = urg
 
                 # Alarma física o rotura de fibra implica impacto Alto y urgencia Alta (SLA 15m)
                 if ("los" in texto_lower and "roj" in texto_lower) or any(w in texto_lower for w in ["fibra", "corte", "masivo", "acometida"]):
                     impacto_actual = "Alto"
                     urgencia_actual = "Alta"
+                    requiere_cuadrilla = True
+                    estado_actual["impacto"] = "Alto"
+                    estado_actual["urgencia"] = "Alta"
+                    estado_actual["requiere_cuadrilla"] = True
+
+                audit_trail.append(PasoAgente(
+                    iteracion=iteracion,
+                    fase="VERIFICAR",
+                    herramienta_invocada=nombre_tool,
+                    resultado_obtenido=res_tool,
+                    observacion=f"Verificación: Clasificación establecida como '{categoria_actual}', Impacto='{impacto_actual}', Urgencia='{urgencia_actual}'."
+                ))
 
             elif nombre_tool in ["buscar_solucion", "buscar_procedimiento_rag"]:
+                estado_actual["solucion_rag"] = res_tool
                 if res_tool.get("encontrado"):
                     diagnostico_actual = f"Procedimiento recomendado según {res_tool['documento_id']} ({res_tool['paso_exacto']}): {res_tool['fragmento_aplicado']}"
                     
@@ -972,21 +1204,47 @@ class AgenteTriajeTecnico:
                         requiere_cuadrilla = True
                         impacto_actual = "Alto"
                         urgencia_actual = "Alta"
+                        estado_actual["requiere_cuadrilla"] = True
+                        estado_actual["impacto"] = "Alto"
+                        estado_actual["urgencia"] = "Alta"
                 else:
                     diagnostico_actual = res_tool.get("solucion_propuesta") or "Incidencia analizada sin procedimiento directo; aplicar ciclo de reinicio de 30 segundos (DOC-03)."
 
+                audit_trail.append(PasoAgente(
+                    iteracion=iteracion,
+                    fase="VERIFICAR",
+                    herramienta_invocada=nombre_tool,
+                    resultado_obtenido={"encontrado": res_tool.get("encontrado"), "citas": len(citas_obtenidas)},
+                    observacion=f"Verificación: Búsqueda en ChromaDB completada. Documento recuperado: {res_tool.get('documento_id')}."
+                ))
+
             elif nombre_tool in ["priorizar", "calcular_prioridad_itil"]:
+                estado_actual["priorizado"] = True
+                estado_actual["prioridad_itil"] = res_tool
                 prioridad_actual = res_tool.get("prioridad", "Media")
                 sla_actual = res_tool.get("sla_minutos", 480)
-                if not requiere_cuadrilla:
-                    resuelto = True
+                audit_trail.append(PasoAgente(
+                    iteracion=iteracion,
+                    fase="VERIFICAR",
+                    herramienta_invocada=nombre_tool,
+                    resultado_obtenido=res_tool,
+                    observacion=f"Verificación: Prioridad calculada como '{prioridad_actual}' con SLA máximo de {sla_actual} minutos."
+                ))
 
             elif nombre_tool in ["escalar", "escalar_cuadrilla_presencial"]:
+                estado_actual["escalado"] = True
+                estado_actual["escalamiento"] = res_tool
                 if res_tool.get("requiere_confirmacion_humana"):
                     diagnostico_actual += " | Escalamiento presencial registrado y en espera de confirmación humana (HITL)."
                 else:
                     diagnostico_actual += f" | Orden técnica generada: {res_tool.get('orden_despacho_id')} para {res_tool.get('cuadrilla_asignada')}."
-                resuelto = True
+                audit_trail.append(PasoAgente(
+                    iteracion=iteracion,
+                    fase="VERIFICAR",
+                    herramienta_invocada=nombre_tool,
+                    resultado_obtenido=res_tool,
+                    observacion="Verificación: Escalamiento evaluado bajo compuerta Human-in-the-Loop."
+                ))
 
             iteracion += 1
 

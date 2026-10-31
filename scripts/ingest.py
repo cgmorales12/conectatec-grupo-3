@@ -28,23 +28,23 @@ RAW_DIR = os.path.join(RAIZ, "data", "raw")
 CHROMA_DIR = os.path.join(RAIZ, "data", "chroma")
 COLLECTION_NAME = "manuales_tecnicos"
 
-# URLs canónicas oficiales de la base de conocimiento por documento
+# URLs canónicas oficiales reales y verificables por documento (Cero dominios inventados)
 URLS_OFICIALES = {
-    "DOC-01": "https://soporte.conectatec.edu.ec/manuales/DOC-01-luces-led-ont-huawei",
-    "DOC-02": "https://soporte.conectatec.edu.ec/manuales/DOC-02-indicadores-ont-zte",
-    "DOC-03": "https://soporte.conectatec.edu.ec/manuales/DOC-03-reinicio-electrico-equipos",
-    "DOC-04": "https://soporte.conectatec.edu.ec/manuales/DOC-04-cambio-clave-wifi",
-    "DOC-05": "https://soporte.conectatec.edu.ec/manuales/DOC-05-cobertura-24ghz-5ghz",
-    "DOC-06": "https://soporte.conectatec.edu.ec/manuales/DOC-06-test-velocidad-ethernet",
-    "DOC-07": "https://soporte.conectatec.edu.ec/manuales/DOC-07-diagnostico-dns",
-    "DOC-08": "https://soporte.conectatec.edu.ec/manuales/DOC-08-cableado-red-utp",
-    "DOC-09": "https://soporte.conectatec.edu.ec/manuales/DOC-09-rotura-fibra-optica",
-    "DOC-10": "https://soporte.conectatec.edu.ec/manuales/DOC-10-interferencias-wifi",
-    "DOC-11": "https://soporte.conectatec.edu.ec/manuales/DOC-11-router-modo-puente",
-    "DOC-12": "https://soporte.conectatec.edu.ec/manuales/DOC-12-canales-wifi-saturacion",
-    "DOC-13": "https://soporte.conectatec.edu.ec/manuales/DOC-13-intermitencia-pppoe",
-    "DOC-14": "https://soporte.conectatec.edu.ec/manuales/DOC-14-facturacion-cortes-mora",
-    "DOC-15": "https://soporte.conectatec.edu.ec/manuales/DOC-15-matriz-itil-incidentes",
+    "DOC-01": "https://support.huawei.com/carrier/",
+    "DOC-02": "https://support.zte.com.cn/",
+    "DOC-03": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-03_reinicio_electrico_equipos.md",
+    "DOC-04": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-04_cambio_clave_wifi.md",
+    "DOC-05": "https://www.wi-fi.org/discover-wi-fi",
+    "DOC-06": "https://www.speedtest.net/about/knowledge",
+    "DOC-07": "https://datatracker.ietf.org/doc/html/rfc1035",
+    "DOC-08": "https://tiaonline.org/",
+    "DOC-09": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-09_rotura_fibra_optica.md",
+    "DOC-10": "https://www.tp-link.com/support/faq/",
+    "DOC-11": "https://help.mikrotik.com/docs/",
+    "DOC-12": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-12_canales_wifi_saturacion.md",
+    "DOC-13": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-13_intermitencia_pppoe.md",
+    "DOC-14": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-14_facturacion_cortes_mora.md",
+    "DOC-15": "https://www.axelos.com/certifications/itil-service-management",
 }
 
 # Términos clave del dominio técnico para enriquecimiento semántico multilingüe

@@ -457,3 +457,37 @@ def test_agente_mision_silencio_solicitud_no_tecnica():
     assert respuesta.iteraciones_ejecutadas == 1
     assert "No dispongo de un procedimiento técnico" in respuesta.diagnostico_final
     assert "Secretaría General" in respuesta.diagnostico_final
+
+
+def test_agente_decision_cognitiva_dinamica_cuatro_fases_react():
+    """
+    Valida que el agente decida la siguiente herramienta de forma cognitiva dinámica
+    (sin guion fijo por número de vuelta) y registre las 4 fases ReAct:
+    OBSERVAR -> PENSAR -> ACTUAR -> VERIFICAR.
+    """
+    agente = AgenteTriajeTecnico(max_iteraciones=6)
+    solicitud = SolicitudAgenteIn(
+        solicitud="Tengo cortes intermitentes y lentitud en la red Wi-Fi del aula 204",
+        nombre_cliente="Docente Sistemas",
+        email_cliente="docente@uniandes.edu.ec"
+    )
+    respuesta = agente.resolver(solicitud)
+
+    assert respuesta.exito is True
+    assert respuesta.limite_alcanzado is False
+    assert respuesta.prioridad in ["Alta", "Media", "Baja"]
+
+    # Comprobación estricta de las 4 fases ReAct en el audit_trail
+    fases = [paso.fase for paso in respuesta.audit_trail]
+    assert "OBSERVAR" in fases, "Falta fase OBSERVAR en audit_trail"
+    assert "PENSAR" in fases, "Falta fase PENSAR en audit_trail"
+    assert "ACTUAR" in fases, "Falta fase ACTUAR en audit_trail"
+    assert "VERIFICAR" in fases, "Falta fase VERIFICAR en audit_trail"
+
+    # Validar que los pasos de PENSAR contengan razonamiento cognitivo explícito
+    pasos_pensar = [p for p in respuesta.audit_trail if p.fase == "PENSAR"]
+    assert len(pasos_pensar) >= 2
+    for p in pasos_pensar:
+        assert "Pensamiento cognitivo:" in p.observacion
+        assert len(p.observacion) > 25
+

@@ -607,10 +607,43 @@ class ClienteLLM:
         simular_caida_groq: bool = False
     ) -> Iterator[str]:
         """
-        Generador streaming encapsulado.
-        El endpoint solo recibe los chunks sin conocer si provienen de Gemini, Groq o Local.
+        Generador streaming encapsulado con RAG activo sobre ChromaDB.
+        El asistente consulta la base de 15 manuales técnicos antes de responder.
         """
         mensaje_seguro = anonimizar_datos_sensibles(mensaje)
+
+        # 1. Búsqueda Semántica en ChromaDB en tiempo real para el canal conversacional
+        from app.services.rag import buscar_solucion
+        diag_rag = buscar_solucion(texto=mensaje_seguro, top_k=3)
+
+        # Si el diagnóstico determinó abstención (pregunta no técnica o maliciosa)
+        if not diag_rag.citas and ("No dispongo de un procedimiento" in diag_rag.solucion_propuesta or "Secretaría General" in diag_rag.solucion_propuesta):
+            for token in diag_rag.solucion_propuesta.split(" "):
+                yield token + " "
+                time.sleep(0.01)
+            return
+
+        # 2. Ensamblar contexto documental recuperado de ChromaDB
+        citas_formateadas = []
+        for c in diag_rag.citas:
+            citas_formateadas.append(
+                f"• [{c.documento_id}] {c.titulo_documento} — {c.paso_exacto}\n"
+                f"  Procedimiento: {c.fragmento_aplicado}\n"
+                f"  URL Oficial: {c.url} (Vigencia: {c.vigencia})"
+            )
+        contexto_chromadb = "\n\n".join(citas_formateadas) if citas_formateadas else "No se encontraron manuales afines."
+
+        prompt_sistema_rag = (
+            "Eres el Asistente Técnico Oficial de ConectaTec / TecnoAula ISP (Grupo 3 UNIANDES).\n"
+            "Tu deber es asistir al usuario basándote ESTRICTAMENTE en la información técnica oficial recuperada de ChromaDB.\n"
+            "REGLAS:\n"
+            "1. Cita siempre el manual correspondiente (ej. DOC-01) y el paso operativo exacto.\n"
+            "2. Explica los pasos de forma clara y estructurada.\n"
+            "3. Incluye la URL oficial del procedimiento para consulta directa del usuario.\n"
+            "4. Si la avería implica daño físico o luz LOS roja, indica que se requiere despacho de cuadrilla técnica.\n\n"
+            f"[INFORMACIÓN OFICIAL RECUPERADA DE CHROMADB]:\n{contexto_chromadb}"
+        )
+
         proveedores = (
             ["groq", "gemini"] if self.proveedor_activo == "groq" else ["gemini", "groq"]
         )
@@ -622,8 +655,8 @@ class ClienteLLM:
                 key_gemini = os.environ.get("GEMINI_API_KEY") or self.gemini_api_key
                 if key_gemini and key_gemini != "tu_clave_de_gemini_aqui":
                     try:
-                        prompt = f"Asistente técnico ConectaTec ISP. Responde con precisión: {mensaje_seguro}"
-                        stream_gen = self._stream_gemini(prompt, key_gemini)
+                        prompt_gemini = f"{prompt_sistema_rag}\n\nConsulta del usuario:\n<solicitud>{mensaje_seguro}</solicitud>"
+                        stream_gen = self._stream_gemini(prompt_gemini, key_gemini)
                         yielded = False
                         for chunk in stream_gen:
                             yield chunk
@@ -638,8 +671,8 @@ class ClienteLLM:
                 if key_groq and key_groq != "tu_clave_de_groq_aqui":
                     try:
                         messages = [
-                            {"role": "system", "content": "Asistente técnico de ConectaTec ISP."},
-                            {"role": "user", "content": mensaje_seguro}
+                            {"role": "system", "content": prompt_sistema_rag},
+                            {"role": "user", "content": f"<solicitud>{mensaje_seguro}</solicitud>"}
                         ]
                         stream_gen = self._stream_groq(messages, key_groq)
                         yielded = False
@@ -651,7 +684,7 @@ class ClienteLLM:
                     except Exception:
                         pass
 
-        # Contingencia Local Offline
+        # Contingencia Local Offline con datos recuperados de ChromaDB
         for chunk in self._stream_offline(mensaje_seguro):
             yield chunk
 

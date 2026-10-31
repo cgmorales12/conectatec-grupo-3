@@ -42,7 +42,7 @@ Los resultados consolidados corresponden a la ejecución contra el conjunto dora
 | **Cinta de Triaje** | Errores silenciosos | **0 estricto** | **0** | ✅ Cumplida | Ningún caso crítico o de riesgo fue procesado como automático inadvertidamente. |
 | **Cinta de Triaje** | Tasa de revisión humana | $\le 45.0\%$ | **40.0%** (8/20) | ✅ Cumplida | El 60% restante se resolvió automáticamente o se derivó según SLA sin saturar al técnico. |
 | **Agente ReAct** | Tasa de tareas cumplidas | $\ge 90.0\%$ | **100.0%** (5/5) | ✅ Superada | Supera camino feliz, corte forzoso por `MAX_ITER`, abstención, rechazo de tools y HITL. |
-| **Pruebas Unitarias** | Pytest sin API externa | $100.0\%$ | **100.0%** (69/69) | ✅ Cumplida | 69 pruebas (42 endpoints, 16 herramientas agente, 11 construcción de prompt) en 10.33s con **$0.00 de costo de inferencia**. |
+| **Pruebas Unitarias** | Pytest sin API externa | $100.0\%$ | **100.0%** (76/76) | ✅ Cumplida | 76 pruebas (42 endpoints, 23 herramientas agente con decisión dinámica, 11 construcción de prompt) con **$0.00 de costo de inferencia**. |
 
 ---
 

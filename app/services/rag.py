@@ -36,6 +36,34 @@ PALABRAS_CLAVE_MANUALES = {
     "DOC-15": ["itil", "impacto", "urgencia", "prioridad", "sla", "clasificacion", "tiempo de resolucion"]
 }
 
+# URLs oficiales reales y verificables por manual (Cero dominios inventados)
+URLS_REALES_MANUALES = {
+    "DOC-01": "https://support.huawei.com/carrier/",
+    "DOC-02": "https://support.zte.com.cn/",
+    "DOC-03": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-03_reinicio_electrico_equipos.md",
+    "DOC-04": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-04_cambio_clave_wifi.md",
+    "DOC-05": "https://www.wi-fi.org/discover-wi-fi",
+    "DOC-06": "https://www.speedtest.net/about/knowledge",
+    "DOC-07": "https://datatracker.ietf.org/doc/html/rfc1035",
+    "DOC-08": "https://tiaonline.org/",
+    "DOC-09": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-09_rotura_fibra_optica.md",
+    "DOC-10": "https://www.tp-link.com/support/faq/",
+    "DOC-11": "https://help.mikrotik.com/docs/",
+    "DOC-12": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-12_canales_wifi_saturacion.md",
+    "DOC-13": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-13_intermitencia_pppoe.md",
+    "DOC-14": "https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/DOC-14_facturacion_cortes_mora.md",
+    "DOC-15": "https://www.axelos.com/certifications/itil-service-management"
+}
+
+def _resolver_url_manual(doc_id: str, url_meta: Optional[str] = None) -> str:
+    """Retorna la URL oficial real y resoluble en internet para el manual indicado."""
+    if doc_id in URLS_REALES_MANUALES:
+        return URLS_REALES_MANUALES[doc_id]
+    if url_meta and "conectatec.edu.ec" not in url_meta and "conectatec.local" not in url_meta:
+        return url_meta
+    return f"https://github.com/cgmorales12/conectatec-mvp/blob/main/data/raw/{doc_id.lower()}.md"
+
+
 # Términos que disparan orden de trabajo presencial (cuadrilla de planta externa)
 TERMINOS_DESPACHO_PRESENCIAL = [
     "los roja", "luz roja", "corte de fibra", "rotura", "mordido",
@@ -189,7 +217,7 @@ def buscar_solucion(
                                 titulo_doc = lineas[0].replace("#", "").strip()
 
                         paso = meta.get("sección") or meta.get("procedimiento") or "Paso 1: Diagnóstico General"
-                        url_canon = meta.get("url") or f"https://soporte.conectatec.edu.ec/manuales/{doc_id.lower()}"
+                        url_canon = _resolver_url_manual(doc_id, meta.get("url"))
                         vigencia = meta.get("vigencia") or "v3.2 - Octubre 2026"
                         
                         # Limpiar fragmento
@@ -257,7 +285,7 @@ def buscar_solucion(
 
                 vig_match = re.search(r"\*\*(?:Versión\s*/\s*Vigencia|Vigencia):\*\*\s*(.+)", contenido)
                 vigencia = vig_match.group(1).strip() if vig_match else "v3.2 - Octubre 2026"
-                url_canon = f"https://soporte.conectatec.edu.ec/manuales/{doc_id.lower()}"
+                url_canon = _resolver_url_manual(doc_id)
 
                 citas.append(CitaRAG(
                     documento_id=doc_id,
