@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Capa de Persistencia: Repositorio SQLite Parametrizado
 Cumple: Cero inyecciones SQL mediante consultas con marcador '?' (OWASP)
@@ -6,8 +7,17 @@ Cumple: Cero inyecciones SQL mediante consultas con marcador '?' (OWASP)
 import sqlite3
 import os
 import json
+import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)
+except ImportError:
+    pass
+
+logger = logging.getLogger("conectatec.database")
 
 DB_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 DB_PATH = os.path.join(DB_DIR, "conectatec.db")
@@ -104,13 +114,25 @@ def inicializar_bd():
     if "orden_despacho_id" not in columnas:
         cursor.execute("ALTER TABLE tickets ADD COLUMN orden_despacho_id TEXT")
     
-    # Sembrar usuario administrador TIC inicial si no existe
+    # Sembrar usuario administrador TIC inicial si no existe (Cero Secretos en Git)
     usuario_existente = cursor.execute("SELECT id FROM usuarios_tic WHERE usuario = ?", ("admin.tic@conectatec.local",)).fetchone()
     if not usuario_existente:
         import hashlib
         import secrets
+
+        # Principio de Arquitectura LOPDP / OWASP: Cero contraseñas hardcodeadas en código fuente.
+        # Se obtiene de variable de entorno (.env). Si no existe, se genera una contraseña criptográfica efímera.
+        admin_pass = os.environ.get("ADMIN_PASSWORD")
+        if not admin_pass:
+            admin_pass = secrets.token_urlsafe(16)
+            logger.warning(
+                "ADVERTENCIA DE SEGURIDAD (OWASP LLM02): ADMIN_PASSWORD no está definida en .env. "
+                "Se generó una contraseña criptográfica temporal para admin: %s (Defina ADMIN_PASSWORD en su .env)",
+                admin_pass
+            )
+        
         salt = secrets.token_hex(16)
-        hash_pass = hashlib.pbkdf2_hmac("sha256", "TicUniandes2026!".encode("utf-8"), salt.encode("utf-8"), 100000).hex()
+        hash_pass = hashlib.pbkdf2_hmac("sha256", admin_pass.encode("utf-8"), salt.encode("utf-8"), 100000).hex()
         ahora_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("""
             INSERT INTO usuarios_tic (usuario, nombre_completo, rol, hash_password, salt, activo, fecha_creacion)

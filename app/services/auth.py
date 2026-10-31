@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Servicio de Autenticación y Control de Acceso (RBAC) - Personal TIC
 Cumple: Tokens firmados criptográficamente (HMAC-SHA256), expiración por turno laboral y cero dependencias externas.
@@ -10,11 +11,28 @@ import time
 import base64
 import hmac
 import hashlib
+import secrets
 from typing import Optional, Dict, Any
 from fastapi import Header, HTTPException, status
 
-# Clave secreta institucional para firma de tokens (desde .env o semilla segura)
-_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "ConectaTec_Seminario_UNIANDES_2026_ClaveSecretaTIC_Segura!")
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)
+except ImportError:
+    pass
+
+
+def _obtener_clave_secreta() -> str:
+    """
+    Obtiene la clave de firma JWT desde variables de entorno (.env).
+    Principio de Seguridad LOPDP / OWASP: Cero claves por defecto hardcodeadas en código fuente.
+    Si no está configurada, genera dinámicamente una clave criptográfica de 256 bits.
+    """
+    clave = os.environ.get("JWT_SECRET_KEY")
+    if not clave:
+        clave = secrets.token_hex(32)
+        os.environ["JWT_SECRET_KEY"] = clave
+    return clave
 
 
 def _b64url_encode(data: bytes) -> str:
@@ -53,7 +71,8 @@ def generar_token_sesion(usuario_datos: Dict[str, Any], duracion_horas: int = 8)
     payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
     mensaje_a_firmar = f"{cabecera_b64}.{payload_b64}".encode("utf-8")
     
-    firma = hmac.new(_SECRET_KEY.encode("utf-8"), mensaje_a_firmar, hashlib.sha256).digest()
+    clave = _obtener_clave_secreta()
+    firma = hmac.new(clave.encode("utf-8"), mensaje_a_firmar, hashlib.sha256).digest()
     firma_b64 = _b64url_encode(firma)
     
     return f"{cabecera_b64}.{payload_b64}.{firma_b64}"
@@ -70,7 +89,8 @@ def verificar_token_sesion(token: str) -> Optional[Dict[str, Any]]:
         
         cabecera_b64, payload_b64, firma_b64 = partes
         mensaje_firmado = f"{cabecera_b64}.{payload_b64}".encode("utf-8")
-        firma_esperada = hmac.new(_SECRET_KEY.encode("utf-8"), mensaje_firmado, hashlib.sha256).digest()
+        clave = _obtener_clave_secreta()
+        firma_esperada = hmac.new(clave.encode("utf-8"), mensaje_firmado, hashlib.sha256).digest()
         firma_recibida = _b64url_decode(firma_b64)
         
         # Comparación de tiempo constante contra ataques de temporización (OWASP)
